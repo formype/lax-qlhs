@@ -1,0 +1,6 @@
+.manage-classes-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

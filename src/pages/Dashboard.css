@@ -1,0 +1,94 @@
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  min-height: calc(100vh - 130px);
+}
+
+.welcome-banner {
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  color: white;
+}
+
+.welcome-text {
+  font-size: 0.92rem;
+  opacity: 0.95;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  background: var(--bg-card);
+}
+
+.stat-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.violation-item {
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  transition: transform 0.15s ease;
+}
+
+.violation-item:active {
+  transform: scale(0.98);
+}
+
+.student-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.time-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  gap: 4px;
+  min-width: 55px;
+  flex-shrink: 0;
+}
+
+.time-text {
+  font-weight: 500;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}

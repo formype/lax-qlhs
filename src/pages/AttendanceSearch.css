@@ -1,0 +1,117 @@
+.attendance-search-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.attendance-card-modern {
+  margin-bottom: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--border-color);
+}
+
+.attendance-card-modern.status-absent {
+  border-left-color: var(--danger);
+}
+
+.attendance-card-modern.status-late {
+  border-left-color: var(--warning);
+}
+
+.attendance-card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+html.dark .attendance-card-modern:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.attendance-info-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 10px 0;
+  border-top: 1px dashed var(--border-color);
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.attendance-status-label {
+  font-weight: 500;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attendance-status-label.absent {
+  color: var(--danger);
+}
+
+.attendance-status-label.late {
+  color: var(--warning);
+}
+
+.attendance-table-container {
+  width: 100%;
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+html.dark .attendance-table-container {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.modern-table th,
+.modern-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.modern-table th {
+  background-color: rgba(0, 0, 0, 0.02);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+html.dark .modern-table th {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.modern-table tr:last-child td {
+  border-bottom: none;
+}
+
+.modern-table tr:hover td {
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+html.dark .modern-table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.table-badge {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}

@@ -1,0 +1,17 @@
+{
+  "name": "LAX QLHS",
+  "short_name": "LAX QLHS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "description": "Quản lý học sinh - THCS Lê Anh Xuân",
+  "icons": [
+    {
+      "src": "/school-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

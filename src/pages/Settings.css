@@ -1,0 +1,57 @@
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.profile-card {
+  margin-bottom: 4px;
+}
+
+.profile-name {
+  font-size: 1.05rem;
+  margin-bottom: 2px;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-item {
+  box-shadow: none;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 12px 14px;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-item:active {
+  background: var(--secondary-color);
+}
+
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  background-color: var(--border-color);
+  border-radius: var(--radius-full);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle-knob {
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  border-radius: var(--radius-full);
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
