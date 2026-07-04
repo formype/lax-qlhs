@@ -41,7 +41,7 @@ export function Header({ title }) {
     if (!user || !user.role) return;
     
     const isAdmin = user.role.includes('admin') || user.role.includes('vip-admin');
-    const isTeacher = user.role.includes('giaovien') && user.teacherClass?.name;
+    const isTeacher = user.role.includes('giaovien') && user.teacherClass;
     
     if (!isAdmin && !isTeacher) return;
 
@@ -49,7 +49,7 @@ export function Header({ title }) {
     let initialLoad = true;
     let initialLoadTime = Date.now();
     
-    const userClass = user.teacherClass?.name || null;
+    const userClass = user.teacherClass || null;
 
     const unsubscribe = listenToNotifications(user.role, userClass, (newNotifs) => {
       setNotifications(newNotifs);
@@ -138,7 +138,7 @@ export function Header({ title }) {
     <header className="app-header glass">
       <div className="header-title">{title}</div>
       
-      {user && (user.role.includes('admin') || user.role.includes('vip-admin') || (user.role.includes('giaovien') && user.teacherClass?.name)) && (
+      {user && (user.role.includes('admin') || user.role.includes('vip-admin') || (user.role.includes('giaovien') && user.teacherClass)) && (
         <div className="notification-wrapper" ref={dropdownRef}>
           <button className="icon-btn notification-btn" onClick={handleToggle}>
             <Bell size={20} />

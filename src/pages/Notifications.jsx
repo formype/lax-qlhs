@@ -31,7 +31,7 @@ export function Notifications() {
     }
 
     const currentLastDoc = isLoadMore ? lastDoc : null;
-    const userClass = user.teacherClass?.name || null;
+    const userClass = user.teacherClass || null;
     const result = await getNotificationsPaginated(user.role, userClass, currentLastDoc, 20);
     
     if (isLoadMore) {

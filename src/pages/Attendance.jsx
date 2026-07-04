@@ -111,7 +111,7 @@ export function Attendance() {
       
       // Send notifications for absentees
       const updaterName = user?.fullName || user?.username || 'Hệ thống';
-      const isMyClass = user?.teacherClass?.name === selectedClass;
+      const isMyClass = user?.teacherClass === selectedClass;
       const targetClasses = isMyClass ? [] : [selectedClass];
       
       Object.keys(payload).forEach(studentId => {

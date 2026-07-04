@@ -12,6 +12,15 @@ import './AddViolation.css';
 export function AddViolation() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  const getLocalISODate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -32,7 +41,7 @@ export function AddViolation() {
     tenlop: '',
     loaivipham: '',
     noidung: '',
-    ngayvipham: new Date().toISOString().slice(0, 10),
+    ngayvipham: getLocalISODate(),
     trangthai: 'Đã xử lý', // Default to 'Đã xử lý'
   });
   
@@ -247,7 +256,7 @@ export function AddViolation() {
       setSuccess(true);
       
       // Send notification
-      const isMyClass = user?.teacherClass?.name === formData.tenlop;
+      const isMyClass = user?.teacherClass === formData.tenlop;
       const targetClasses = isMyClass ? [] : [formData.tenlop];
       
       createNotification(
@@ -269,15 +278,15 @@ export function AddViolation() {
       // Reset form instead of navigating away
       setTimeout(() => {
         setSuccess(false);
-        setFormData({
+        setFormData(prev => ({
           mahs: '',
           hoten: '',
           tenlop: '',
-          loaivipham: violationTypes.length > 0 ? violationTypes[0].value : '',
+          loaivipham: prev.loaivipham, 
           noidung: '',
-          ngayvipham: new Date().toISOString().slice(0, 10),
+          ngayvipham: getLocalISODate(),
           trangthai: 'Chưa xử lý'
-        });
+        }));
         setEvidenceList([]);
         setCustomViolation('');
         setCustomPoints('');

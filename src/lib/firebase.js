@@ -35,17 +35,28 @@ export const loginUser = async (username, password) => {
     
     if (!querySnapshot.empty) {
       const userData = querySnapshot.docs[0].data();
+      const userId = querySnapshot.docs[0].id;
       let roles = Array.isArray(userData.role) ? userData.role : (userData.role ? [userData.role] : []);
+      
+      let teacherClass = null;
+      if (roles.includes('giaovien')) {
+        const classQ = query(collection(db, COLLECTIONS.CLASSES), where("homeroomTeacherId", "==", userId));
+        const classSnap = await getDocs(classQ);
+        if (!classSnap.empty) {
+          teacherClass = classSnap.docs[0].data().tenlop;
+        }
+      }
+
       return { 
         success: true, 
         user: {
-          id: querySnapshot.docs[0].id,
+          id: userId,
           username: userData.username,
           fullName: userData.fullName,
-          role: roles, // Store as array in context
+          role: roles, 
           password: userData.password,
           blockedPages: userData.blockedPages || [],
-          teacherClass: userData.teacherClass || null
+          teacherClass: teacherClass
         }  
       };
     } else {
