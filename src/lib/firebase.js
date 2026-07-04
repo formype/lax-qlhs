@@ -44,8 +44,9 @@ export const loginUser = async (username, password) => {
           fullName: userData.fullName,
           role: roles, // Store as array in context
           password: userData.password,
-          blockedPages: userData.blockedPages || []
-        } 
+          blockedPages: userData.blockedPages || [],
+          teacherClass: userData.teacherClass || null
+        }  
       };
     } else {
       return { success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng.' };

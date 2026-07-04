@@ -247,43 +247,46 @@ export function AddViolation() {
       setSuccess(true);
       
       // Send notification
-      const isMyClass = user?.teacherClass?.name === formData.lop;
-      const targetClasses = isMyClass ? [] : [formData.lop];
+      const isMyClass = user?.teacherClass?.name === formData.tenlop;
+      const targetClasses = isMyClass ? [] : [formData.tenlop];
       
       createNotification(
-        `Tài khoản ${createdBy} đã ghi nhận học sinh ${formData.hoten} lớp ${formData.lop} vi phạm: ${finalViolationType}.`,
+        `Tài khoản ${createdBy} đã ghi nhận học sinh ${formData.hoten} lớp ${formData.tenlop} vi phạm: ${finalViolationType}.`,
         ['admin', 'vip-admin'],
         targetClasses,
         {
           type: 'violation',
           violationId: result.id,
           studentName: formData.hoten,
-          className: formData.lop,
-          date: formData.ngay,
+          className: formData.tenlop,
+          date: formData.ngayvipham,
           violationName: finalViolationType,
           points: isCustomSelected ? Math.abs(parseInt(customPoints) || 0) : Math.abs(selectedViolation?.points || 0),
           createdBy: createdBy
         }
       );
       
+      // Reset form instead of navigating away
       setTimeout(() => {
-        navigate('/features');
-      }, 1500);
+        setSuccess(false);
+        setFormData({
+          mahs: '',
+          hoten: '',
+          tenlop: '',
+          loaivipham: violationTypes.length > 0 ? violationTypes[0].value : '',
+          noidung: '',
+          ngayvipham: new Date().toISOString().slice(0, 10),
+          trangthai: 'Chưa xử lý'
+        });
+        setEvidenceList([]);
+        setCustomViolation('');
+        setCustomPoints('');
+        setIsCustomSelected(false);
+      }, 2000);
     } else {
       alert("Có lỗi xảy ra khi lưu dữ liệu.");
     }
   };
-
-  if (success) {
-    return (
-      <div className="success-screen">
-        <CheckCircle size={64} color="var(--success)" className="success-icon" />
-        <h2>Đã lưu thông tin vi phạm thành công!</h2>
-        <p className="text-muted">Đang quay lại trang tính năng...</p>
-      </div>
-    );
-  }
-
   return (
     <>
       <Header title="Nhập thông tin vi phạm" />
@@ -514,9 +517,9 @@ export function AddViolation() {
                 type="submit"
                 fullWidth
                 className="mt-4 submit-violation-btn"
-                disabled={loading || uploading}
+                disabled={loading || uploading || success}
               >
-                {loading ? 'Đang lưu...' : 'Lưu thông tin vi phạm'}
+                {loading ? 'Đang lưu...' : success ? 'Đã lưu ✓' : 'Lưu thông tin vi phạm'}
               </Button>
             </form>
           </CardBody>
