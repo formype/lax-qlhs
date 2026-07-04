@@ -108,7 +108,8 @@ export function Features() {
               {section.items.map((item) => {
                 if (!isAdmin && !isGiamthi && (
                   item.path === '/add' || 
-                  item.path === '/attendance'
+                  item.path === '/attendance' ||
+                  item.path === '/student-list'
                 )) {
                   return null;
                 }

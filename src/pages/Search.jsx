@@ -36,7 +36,8 @@ export function Search() {
   const [targetValueGrade, setTargetValueGrade] = useState('');
   const [targetValueClass, setTargetValueClass] = useState('');
   const [targetValueStudentId, setTargetValueStudentId] = useState('');
-
+  const isGiaovienOnly = user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi');
+  
   const [typeFilter, setTypeFilter] = useState('all');
 
   const [selectedViolation, setSelectedViolation] = useState(null); // For modal
@@ -54,6 +55,13 @@ export function Search() {
       setClasses(cData);
       setViolationTypes(tData);
       setSettings(sData);
+
+      if (user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi')) {
+         const myClass = cData.find(c => c.homeroomTeacherId === user?.id);
+         setTargetFilterType('class');
+         setTargetValueClass(myClass ? myClass.tenlop : '_NONE_');
+      }
+
       setLoading(false);
     };
     loadData();
@@ -382,6 +390,7 @@ export function Search() {
                       setTargetFilterType(e.target.value);
                       setTargetValueGrade(''); setTargetValueClass(''); setTargetValueStudentId('');
                     }}
+                    disabled={isGiaovienOnly}
                     options={[
                       {value: 'all', label: 'Tất cả HS'},
                       {value: 'grade', label: 'Theo Khối'},
@@ -390,7 +399,7 @@ export function Search() {
                     ]}
                   />
                   {targetFilterType === 'grade' && <Select value={targetValueGrade} onChange={e => setTargetValueGrade(e.target.value)} options={[{value: '', label: 'Chọn khối'}, ...gradeOptions]} />}
-                  {targetFilterType === 'class' && <Select value={targetValueClass} onChange={e => setTargetValueClass(e.target.value)} options={[{value: '', label: 'Chọn lớp'}, ...classOptions]} />}
+                  {targetFilterType === 'class' && <Select value={targetValueClass} onChange={e => setTargetValueClass(e.target.value)} options={[{value: '', label: 'Chọn lớp'}, ...classOptions]} disabled={isGiaovienOnly} />}
                   {targetFilterType === 'student_id' && <Input placeholder="Nhập mã HS..." value={targetValueStudentId} onChange={e => setTargetValueStudentId(e.target.value)} style={{marginBottom: 0}} />}
                 </div>
               </div>
