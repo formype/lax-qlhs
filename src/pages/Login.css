@@ -189,3 +189,44 @@
   font-family: 'Courier New', monospace;
   letter-spacing: 0.01em;
 }
+
+/* =============================================
+   DARK MODE OVERRIDES
+   ============================================= */
+body.dark .login-container {
+  background: var(--bg-app);
+}
+
+body.dark .login-card {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+body.dark .login-title {
+  color: var(--text-primary);
+}
+
+body.dark .login-subtitle,
+body.dark .remember-me-label {
+  color: var(--text-secondary);
+}
+
+body.dark .input-label-upper {
+  color: var(--text-secondary);
+}
+
+body.dark .login-form .input-field {
+  background: var(--bg-app);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+body.dark .login-form .input-field:focus {
+  background: var(--bg-card);
+  border-color: #6366f1;
+}
+
+body.dark .login-form .input-icon {
+  color: var(--text-muted);
+}
