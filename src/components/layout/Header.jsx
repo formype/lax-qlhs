@@ -180,13 +180,20 @@ export function Header({ title }) {
                   })
                 )}
               </div>
-              {unreadCount > 0 && (
-                <div className="notification-footer">
+              <div className="notification-footer" style={{ flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                {unreadCount > 0 && (
                   <button className="mark-all-btn" onClick={handleMarkAllAsRead}>
                     <Check size={16} className="mr-1" /> Đánh dấu đã đọc toàn bộ
                   </button>
-                </div>
-              )}
+                )}
+                <button 
+                  className="mark-all-btn" 
+                  style={{ color: 'var(--text-secondary)' }}
+                  onClick={() => { setShowDropdown(false); navigate('/notifications'); }}
+                >
+                  Xem tất cả thông báo
+                </button>
+              </div>
             </div>
           )}
         </div>

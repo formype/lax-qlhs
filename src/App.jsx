@@ -15,6 +15,7 @@ import { StudentList } from './pages/StudentList';
 import { AccountSettings } from './pages/AccountSettings';
 import { ManageAccounts } from './pages/ManageAccounts';
 import { ManageUpdates } from './pages/ManageUpdates';
+import { Notifications } from './pages/Notifications';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { App as CapacitorApp } from '@capacitor/app';
 import { getSystemConfig } from './lib/firebase';
@@ -198,11 +199,13 @@ function AppRoutes() {
         <Route path="/account-settings" element={<ProtectedRoute><MainLayout><AccountSettings /></MainLayout></ProtectedRoute>} />
         <Route path="/manage-accounts" element={<ProtectedRoute><MainLayout><ManageAccounts /></MainLayout></ProtectedRoute>} />
         <Route path="/manage-updates" element={<ProtectedRoute><MainLayout><ManageUpdates /></MainLayout></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute><MainLayout><ManageClasses /></MainLayout></ProtectedRoute>} />
         <Route path="/students" element={<ProtectedRoute><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance-search" element={<ProtectedRoute><MainLayout><AttendanceSearch /></MainLayout></ProtectedRoute>} />
         <Route path="/student-list" element={<ProtectedRoute><MainLayout><StudentList /></MainLayout></ProtectedRoute>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );

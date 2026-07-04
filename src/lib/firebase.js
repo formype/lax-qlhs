@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot, limit, arrayUnion } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot, limit, arrayUnion, startAfter } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -761,5 +761,51 @@ export const markAllNotificationsAsRead = async (userId) => {
   } catch (error) {
     console.error("Lỗi khi đánh dấu đã đọc toàn bộ:", error);
     return false;
+  }
+};
+
+export const getNotificationsPaginated = async (userRoles, lastDoc = null, limitCount = 20) => {
+  try {
+    let q;
+    // We fetch a slightly larger chunk (e.g. 50) to ensure after client-side filtering we get enough
+    const fetchLimit = limitCount * 2; 
+
+    if (lastDoc) {
+      q = query(
+        collection(db, COLLECTIONS.NOTIFICATIONS),
+        orderBy("createdAt", "desc"),
+        startAfter(lastDoc),
+        limit(fetchLimit)
+      );
+    } else {
+      q = query(
+        collection(db, COLLECTIONS.NOTIFICATIONS),
+        orderBy("createdAt", "desc"),
+        limit(fetchLimit)
+      );
+    }
+
+    const snapshot = await getDocs(q);
+    const notifications = [];
+    let newLastDoc = null;
+
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      newLastDoc = doc; // Always track the last fetched doc
+      if (data.targetRoles && data.targetRoles.some(r => userRoles.includes(r))) {
+        notifications.push({ id: doc.id, ...data });
+      }
+    });
+
+    // If we filtered out too many, we just return what we have. 
+    // The user can press "Load more" again.
+    return {
+      notifications: notifications.slice(0, limitCount),
+      lastDoc: newLastDoc,
+      hasMore: snapshot.docs.length === fetchLimit
+    };
+  } catch (error) {
+    console.error("Lỗi khi tải thông báo phân trang:", error);
+    return { notifications: [], lastDoc: null, hasMore: false };
   }
 };
