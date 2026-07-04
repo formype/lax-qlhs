@@ -57,7 +57,7 @@ export function Dashboard() {
 
   const filteredViolations = violations.filter(v => {
     if (isGlobalView) return true;
-    if (teacherClass && v.lop === teacherClass) return true;
+    if (teacherClass && v.tenlop === teacherClass) return true;
     return false;
   });
 
