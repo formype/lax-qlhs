@@ -543,3 +543,128 @@ export const updateSystemConfig = async (configData) => {
     return { success: false, error };
   }
 };
+
+// --- SAO LƯU & KHÔI PHỤC DỮ LIỆU ---
+
+export const exportDatabase = async () => {
+  try {
+    const data = {
+      students: [],
+      classes: [],
+      violations: [],
+      attendance: [],
+      settings: []
+    };
+    
+    // Fetch all collections except users
+    const studentsSnap = await getDocs(collection(db, COLLECTIONS.STUDENTS));
+    studentsSnap.forEach(doc => data.students.push({ id: doc.id, ...doc.data() }));
+    
+    const classesSnap = await getDocs(collection(db, COLLECTIONS.CLASSES));
+    classesSnap.forEach(doc => data.classes.push({ id: doc.id, ...doc.data() }));
+    
+    const violationsSnap = await getDocs(collection(db, COLLECTIONS.VIOLATIONS));
+    violationsSnap.forEach(doc => data.violations.push({ id: doc.id, ...doc.data() }));
+    
+    const attendanceSnap = await getDocs(collection(db, COLLECTIONS.ATTENDANCE));
+    attendanceSnap.forEach(doc => data.attendance.push({ id: doc.id, ...doc.data() }));
+
+    const settingsSnap = await getDocs(collection(db, 'settings'));
+    settingsSnap.forEach(doc => data.settings.push({ id: doc.id, ...doc.data() }));
+
+    return data;
+  } catch (error) {
+    console.error("Lỗi khi xuất dữ liệu:", error);
+    throw error;
+  }
+};
+
+export const deleteAllData = async () => {
+  try {
+    const collectionsToClear = [
+      COLLECTIONS.STUDENTS,
+      COLLECTIONS.CLASSES,
+      COLLECTIONS.VIOLATIONS,
+      COLLECTIONS.ATTENDANCE
+    ];
+
+    for (const col of collectionsToClear) {
+      const snap = await getDocs(collection(db, col));
+      let batch = writeBatch(db);
+      let count = 0;
+      for (const docSnap of snap.docs) {
+        batch.delete(docSnap.ref);
+        count++;
+        if (count === 500) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+      if (count > 0) {
+        await batch.commit();
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error("Lỗi khi xóa dữ liệu:", error);
+    throw error;
+  }
+};
+
+export const importDatabase = async (backupData) => {
+  try {
+    // 1. Wipe current collections
+    const collectionsToClear = [
+      { name: COLLECTIONS.STUDENTS, data: backupData.students || [] },
+      { name: COLLECTIONS.CLASSES, data: backupData.classes || [] },
+      { name: COLLECTIONS.VIOLATIONS, data: backupData.violations || [] },
+      { name: COLLECTIONS.ATTENDANCE, data: backupData.attendance || [] },
+      { name: 'settings', data: backupData.settings || [] }
+    ];
+
+    for (const colObj of collectionsToClear) {
+      // Delete all existing
+      const snap = await getDocs(collection(db, colObj.name));
+      let batch = writeBatch(db);
+      let count = 0;
+      for (const docSnap of snap.docs) {
+        batch.delete(docSnap.ref);
+        count++;
+        if (count === 500) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      // Write new data
+      let writeCount = 0;
+      batch = writeBatch(db);
+      for (const item of colObj.data) {
+        const itemData = { ...item };
+        const docId = itemData.id;
+        delete itemData.id; 
+
+        const docRef = doc(db, colObj.name, docId);
+        batch.set(docRef, itemData);
+        writeCount++;
+        if (writeCount === 500) {
+          await batch.commit();
+          batch = writeBatch(db);
+          writeCount = 0;
+        }
+      }
+      if (writeCount > 0) {
+        await batch.commit();
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error("Lỗi khi khôi phục dữ liệu:", error);
+    throw error;
+  }
+};

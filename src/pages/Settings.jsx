@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { LogOut, User as UserIcon, Database, Moon, Users, BookOpen, Calendar, Save, RefreshCw } from 'lucide-react';
+import { LogOut, User as UserIcon, Database, Moon, Users, BookOpen, Calendar, Save, RefreshCw, DownloadCloud, UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchSystemSettings, updateSystemSettings } from '../lib/firebase';
+import { fetchSystemSettings, updateSystemSettings, exportDatabase, importDatabase, deleteAllData } from '../lib/firebase';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import './Settings.css';
 
 export function Settings() {
@@ -19,6 +21,95 @@ export function Settings() {
   });
   const [savingSettings, setSavingSettings] = React.useState(false);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
+  const [showRestoreModal, setShowRestoreModal] = React.useState(false);
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [backupData, setBackupData] = React.useState(null);
+  const [backupSummary, setBackupSummary] = React.useState(null);
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const fileInputRef = React.useRef(null);
+
+  const handleBackup = async () => {
+    try {
+      setIsProcessing(true);
+      const data = await exportDatabase();
+      const zip = new JSZip();
+      zip.file('qlhs_backup.json', JSON.stringify(data));
+      const content = await zip.generateAsync({ type: 'blob' });
+      const dateStr = new Date().toISOString().split('T')[0];
+      saveAs(content, `QLHS_Backup_${dateStr}.zip`);
+      alert("Sao lưu dữ liệu thành công!");
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi khi sao lưu dữ liệu.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      setIsProcessing(true);
+      const zip = new JSZip();
+      const loadedZip = await zip.loadAsync(file);
+      const jsonFile = loadedZip.file('qlhs_backup.json');
+      if (!jsonFile) {
+        alert("File sao lưu không hợp lệ.");
+        return;
+      }
+      const jsonStr = await jsonFile.async('string');
+      const data = JSON.parse(jsonStr);
+      
+      setBackupData(data);
+      setBackupSummary({
+        students: data.students?.length || 0,
+        classes: data.classes?.length || 0,
+        violations: data.violations?.length || 0,
+        attendance: data.attendance?.length || 0
+      });
+      setShowRestoreModal(true);
+    } catch (err) {
+      console.error(err);
+      alert("Không thể đọc file sao lưu.");
+    } finally {
+      setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!backupData) return;
+    try {
+      setIsProcessing(true);
+      await importDatabase(backupData);
+      alert("Khôi phục dữ liệu thành công! Ứng dụng sẽ tải lại.");
+      setShowRestoreModal(false);
+      setBackupData(null);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi khi khôi phục dữ liệu.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    try {
+      setIsProcessing(true);
+      await deleteAllData();
+      alert("Đã xóa toàn bộ dữ liệu thành công! Ứng dụng sẽ tải lại.");
+      setShowDeleteModal(false);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi khi xóa dữ liệu.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   React.useEffect(() => {
     fetchSystemSettings().then(data => setAcademicSettings(data));
@@ -203,7 +294,108 @@ export function Settings() {
           <LogOut size={18} />
           Đăng xuất
         </Button>
+
+        {user && (user.role?.includes('admin') || user.role?.includes('vip-admin')) && (
+          <>
+            <h4 className="settings-group-title mt-4">Quản lý Dữ liệu Hệ thống</h4>
+            <div className="settings-list">
+              <Card className="settings-item" onClick={isProcessing ? undefined : handleBackup} style={{ cursor: isProcessing ? 'wait' : 'pointer' }}>
+                <CardBody className="flex-between">
+                  <div className="flex-row gap-3">
+                    <DownloadCloud size={20} className="text-primary" />
+                    <span>Sao lưu toàn bộ dữ liệu</span>
+                  </div>
+                  <span className="text-xs text-muted">{isProcessing ? 'Đang xử lý...' : 'Tải file .zip'}</span>
+                </CardBody>
+              </Card>
+
+              {user.role?.includes('vip-admin') && (
+                <>
+                  <input 
+                    type="file" 
+                    accept=".zip" 
+                    style={{ display: 'none' }} 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                  />
+                  <Card className="settings-item" onClick={() => !isProcessing && fileInputRef.current?.click()} style={{ cursor: isProcessing ? 'wait' : 'pointer' }}>
+                    <CardBody className="flex-between">
+                      <div className="flex-row gap-3">
+                        <UploadCloud size={20} className="text-warning" />
+                        <span>Khôi phục toàn bộ dữ liệu</span>
+                      </div>
+                      <span className="text-xs text-muted">{isProcessing ? 'Đang xử lý...' : 'Từ file .zip'}</span>
+                    </CardBody>
+                  </Card>
+
+                  <Card className="settings-item" onClick={() => !isProcessing && setShowDeleteModal(true)} style={{ cursor: isProcessing ? 'wait' : 'pointer' }}>
+                    <CardBody className="flex-between">
+                      <div className="flex-row gap-3">
+                        <Trash2 size={20} className="text-danger" />
+                        <span className="text-danger" style={{ fontWeight: 600 }}>Xóa toàn bộ dữ liệu</span>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
+
+      {showRestoreModal && (
+        <div className="modal-overlay" onClick={() => !isProcessing && setShowRestoreModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Xác nhận khôi phục</h3>
+            </div>
+            <div className="modal-body">
+              <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.1)', color: '#d97706', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '16px' }}>
+                <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.9rem' }}><strong>CẢNH BÁO:</strong> Hành động này sẽ xóa toàn bộ dữ liệu Lớp, Học sinh, Vi phạm và Chuyên cần hiện có và thay thế bằng dữ liệu từ bản sao lưu.</span>
+              </div>
+              <p>Bản sao lưu chứa:</p>
+              <ul style={{ margin: '10px 0 20px 20px' }}>
+                <li><strong>{backupSummary?.classes}</strong> lớp học</li>
+                <li><strong>{backupSummary?.students}</strong> học sinh</li>
+                <li><strong>{backupSummary?.violations}</strong> vi phạm</li>
+                <li><strong>{backupSummary?.attendance}</strong> lượt điểm danh</li>
+              </ul>
+              <p>Bạn có chắc chắn muốn tiến hành?</p>
+            </div>
+            <div className="modal-footer">
+              <Button variant="outline" onClick={() => setShowRestoreModal(false)} disabled={isProcessing}>Hủy</Button>
+              <Button variant="warning" onClick={handleConfirmRestore} disabled={isProcessing}>
+                {isProcessing ? 'Đang xử lý...' : 'Khôi phục'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => !isProcessing && setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ color: 'var(--danger)' }}>Xác nhận xóa dữ liệu</h3>
+            </div>
+            <div className="modal-body">
+              <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '16px' }}>
+                <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.9rem' }}><strong>CẢNH BÁO NGUY HIỂM:</strong> Hành động này sẽ <strong>XÓA SẠCH</strong> toàn bộ dữ liệu về Lớp học, Học sinh, Vi phạm và Chuyên cần trên hệ thống.</span>
+              </div>
+              <p>Dữ liệu đã xóa sẽ <strong>KHÔNG THỂ KHÔI PHỤC</strong> nếu bạn chưa sao lưu.</p>
+              <p>Bạn có thực sự muốn xóa?</p>
+            </div>
+            <div className="modal-footer">
+              <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={isProcessing}>Hủy</Button>
+              <Button variant="danger" onClick={handleConfirmDeleteAll} disabled={isProcessing}>
+                {isProcessing ? 'Đang xử lý...' : 'Xóa toàn bộ'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
