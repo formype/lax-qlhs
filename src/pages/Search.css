@@ -76,7 +76,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
-html.dark .violation-card-modern:hover {
+body.dark .violation-card-modern:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
@@ -143,11 +143,11 @@ html.dark .violation-card-modern:hover {
   background: rgba(0, 0, 0, 0.08);
 }
 
-html.dark .view-detail-btn {
+body.dark .view-detail-btn {
   background: rgba(255, 255, 255, 0.05);
 }
 
-html.dark .view-detail-btn:hover {
+body.dark .view-detail-btn:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -239,7 +239,7 @@ html.dark .view-detail-btn:hover {
   line-height: 1.5;
 }
 
-html.dark .detail-text-box {
+body.dark .detail-text-box {
   background: rgba(255,255,255,0.02);
 }
 

@@ -50,8 +50,8 @@
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
 }
 
-html.dark .reason-btn.active-p,
-html.dark .reason-btn.active-kp {
+body.dark .reason-btn.active-p,
+body.dark .reason-btn.active-kp {
   color: white;
 }
 
