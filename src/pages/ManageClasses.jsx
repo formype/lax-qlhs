@@ -3,8 +3,8 @@ import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Input, Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { fetchClasses, addClass, deleteClass, fetchUsers } from '../lib/firebase';
-import { Trash2, Plus, Users } from 'lucide-react';
+import { fetchClasses, addClass, deleteClass, fetchUsers, updateClass } from '../lib/firebase';
+import { Trash2, Plus, Users, Edit2 } from 'lucide-react';
 import './ManageClasses.css';
 
 export function ManageClasses() {
@@ -15,6 +15,12 @@ export function ManageClasses() {
   const [newGrade, setNewGrade] = useState('');
   const [newTeacherId, setNewTeacherId] = useState('');
   const [error, setError] = useState('');
+
+  const [editingClass, setEditingClass] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({ tenlop: '', khoi: '', homeroomTeacherId: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const loadClasses = async () => {
     setLoading(true);
@@ -61,6 +67,52 @@ export function ManageClasses() {
       loadClasses();
     }
   };
+
+  const handleOpenEdit = (c) => {
+    setEditingClass(c);
+    setEditFormData({
+      tenlop: c.tenlop || '',
+      khoi: c.khoi || '',
+      homeroomTeacherId: c.homeroomTeacherId || ''
+    });
+    setEditError('');
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEdit = () => {
+    setIsEditModalOpen(false);
+    setEditingClass(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editFormData.tenlop || !editFormData.khoi) {
+      setEditError('Vui lòng nhập tên lớp và khối');
+      return;
+    }
+    setEditSaving(true);
+    
+    const teacher = teachers.find(t => t.id === editFormData.homeroomTeacherId);
+    
+    const updates = {
+      tenlop: editFormData.tenlop,
+      khoi: editFormData.khoi,
+      homeroomTeacherId: teacher ? teacher.id : null,
+      homeroomTeacherName: teacher ? (teacher.fullName || teacher.username) : null
+    };
+
+    const res = await updateClass(editingClass.id, updates);
+    if (res.success) {
+      handleCloseEdit();
+      loadClasses();
+    } else {
+      setEditError('Lỗi khi cập nhật lớp');
+    }
+    setEditSaving(false);
+  };
+
+  const availableTeachersForEdit = teachers.filter(t => 
+    !classes.some(c => c.homeroomTeacherId === t.id && c.id !== editingClass?.id)
+  );
 
   return (
     <>
@@ -127,15 +179,73 @@ export function ManageClasses() {
                       <div className="text-muted text-sm">{c.khoi} {c.homeroomTeacherName ? `- GVCN: ${c.homeroomTeacherName}` : ''}</div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}>
-                    <Trash2 size={16} color="var(--danger)" />
-                  </Button>
+                  <div className="flex-row gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(c)}>
+                      <Edit2 size={16} color="var(--primary-color)" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}>
+                      <Trash2 size={16} color="var(--danger)" />
+                    </Button>
+                  </div>
                 </CardBody>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      {isEditModalOpen && (
+        <div className="modal-overlay" onClick={handleCloseEdit}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Chỉnh sửa Lớp học</h3>
+            </div>
+            <div className="modal-body">
+              {editError && <p className="text-danger text-sm mb-3">{editError}</p>}
+              
+              <div className="form-group mb-3">
+                <Select
+                  value={editFormData.khoi}
+                  onChange={(e) => setEditFormData({...editFormData, khoi: e.target.value})}
+                  options={[
+                    { value: '', label: '-- Chọn khối --' },
+                    { value: 'Khối 6', label: 'Khối 6' },
+                    { value: 'Khối 7', label: 'Khối 7' },
+                    { value: 'Khối 8', label: 'Khối 8' },
+                    { value: 'Khối 9', label: 'Khối 9' },
+                  ]}
+                  label="Chọn Khối"
+                />
+              </div>
+
+              <div className="form-group mb-3">
+                <Input 
+                  label="Tên lớp"
+                  placeholder="VD: 6/1" 
+                  value={editFormData.tenlop}
+                  onChange={(e) => setEditFormData({...editFormData, tenlop: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group mb-4">
+                <Select
+                  value={editFormData.homeroomTeacherId || ''}
+                  onChange={(e) => setEditFormData({...editFormData, homeroomTeacherId: e.target.value})}
+                  options={[
+                    { value: '', label: '-- Không có --' },
+                    ...availableTeachersForEdit.map(t => ({ value: t.id, label: t.fullName || t.username }))
+                  ]}
+                  label="Giáo viên chủ nhiệm"
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <Button variant="secondary" onClick={handleCloseEdit}>Hủy</Button>
+              <Button onClick={handleSaveEdit} disabled={editSaving}>{editSaving ? 'Đang lưu...' : 'Lưu lại'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

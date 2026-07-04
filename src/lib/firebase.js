@@ -165,6 +165,15 @@ export const deleteClass = async (classId) => {
   }
 };
 
+export const updateClass = async (classId, updates) => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.CLASSES, classId), updates);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error };
+  }
+};
+
 // --- STUDENTS ---
 export const fetchStudents = async (filters = {}) => {
   try {
