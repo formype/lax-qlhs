@@ -42,6 +42,7 @@ export function AttendanceSearch() {
   const [targetValueStudentId, setTargetValueStudentId] = useState('');
   
   const isGiaovienOnly = user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi');
+  const [teacherClass, setTeacherClass] = useState(null);
   
   const [statusFilter, setStatusFilter] = useState('absent'); // all, present, absent
   const [sessionFilter, setSessionFilter] = useState('all'); // all, Sáng, Chiều
@@ -85,10 +86,9 @@ export function AttendanceSearch() {
       setClasses(classesData);
       setSettings(sData);
 
-      if (user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi')) {
+      if (isGiaovienOnly) {
          const myClass = classesData.find(c => c.homeroomTeacherId === user?.id);
-         setTargetFilterType('class');
-         setTargetValueClass(myClass ? myClass.tenlop : '_NONE_');
+         setTeacherClass(myClass ? myClass.tenlop : '_NONE_');
       }
 
       setLoading(false);
@@ -169,13 +169,24 @@ export function AttendanceSearch() {
         if (timeValueSemester === '2' && weekNum <= s1Weeks) return false;
       }
 
-      // Target Filter
-      if (targetFilterType === 'grade') {
-        if (targetValueGrade && v.khoi !== targetValueGrade && !v.className?.startsWith(targetValueGrade)) return false;
-      } else if (targetFilterType === 'class') {
-        if (targetValueClass && v.className !== targetValueClass) return false;
-      } else if (targetFilterType === 'student_id') {
-        if (targetValueStudentId && !(v.mahs || '').toLowerCase().includes(targetValueStudentId.toLowerCase())) return false;
+      // Security filter for teachers
+      if (isGiaovienOnly) {
+        if (v.className !== teacherClass) return false;
+      } else {
+        // Target Filter for non-teachers
+        if (targetFilterType === 'grade') {
+          if (targetValueGrade && v.khoi !== targetValueGrade && !v.className?.startsWith(targetValueGrade)) return false;
+        } else if (targetFilterType === 'class') {
+          if (targetValueClass && v.className !== targetValueClass) return false;
+        }
+      }
+      
+      // Student Text Search (applies to both)
+      if (targetValueStudentId) {
+        const searchStr = targetValueStudentId.toLowerCase();
+        const matchId = (v.mahs || '').toLowerCase().includes(searchStr);
+        const matchName = (v.hoten || '').toLowerCase().includes(searchStr);
+        if (!matchId && !matchName) return false;
       }
 
       // Status Filter
@@ -495,25 +506,37 @@ export function AttendanceSearch() {
 
               {/* Filter 2: Đối tượng */}
               <div className="filter-group">
-                <label className="text-sm font-semibold mb-1 block">Đối tượng</label>
+                <label className="text-sm font-semibold mb-1 block">
+                  {isGiaovienOnly ? "Tìm kiếm học sinh" : "Đối tượng"}
+                </label>
                 <div className="flex-row gap-2">
-                  <Select 
-                    value={targetFilterType} 
-                    onChange={e => {
-                      setTargetFilterType(e.target.value);
-                      setTargetValueGrade(''); setTargetValueClass(''); setTargetValueStudentId('');
-                    }}
-                    disabled={isGiaovienOnly}
-                    options={[
-                      {value: 'all', label: 'Tất cả HS'},
-                      {value: 'grade', label: 'Theo Khối'},
-                      {value: 'class', label: 'Theo Lớp'},
-                      {value: 'student_id', label: 'Mã HS'}
-                    ]}
-                  />
-                  {targetFilterType === 'grade' && <Select value={targetValueGrade} onChange={e => setTargetValueGrade(e.target.value)} options={[{value: '', label: 'Chọn khối'}, ...gradeOptions]} />}
-                  {targetFilterType === 'class' && <Select value={targetValueClass} onChange={e => setTargetValueClass(e.target.value)} options={[{value: '', label: 'Chọn lớp'}, ...classOptions]} disabled={isGiaovienOnly} />}
-                  {targetFilterType === 'student_id' && <Input placeholder="Nhập mã HS..." value={targetValueStudentId} onChange={e => setTargetValueStudentId(e.target.value)} style={{marginBottom: 0}} />}
+                  {isGiaovienOnly ? (
+                    <Input 
+                      placeholder="Nhập mã hoặc tên HS..." 
+                      value={targetValueStudentId} 
+                      onChange={e => setTargetValueStudentId(e.target.value)} 
+                      style={{marginBottom: 0, flex: 1}} 
+                    />
+                  ) : (
+                    <>
+                      <Select 
+                        value={targetFilterType} 
+                        onChange={e => {
+                          setTargetFilterType(e.target.value);
+                          setTargetValueGrade(''); setTargetValueClass(''); setTargetValueStudentId('');
+                        }}
+                        options={[
+                          {value: 'all', label: 'Tất cả HS'},
+                          {value: 'grade', label: 'Theo Khối'},
+                          {value: 'class', label: 'Theo Lớp'},
+                          {value: 'student_id', label: 'Mã / Tên HS'}
+                        ]}
+                      />
+                      {targetFilterType === 'grade' && <Select value={targetValueGrade} onChange={e => setTargetValueGrade(e.target.value)} options={[{value: '', label: 'Chọn khối'}, ...gradeOptions]} />}
+                      {targetFilterType === 'class' && <Select value={targetValueClass} onChange={e => setTargetValueClass(e.target.value)} options={[{value: '', label: 'Chọn lớp'}, ...classOptions]} />}
+                      {targetFilterType === 'student_id' && <Input placeholder="Nhập mã hoặc tên HS..." value={targetValueStudentId} onChange={e => setTargetValueStudentId(e.target.value)} style={{marginBottom: 0}} />}
+                    </>
+                  )}
                 </div>
               </div>
 
