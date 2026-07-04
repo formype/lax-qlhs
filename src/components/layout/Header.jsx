@@ -50,8 +50,9 @@ export function Header({ title }) {
     let initialLoadTime = Date.now();
     
     const userClass = user.teacherClass || null;
+    const userName = user.fullName || user.username;
 
-    const unsubscribe = listenToNotifications(user.role, userClass, (newNotifs) => {
+    const unsubscribe = listenToNotifications(user.role, userClass, userName, (newNotifs) => {
       setNotifications(newNotifs);
 
       // Only show push notifications for messages that arrive AFTER initial load

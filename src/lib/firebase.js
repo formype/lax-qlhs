@@ -710,7 +710,7 @@ export const createNotification = async (message, targetRoles, targetClasses = [
   }
 };
 
-export const listenToNotifications = (userRoles, userClass, callback) => {
+export const listenToNotifications = (userRoles, userClass, userName, callback) => {
   const q = query(
     collection(db, COLLECTIONS.NOTIFICATIONS),
     orderBy("createdAt", "desc"),
@@ -725,7 +725,10 @@ export const listenToNotifications = (userRoles, userClass, callback) => {
       const roleMatch = data.targetRoles && data.targetRoles.some(r => userRoles.includes(r));
       const classMatch = userClass && data.targetClasses && data.targetClasses.includes(userClass);
       
-      if (roleMatch || classMatch) {
+      const creator = data.data?.createdBy || data.data?.updatedBy;
+      const isCreator = userName && creator && creator === userName;
+      
+      if ((roleMatch || classMatch) && !isCreator) {
         notifications.push({ id: doc.id, ...data });
       }
     });
@@ -780,7 +783,7 @@ export const markAllNotificationsAsRead = async (userId) => {
   }
 };
 
-export const getNotificationsPaginated = async (userRoles, userClass, lastDoc = null, limitCount = 20) => {
+export const getNotificationsPaginated = async (userRoles, userClass, userName, lastDoc = null, limitCount = 20) => {
   try {
     let q;
     const fetchLimit = limitCount * 2; 
@@ -811,7 +814,10 @@ export const getNotificationsPaginated = async (userRoles, userClass, lastDoc = 
       const roleMatch = data.targetRoles && data.targetRoles.some(r => userRoles.includes(r));
       const classMatch = userClass && data.targetClasses && data.targetClasses.includes(userClass);
       
-      if (roleMatch || classMatch) {
+      const creator = data.data?.createdBy || data.data?.updatedBy;
+      const isCreator = userName && creator && creator === userName;
+      
+      if ((roleMatch || classMatch) && !isCreator) {
         notifications.push({ id: doc.id, ...data });
       }
     });
