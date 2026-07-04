@@ -751,7 +751,7 @@ export function AttendanceSearch() {
             </div>
             <div className="modal-footer">
               <Button variant="secondary" onClick={handleCloseDetail}>Đóng</Button>
-              {selectedRecord.status === 'absent_kp' && (user?.role?.includes('giamthi') || user?.role?.includes('admin') || user?.role?.includes('vip-admin') || (isGiaovienOnly && teacherClass?.name === selectedRecord.className)) && (
+              {selectedRecord.status === 'absent_kp' && (user?.role?.includes('giamthi') || user?.role?.includes('admin') || user?.role?.includes('vip-admin') || (isGiaovienOnly && teacherClass === selectedRecord.className)) && (
                 <Button variant="primary" onClick={handleUpdateStatus} disabled={isUpdating}>
                   {isUpdating ? 'Đang cập nhật...' : 'Duyệt phép & Lưu'}
                 </Button>
