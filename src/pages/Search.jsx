@@ -285,19 +285,31 @@ export function Search() {
       { width: 50 }  // G: Nội dung vi phạm
     ];
 
-    // Row 1 & 2: Header Left
-    worksheet.mergeCells('A1:C2');
+    // Row 1
+    worksheet.mergeCells('A1:C1');
     const cellA1 = worksheet.getCell('A1');
-    cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG\nTRƯỜNG THCS LÊ ANH XUÂN";
-    cellA1.font = { name: 'Times New Roman', size: 13, bold: true };
-    cellA1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG";
+    cellA1.font = { name: 'Times New Roman', size: 13, bold: false };
+    cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Row 1 & 2: Header Right
-    worksheet.mergeCells('D1:G2');
+    worksheet.mergeCells('D1:G1');
     const cellD1 = worksheet.getCell('D1');
-    cellD1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc";
+    cellD1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
     cellD1.font = { name: 'Times New Roman', size: 13, bold: true };
-    cellD1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cellD1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Row 2
+    worksheet.mergeCells('A2:C2');
+    const cellA2 = worksheet.getCell('A2');
+    cellA2.value = "TRƯỜNG THCS LÊ ANH XUÂN";
+    cellA2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
+    cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('D2:G2');
+    const cellD2 = worksheet.getCell('D2');
+    cellD2.value = "Độc lập - Tự do - Hạnh phúc";
+    cellD2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
+    cellD2.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 4: Title
     worksheet.mergeCells('A4:G4');

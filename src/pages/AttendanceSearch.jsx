@@ -388,19 +388,31 @@ export function AttendanceSearch() {
       { width: 30 }  // G: Ghi chú
     ];
 
-    // Row 1 & 2: Header Left
-    worksheet.mergeCells('A1:D2');
+    // Row 1
+    worksheet.mergeCells('A1:D1');
     const cellA1 = worksheet.getCell('A1');
-    cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG\nTRƯỜNG THCS LÊ ANH XUÂN";
-    cellA1.font = { name: 'Times New Roman', size: 13, bold: true };
-    cellA1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG";
+    cellA1.font = { name: 'Times New Roman', size: 13, bold: false };
+    cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Row 1 & 2: Header Right
-    worksheet.mergeCells('E1:G2');
-    const cellD1 = worksheet.getCell('D1');
-    cellD1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc";
-    cellD1.font = { name: 'Times New Roman', size: 13, bold: true };
-    cellD1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    worksheet.mergeCells('E1:G1');
+    const cellE1 = worksheet.getCell('E1');
+    cellE1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
+    cellE1.font = { name: 'Times New Roman', size: 13, bold: true };
+    cellE1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Row 2
+    worksheet.mergeCells('A2:D2');
+    const cellA2 = worksheet.getCell('A2');
+    cellA2.value = "TRƯỜNG THCS LÊ ANH XUÂN";
+    cellA2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
+    cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('E2:G2');
+    const cellE2 = worksheet.getCell('E2');
+    cellE2.value = "Độc lập - Tự do - Hạnh phúc";
+    cellE2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
+    cellE2.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 4: Title
     worksheet.mergeCells('A4:G4');
