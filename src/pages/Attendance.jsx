@@ -114,6 +114,28 @@ export function Attendance() {
       const isMyClass = user?.teacherClass === selectedClass;
       const targetClasses = isMyClass ? [] : [selectedClass];
       
+      // Count absentees
+      let absentCount = 0;
+      Object.values(payload).forEach(status => {
+        if (status === 'absent_kp' || status === 'absent_p' || status === 'absent') absentCount++;
+      });
+
+      // 1. Send Class-level notification
+      createNotification(
+        `Tài khoản ${updaterName} đã điểm danh lớp ${selectedClass}. Có ${absentCount} học sinh vắng.`,
+        ['admin', 'vip-admin'],
+        targetClasses, // or [] to send to teacher too
+        {
+          type: 'attendance_class',
+          className: selectedClass,
+          date: date,
+          session: session,
+          absentCount: absentCount,
+          updatedBy: updaterName
+        }
+      );
+
+      // 2. Send notifications for individual absentees
       Object.keys(payload).forEach(studentId => {
         const status = payload[studentId];
         if (status === 'absent_kp' || status === 'absent_p' || status === 'absent') {

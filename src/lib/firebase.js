@@ -728,7 +728,9 @@ export const listenToNotifications = (userRoles, userClass, userName, callback) 
       const creator = data.data?.createdBy || data.data?.updatedBy;
       const isCreator = userName && creator && creator === userName;
       
-      if ((roleMatch || classMatch) && !isCreator) {
+      const isAttendanceEvent = data.data?.type === 'attendance_absence' || data.data?.type === 'attendance_class';
+      
+      if ((roleMatch || classMatch) && (!isCreator || isAttendanceEvent)) {
         notifications.push({ id: doc.id, ...data });
       }
     });
@@ -817,7 +819,9 @@ export const getNotificationsPaginated = async (userRoles, userClass, userName, 
       const creator = data.data?.createdBy || data.data?.updatedBy;
       const isCreator = userName && creator && creator === userName;
       
-      if ((roleMatch || classMatch) && !isCreator) {
+      const isAttendanceEvent = data.data?.type === 'attendance_absence' || data.data?.type === 'attendance_class';
+      
+      if ((roleMatch || classMatch) && (!isCreator || isAttendanceEvent)) {
         notifications.push({ id: doc.id, ...data });
       }
     });

@@ -8,6 +8,7 @@ export function NotificationModal({ isOpen, onClose, notification }) {
 
   const data = notification.data || {};
   const isAttendance = data.type === 'attendance_approval' || data.type === 'attendance_absence';
+  const isClassAttendance = data.type === 'attendance_class';
   const isViolation = data.type === 'violation';
 
   const formatTimestamp = (ts) => {
@@ -72,6 +73,27 @@ export function NotificationModal({ isOpen, onClose, notification }) {
                       />
                     </div>
                   )}
+                </div>
+              )}
+
+              {isClassAttendance && (
+                <div className="detail-info">
+                  <div className="info-row">
+                    <span className="text-muted"><User size={16} className="inline mr-1"/> Lớp:</span>
+                    <span className="font-medium text-dark">{data.className}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="text-muted"><Calendar size={16} className="inline mr-1"/> Buổi:</span>
+                    <span className="font-medium text-dark">{data.session} - {data.date}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="text-muted"><Info size={16} className="inline mr-1"/> Sĩ số vắng:</span>
+                    <span className="font-medium text-danger">{data.absentCount} học sinh</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="text-muted"><User size={16} className="inline mr-1"/> Người điểm danh:</span>
+                    <span className="font-medium text-dark">{data.updatedBy || 'Hệ thống'}</span>
+                  </div>
                 </div>
               )}
 
