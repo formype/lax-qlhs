@@ -680,11 +680,12 @@ export const importDatabase = async (backupData) => {
 };
 
 // --- NOTIFICATIONS ---
-export const createNotification = async (message, targetRoles, data = {}) => {
+export const createNotification = async (message, targetRoles, targetClasses = [], data = {}) => {
   try {
     const notifData = {
       message,
       targetRoles,
+      targetClasses,
       data,
       readBy: [],
       createdAt: Date.now()
@@ -697,7 +698,7 @@ export const createNotification = async (message, targetRoles, data = {}) => {
   }
 };
 
-export const listenToNotifications = (userRoles, callback) => {
+export const listenToNotifications = (userRoles, userClass, callback) => {
   const q = query(
     collection(db, COLLECTIONS.NOTIFICATIONS),
     orderBy("createdAt", "desc"),
@@ -708,8 +709,11 @@ export const listenToNotifications = (userRoles, callback) => {
     const notifications = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // Filter client-side to avoid Firestore composite index requirement
-      if (data.targetRoles && data.targetRoles.some(r => userRoles.includes(r))) {
+      // Filter client-side
+      const roleMatch = data.targetRoles && data.targetRoles.some(r => userRoles.includes(r));
+      const classMatch = userClass && data.targetClasses && data.targetClasses.includes(userClass);
+      
+      if (roleMatch || classMatch) {
         notifications.push({ id: doc.id, ...data });
       }
     });
@@ -764,10 +768,9 @@ export const markAllNotificationsAsRead = async (userId) => {
   }
 };
 
-export const getNotificationsPaginated = async (userRoles, lastDoc = null, limitCount = 20) => {
+export const getNotificationsPaginated = async (userRoles, userClass, lastDoc = null, limitCount = 20) => {
   try {
     let q;
-    // We fetch a slightly larger chunk (e.g. 50) to ensure after client-side filtering we get enough
     const fetchLimit = limitCount * 2; 
 
     if (lastDoc) {
@@ -791,8 +794,12 @@ export const getNotificationsPaginated = async (userRoles, lastDoc = null, limit
 
     snapshot.docs.forEach((doc) => {
       const data = doc.data();
-      newLastDoc = doc; // Always track the last fetched doc
-      if (data.targetRoles && data.targetRoles.some(r => userRoles.includes(r))) {
+      newLastDoc = doc; 
+      
+      const roleMatch = data.targetRoles && data.targetRoles.some(r => userRoles.includes(r));
+      const classMatch = userClass && data.targetClasses && data.targetClasses.includes(userClass);
+      
+      if (roleMatch || classMatch) {
         notifications.push({ id: doc.id, ...data });
       }
     });

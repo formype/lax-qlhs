@@ -3,6 +3,7 @@ import { Bell, Check, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { listenToNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { NotificationModal } from '../ui/NotificationModal';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,6 +15,8 @@ export function Header({ title }) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   // Unread count
@@ -37,14 +40,18 @@ export function Header({ title }) {
 
     if (!user || !user.role) return;
     
-    // Only admins receive push right now
-    if (!user.role.includes('admin') && !user.role.includes('vip-admin')) return;
+    const isAdmin = user.role.includes('admin') || user.role.includes('vip-admin');
+    const isTeacher = user.role.includes('giaovien') && user.teacherClass?.name;
+    
+    if (!isAdmin && !isTeacher) return;
 
     // Track the initial load to prevent spamming notifications for old messages
     let initialLoad = true;
     let initialLoadTime = Date.now();
+    
+    const userClass = user.teacherClass?.name || null;
 
-    const unsubscribe = listenToNotifications(user.role, (newNotifs) => {
+    const unsubscribe = listenToNotifications(user.role, userClass, (newNotifs) => {
       setNotifications(newNotifs);
 
       // Only show push notifications for messages that arrive AFTER initial load
@@ -111,9 +118,10 @@ export function Header({ title }) {
     }
     // 2. Close dropdown
     setShowDropdown(false);
-    // 3. Navigate if it has a recordId
-    if (notif.data?.recordId && notif.data?.type === 'attendance_approval') {
-      navigate('/attendance-search', { state: { openRecordId: notif.data.recordId } });
+    // 3. Show details modal if data exists
+    if (notif.data && Object.keys(notif.data).length > 0) {
+      setSelectedNotification(notif);
+      setIsModalOpen(true);
     }
   };
 
@@ -198,6 +206,12 @@ export function Header({ title }) {
           )}
         </div>
       )}
+      
+      <NotificationModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        notification={selectedNotification}
+      />
     </header>
   );
 }

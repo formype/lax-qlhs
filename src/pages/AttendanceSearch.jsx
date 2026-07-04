@@ -310,7 +310,18 @@ export function AttendanceSearch() {
         createNotification(
           `Giáo viên ${user?.fullName || user?.username} đã duyệt phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}.`,
           ['admin', 'vip-admin'],
-          { type: 'attendance_approval', recordId: selectedRecord.id }
+          [], // targetClasses
+          { 
+            type: 'attendance_approval', 
+            recordId: selectedRecord.id,
+            studentName: selectedRecord.hoten,
+            className: selectedRecord.className,
+            status: 'absent_p',
+            date: selectedRecord.date,
+            session: selectedRecord.session,
+            proofImage: proofImage || selectedRecord.proofImage,
+            updatedBy: updaterName
+          }
         );
       }
       setAttendanceData(prev => prev.map(item => {

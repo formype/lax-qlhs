@@ -3,7 +3,7 @@ import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { fetchClasses, fetchStudents, saveAttendance, getAttendanceForDateClass } from '../lib/firebase';
+import { fetchClasses, fetchStudents, saveAttendance, getAttendanceForDateClass, createNotification } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { CheckCircle, XCircle, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
@@ -108,6 +108,36 @@ export function Attendance() {
     if (result.success) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      
+      // Send notifications for absentees
+      const updaterName = user?.fullName || user?.username || 'Hệ thống';
+      const isMyClass = user?.teacherClass?.name === selectedClass;
+      const targetClasses = isMyClass ? [] : [selectedClass];
+      
+      Object.keys(payload).forEach(studentId => {
+        const status = payload[studentId];
+        if (status === 'absent_kp' || status === 'absent_p' || status === 'absent') {
+          const student = students.find(s => s.id === studentId);
+          if (student) {
+            createNotification(
+              `Tài khoản ${updaterName} đã ghi nhận học sinh ${student.hoten} lớp ${selectedClass} vắng mặt (${status === 'absent_p' ? 'Có phép' : 'Không phép'}).`,
+              ['admin', 'vip-admin'],
+              targetClasses,
+              {
+                type: 'attendance_absence',
+                recordId: `${selectedClass.replace(/\//g, '-')}_${date}_${session}_${studentId}`,
+                studentName: student.hoten,
+                className: selectedClass,
+                status: status,
+                date: date,
+                session: session,
+                updatedBy: updaterName
+              }
+            );
+          }
+        }
+      });
+      
     } else {
       alert("Lưu thất bại. Chi tiết lỗi: " + result.error);
     }

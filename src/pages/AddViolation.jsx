@@ -3,7 +3,7 @@ import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Input, Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { addViolation, getStudentByCode, fetchViolationTypes, addCustomViolationType } from '../lib/firebase';
+import { addViolation, getStudentByCode, fetchViolationTypes, addCustomViolationType, createNotification } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Upload, Camera, FileText, Trash2, ExternalLink, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -245,6 +245,27 @@ export function AddViolation() {
 
     if (result.success) {
       setSuccess(true);
+      
+      // Send notification
+      const isMyClass = user?.teacherClass?.name === formData.lop;
+      const targetClasses = isMyClass ? [] : [formData.lop];
+      
+      createNotification(
+        `Tài khoản ${createdBy} đã ghi nhận học sinh ${formData.hoten} lớp ${formData.lop} vi phạm: ${finalViolationType}.`,
+        ['admin', 'vip-admin'],
+        targetClasses,
+        {
+          type: 'violation',
+          violationId: result.id,
+          studentName: formData.hoten,
+          className: formData.lop,
+          date: formData.ngay,
+          violationName: finalViolationType,
+          points: isCustomSelected ? Math.abs(parseInt(customPoints) || 0) : Math.abs(selectedViolation?.points || 0),
+          createdBy: createdBy
+        }
+      );
+      
       setTimeout(() => {
         navigate('/features');
       }, 1500);

@@ -8,6 +8,7 @@ import { vi } from 'date-fns/locale';
 import { Bell, Check, Clock, Loader2, ArrowLeft } from 'lucide-react';
 import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { NotificationModal } from '../components/ui/NotificationModal';
 
 export function Notifications() {
   const { user } = useAuth();
@@ -17,6 +18,8 @@ export function Notifications() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastDoc, setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(true);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchNotifications = async (isLoadMore = false) => {
     if (!user || !user.role) return;
@@ -28,7 +31,8 @@ export function Notifications() {
     }
 
     const currentLastDoc = isLoadMore ? lastDoc : null;
-    const result = await getNotificationsPaginated(user.role, currentLastDoc, 20);
+    const userClass = user.teacherClass?.name || null;
+    const result = await getNotificationsPaginated(user.role, userClass, currentLastDoc, 20);
     
     if (isLoadMore) {
       setNotifications(prev => [...prev, ...result.notifications]);
@@ -77,8 +81,9 @@ export function Notifications() {
     if (!notif.readBy?.includes(user.id)) {
       await handleMarkAsRead(notif.id);
     }
-    if (notif.data?.recordId && notif.data?.type === 'attendance_approval') {
-      navigate('/attendance-search', { state: { openRecordId: notif.data.recordId } });
+    if (notif.data && Object.keys(notif.data).length > 0) {
+      setSelectedNotification(notif);
+      setIsModalOpen(true);
     }
   };
 
@@ -185,6 +190,12 @@ export function Notifications() {
           </CardBody>
         </Card>
       </main>
+      
+      <NotificationModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        notification={selectedNotification}
+      />
     </div>
   );
 }
