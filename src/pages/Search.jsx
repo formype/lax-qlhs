@@ -4,7 +4,7 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Select, Input } from '../components/ui/Input';
 import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
-import { getRecentViolations, fetchViolationTypes, fetchClasses, fetchSystemSettings, deleteViolation } from '../lib/firebase';
+import { getRecentViolations, fetchClasses, fetchViolationTypes, fetchSystemSettings, fetchStudents, deleteViolation } from '../lib/firebase';
 import { parseISO, format, startOfDay, endOfDay, isWithinInterval, parse, getMonth, getYear } from 'date-fns';
 import { Search as SearchIcon, FileText, Download, ExternalLink, Eye, X, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +38,7 @@ export function Search() {
   const [targetValueStudentId, setTargetValueStudentId] = useState('');
   const isGiaovienOnly = user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi');
   const [teacherClass, setTeacherClass] = useState(null);
+  const [teacherStudents, setTeacherStudents] = useState([]);
   
   const [typeFilter, setTypeFilter] = useState('all');
 
@@ -59,7 +60,14 @@ export function Search() {
 
       if (isGiaovienOnly) {
          const myClass = cData.find(c => c.homeroomTeacherId === user?.id);
-         setTeacherClass(myClass ? myClass.tenlop : '_NONE_');
+         const cls = myClass ? myClass.tenlop : '_NONE_';
+         setTeacherClass(cls);
+         if (cls !== '_NONE_') {
+            const studentsInClass = await fetchStudents({ className: cls });
+            setTeacherStudents(studentsInClass);
+         } else {
+            setTeacherStudents([]);
+         }
       }
 
       setLoading(false);
@@ -398,10 +406,13 @@ export function Search() {
                 </label>
                 <div className="flex-row gap-2">
                   {isGiaovienOnly ? (
-                    <Input 
-                      placeholder="Nhập mã hoặc tên HS..." 
-                      value={targetValueStudentId} 
-                      onChange={e => setTargetValueStudentId(e.target.value)} 
+                    <Select 
+                      value={targetValueStudentId}
+                      onChange={e => setTargetValueStudentId(e.target.value)}
+                      options={[
+                        {value: '', label: 'Tất cả học sinh trong lớp'},
+                        ...teacherStudents.map(s => ({value: s.mahs, label: `${s.mahs} - ${s.hoten}`}))
+                      ]}
                       style={{marginBottom: 0, flex: 1}} 
                     />
                   ) : (

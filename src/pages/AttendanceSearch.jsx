@@ -43,6 +43,7 @@ export function AttendanceSearch() {
   
   const isGiaovienOnly = user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi');
   const [teacherClass, setTeacherClass] = useState(null);
+  const [teacherStudents, setTeacherStudents] = useState([]);
   
   const [statusFilter, setStatusFilter] = useState('absent'); // all, present, absent
   const [sessionFilter, setSessionFilter] = useState('all'); // all, Sáng, Chiều
@@ -88,7 +89,9 @@ export function AttendanceSearch() {
 
       if (isGiaovienOnly) {
          const myClass = classesData.find(c => c.homeroomTeacherId === user?.id);
-         setTeacherClass(myClass ? myClass.tenlop : '_NONE_');
+         const cls = myClass ? myClass.tenlop : '_NONE_';
+         setTeacherClass(cls);
+         setTeacherStudents(studentsData.filter(s => s.tenlop === cls));
       }
 
       setLoading(false);
@@ -511,10 +514,13 @@ export function AttendanceSearch() {
                 </label>
                 <div className="flex-row gap-2">
                   {isGiaovienOnly ? (
-                    <Input 
-                      placeholder="Nhập mã hoặc tên HS..." 
-                      value={targetValueStudentId} 
-                      onChange={e => setTargetValueStudentId(e.target.value)} 
+                    <Select 
+                      value={targetValueStudentId}
+                      onChange={e => setTargetValueStudentId(e.target.value)}
+                      options={[
+                        {value: '', label: 'Tất cả học sinh trong lớp'},
+                        ...teacherStudents.map(s => ({value: s.mahs, label: `${s.mahs} - ${s.hoten}`}))
+                      ]}
                       style={{marginBottom: 0, flex: 1}} 
                     />
                   ) : (
