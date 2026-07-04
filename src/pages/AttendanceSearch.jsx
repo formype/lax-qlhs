@@ -5,7 +5,7 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Select, Input } from '../components/ui/Input';
 import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
-import { getAttendanceHistory, fetchStudents, fetchClasses, fetchSystemSettings, updateAttendanceStudent } from '../lib/firebase';
+import { getAttendanceHistory, fetchStudents, fetchClasses, fetchSystemSettings, updateAttendanceStudent, createNotification } from '../lib/firebase';
 import { parseISO, format, addDays, parse, getMonth } from 'date-fns';
 import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -288,6 +288,12 @@ export function AttendanceSearch() {
     const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage);
     setIsUpdating(false);
     if (result.success) {
+      if (isGiaovienOnly) {
+        createNotification(
+          `Giáo viên ${user?.fullName || user?.username} đã duyệt phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}.`,
+          ['admin', 'vip-admin']
+        );
+      }
       setAttendanceData(prev => prev.map(item => {
         if (item.id === selectedRecord.id) {
           return { ...item, status: 'absent_p', proofImage: proofImage };
@@ -745,7 +751,7 @@ export function AttendanceSearch() {
             </div>
             <div className="modal-footer">
               <Button variant="secondary" onClick={handleCloseDetail}>Đóng</Button>
-              {selectedRecord.status === 'absent_kp' && (user?.role?.includes('giamthi') || user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
+              {selectedRecord.status === 'absent_kp' && (user?.role?.includes('giamthi') || user?.role?.includes('admin') || user?.role?.includes('vip-admin') || (isGiaovienOnly && teacherClass?.name === selectedRecord.className)) && (
                 <Button variant="primary" onClick={handleUpdateStatus} disabled={isUpdating}>
                   {isUpdating ? 'Đang cập nhật...' : 'Duyệt phép & Lưu'}
                 </Button>

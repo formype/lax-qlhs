@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot, limit, arrayUnion } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,7 +19,8 @@ const COLLECTIONS = {
   CLASSES: 'classes',
   VIOLATIONS: 'violations',
   USERS: 'users',
-  ATTENDANCE: 'attendance'
+  ATTENDANCE: 'attendance',
+  NOTIFICATIONS: 'notifications'
 };
 
 // --- USERS / AUTH ---
@@ -553,7 +554,8 @@ export const exportDatabase = async () => {
       classes: [],
       violations: [],
       attendance: [],
-      settings: []
+      settings: [],
+      notifications: []
     };
     
     // Fetch all collections except users
@@ -572,6 +574,9 @@ export const exportDatabase = async () => {
     const settingsSnap = await getDocs(collection(db, 'settings'));
     settingsSnap.forEach(doc => data.settings.push({ id: doc.id, ...doc.data() }));
 
+    const notifSnap = await getDocs(collection(db, COLLECTIONS.NOTIFICATIONS));
+    notifSnap.forEach(doc => data.notifications.push({ id: doc.id, ...doc.data() }));
+
     return data;
   } catch (error) {
     console.error("Lỗi khi xuất dữ liệu:", error);
@@ -585,7 +590,8 @@ export const deleteAllData = async () => {
       COLLECTIONS.STUDENTS,
       COLLECTIONS.CLASSES,
       COLLECTIONS.VIOLATIONS,
-      COLLECTIONS.ATTENDANCE
+      COLLECTIONS.ATTENDANCE,
+      COLLECTIONS.NOTIFICATIONS
     ];
 
     for (const col of collectionsToClear) {
@@ -620,6 +626,7 @@ export const importDatabase = async (backupData) => {
       { name: COLLECTIONS.CLASSES, data: backupData.classes || [] },
       { name: COLLECTIONS.VIOLATIONS, data: backupData.violations || [] },
       { name: COLLECTIONS.ATTENDANCE, data: backupData.attendance || [] },
+      { name: COLLECTIONS.NOTIFICATIONS, data: backupData.notifications || [] },
       { name: 'settings', data: backupData.settings || [] }
     ];
 
@@ -666,5 +673,57 @@ export const importDatabase = async (backupData) => {
   } catch (error) {
     console.error("Lỗi khi khôi phục dữ liệu:", error);
     throw error;
+  }
+};
+
+// --- NOTIFICATIONS ---
+export const createNotification = async (message, targetRoles, data = {}) => {
+  try {
+    const notifData = {
+      message,
+      targetRoles,
+      data,
+      readBy: [],
+      createdAt: Date.now()
+    };
+    const docRef = await addDoc(collection(db, COLLECTIONS.NOTIFICATIONS), notifData);
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    console.error("Lỗi khi tạo thông báo:", error);
+    return { success: false, error };
+  }
+};
+
+export const listenToNotifications = (userRoles, callback) => {
+  const q = query(
+    collection(db, COLLECTIONS.NOTIFICATIONS),
+    where("targetRoles", "array-contains-any", userRoles),
+    orderBy("createdAt", "desc"),
+    limit(50)
+  );
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const notifications = [];
+    snapshot.forEach((doc) => {
+      notifications.push({ id: doc.id, ...doc.data() });
+    });
+    callback(notifications);
+  }, (error) => {
+    console.error("Lỗi khi lắng nghe thông báo:", error);
+  });
+
+  return unsubscribe;
+};
+
+export const markNotificationAsRead = async (notificationId, userId) => {
+  try {
+    const docRef = doc(db, COLLECTIONS.NOTIFICATIONS, notificationId);
+    await updateDoc(docRef, {
+      readBy: arrayUnion(userId)
+    });
+    return true;
+  } catch (error) {
+    console.error("Lỗi khi đánh dấu đã đọc:", error);
+    return false;
   }
 };

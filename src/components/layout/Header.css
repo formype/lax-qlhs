@@ -42,3 +42,129 @@
   background-color: var(--secondary-color);
   color: var(--primary-color);
 }
+
+/* Notifications */
+.notification-wrapper {
+  position: relative;
+}
+
+.notification-btn {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--danger);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: bold;
+  padding: 2px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--card-bg);
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 320px;
+  max-height: 400px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.notification-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.notification-list {
+  overflow-y: auto;
+  max-height: 350px;
+}
+
+.notification-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s ease;
+}
+
+.notification-item.unread {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-content p {
+  margin: 0 0 6px 0;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.notification-time {
+  display: flex;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.mark-read-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: max-content;
+  margin-left: 8px;
+}
+
+.mark-read-btn:hover {
+  background: var(--primary-light);
+}
+
+body.dark .notification-item.unread {
+  background: rgba(99, 102, 241, 0.1);
+}
