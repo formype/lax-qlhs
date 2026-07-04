@@ -288,17 +288,9 @@ export function Settings() {
               </div>
             </CardBody>
           </Card>
-        </div>
 
-        <Button variant="danger" fullWidth className="mt-4" style={{ marginTop: '32px' }} onClick={handleLogout}>
-          <LogOut size={18} />
-          Đăng xuất
-        </Button>
-
-        {user && (user.role?.includes('admin') || user.role?.includes('vip-admin')) && (
-          <>
-            <h4 className="settings-group-title mt-4">Quản lý Dữ liệu Hệ thống</h4>
-            <div className="settings-list">
+          {user && (user.role?.includes('admin') || user.role?.includes('vip-admin')) && (
+            <>
               <Card className="settings-item" onClick={isProcessing ? undefined : handleBackup} style={{ cursor: isProcessing ? 'wait' : 'pointer' }}>
                 <CardBody className="flex-between">
                   <div className="flex-row gap-3">
@@ -338,9 +330,14 @@ export function Settings() {
                   </Card>
                 </>
               )}
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
+
+        <Button variant="danger" fullWidth className="mt-4" style={{ marginTop: '32px' }} onClick={handleLogout}>
+          <LogOut size={18} />
+          Đăng xuất
+        </Button>
       </div>
 
       {showRestoreModal && (
