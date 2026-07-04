@@ -138,7 +138,7 @@ export function Header({ title }) {
     <header className="app-header glass">
       <div className="header-title">{title}</div>
       
-      {user && (user.role.includes('admin') || user.role.includes('vip-admin')) && (
+      {user && (user.role.includes('admin') || user.role.includes('vip-admin') || (user.role.includes('giaovien') && user.teacherClass?.name)) && (
         <div className="notification-wrapper" ref={dropdownRef}>
           <button className="icon-btn notification-btn" onClick={handleToggle}>
             <Bell size={20} />
