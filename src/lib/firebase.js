@@ -328,13 +328,14 @@ export const updateViolationStatus = async (violationId, newStatus) => {
 };
 
 // --- ATTENDANCE ---
-export const saveAttendance = async (date, className, attendanceData, createdBy = 'Hệ thống') => {
+export const saveAttendance = async (date, session, className, attendanceData, createdBy = 'Hệ thống') => {
   try {
     const safeClassName = className.replace(/\//g, '-');
-    const docId = `${safeClassName}_${date}`; // e.g. 10A1_2026-09-07
+    const docId = `${safeClassName}_${date}_${session}`; // e.g. 10A1_2026-09-07_Sáng
     const docRef = doc(db, COLLECTIONS.ATTENDANCE, docId);
     await setDoc(docRef, {
       date,
+      session,
       className,
       records: attendanceData, // Object mapping studentId -> status (present, absent)
       createdBy,
@@ -347,10 +348,10 @@ export const saveAttendance = async (date, className, attendanceData, createdBy 
   }
 };
 
-export const updateAttendanceStudent = async (date, className, studentId, newStatus, proofBase64) => {
+export const updateAttendanceStudent = async (date, session, className, studentId, newStatus, proofBase64) => {
   try {
     const safeClassName = className.replace(/\//g, '-');
-    const docId = `${safeClassName}_${date}`;
+    const docId = `${safeClassName}_${date}_${session}`;
     const docRef = doc(db, COLLECTIONS.ATTENDANCE, docId);
     
     const updates = {
@@ -369,10 +370,10 @@ export const updateAttendanceStudent = async (date, className, studentId, newSta
   }
 };
 
-export const getAttendanceForDateClass = async (date, className) => {
+export const getAttendanceForDateClass = async (date, session, className) => {
   try {
     const safeClassName = className.replace(/\//g, '-');
-    const docId = `${safeClassName}_${date}`;
+    const docId = `${safeClassName}_${date}_${session}`;
     const docRef = doc(db, COLLECTIONS.ATTENDANCE, docId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {

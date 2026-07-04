@@ -21,6 +21,7 @@ export function Attendance() {
   const [students, setStudents] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [session, setSession] = useState(new Date().getHours() < 12 ? 'Sáng' : 'Chiều');
   const dateInputRef = React.useRef(null);
   const [attendance, setAttendance] = useState({});
   const attendanceRef = React.useRef({});
@@ -49,7 +50,7 @@ export function Attendance() {
       try {
         const [studentsData, existingData] = await Promise.all([
           fetchStudents({ className: selectedClass }),
-          getAttendanceForDateClass(date, selectedClass)
+          getAttendanceForDateClass(date, session, selectedClass)
         ]);
 
         setStudents(studentsData);
@@ -71,7 +72,7 @@ export function Attendance() {
     };
 
     loadClassData();
-  }, [selectedClass, date]);
+  }, [selectedClass, date, session]);
 
   const toggleStatus = (studentId) => {
     setAttendance(prev => {
@@ -101,7 +102,7 @@ export function Attendance() {
     if (!selectedClass || !date || students.length === 0) return;
     setSaving(true);
     const payload = attendanceRef.current;
-    const result = await saveAttendance(date, selectedClass, payload, user?.fullName || user?.username || 'Hệ thống');
+    const result = await saveAttendance(date, session, selectedClass, payload, user?.fullName || user?.username || 'Hệ thống');
     setSaving(false);
     
     if (result.success) {
@@ -164,6 +165,19 @@ export function Attendance() {
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   style={{ position: 'absolute', opacity: 0, width: 0, height: 0, bottom: 0 }}
+                />
+              </div>
+              
+              <div className="flex-row gap-2 mt-2">
+                <Select
+                  label="Buổi học"
+                  options={[
+                    { value: 'Sáng', label: 'Buổi Sáng' },
+                    { value: 'Chiều', label: 'Buổi Chiều' }
+                  ]}
+                  value={session}
+                  onChange={(e) => setSession(e.target.value)}
+                  className="flex-1"
                 />
               </div>
             </div>

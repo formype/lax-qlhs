@@ -44,6 +44,7 @@ export function AttendanceSearch() {
   const isGiaovienOnly = user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi');
   
   const [statusFilter, setStatusFilter] = useState('absent'); // all, present, absent
+  const [sessionFilter, setSessionFilter] = useState('all'); // all, Sáng, Chiều
 
   useEffect(() => {
     const loadData = async () => {
@@ -65,6 +66,7 @@ export function AttendanceSearch() {
             flatData.push({
               id: `${att.id}_${studentId}`,
               date: att.date,
+              session: att.session || 'Sáng',
               className: att.className,
               studentId: studentId,
               mahs: student.mahs || '',
@@ -183,9 +185,14 @@ export function AttendanceSearch() {
         return false;
       }
 
+      // Session Filter
+      if (sessionFilter !== 'all' && v.session !== sessionFilter) {
+        return false;
+      }
+
       return true;
     });
-  }, [attendanceData, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, timeValueSemester, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, statusFilter]);
+  }, [attendanceData, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, timeValueSemester, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, statusFilter, sessionFilter]);
 
   const formatDateToVN = (dateStr) => {
     if (!dateStr) return '';
@@ -264,7 +271,7 @@ export function AttendanceSearch() {
   const handleUpdateStatus = async () => {
     if (!selectedRecord) return;
     setIsUpdating(true);
-    const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage);
+    const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage);
     setIsUpdating(false);
     if (result.success) {
       setAttendanceData(prev => prev.map(item => {
@@ -316,7 +323,7 @@ export function AttendanceSearch() {
     doc.setFontSize(16);
     doc.text("DANH SÁCH THEO DÕI TÌNH HÌNH CHUYÊN CẦN CỦA HỌC SINH", pageWidth / 2, 35, { align: 'center' });
 
-    const tableColumn = ["STT", "Họ tên", "Lớp", "Ngày", "Trạng thái", "Ghi chú"];
+    const tableColumn = ["STT", "Họ tên", "Lớp", "Ngày", "Buổi", "Trạng thái", "Ghi chú"];
     const tableRows = filteredData.map((v, index) => {
       let statusStr = 'Có mặt';
       let reasonStr = '';
@@ -328,6 +335,7 @@ export function AttendanceSearch() {
         v.hoten || '',
         v.className || '',
         v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : '',
+        v.session || '',
         statusStr,
         reasonStr
       ];
@@ -340,7 +348,7 @@ export function AttendanceSearch() {
       styles: { font: 'Tinos', fontSize: 13, lineWidth: 0.1, lineColor: [0, 0, 0] },
       headStyles: { font: 'Tinos', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0] },
       columnStyles: {
-        5: { cellWidth: 80 }
+        6: { cellWidth: 70 }
       }
     });
 
@@ -360,34 +368,35 @@ export function AttendanceSearch() {
       { width: 10 }, // A: STT
       { width: 30 }, // B: Họ tên
       { width: 15 }, // C: Lớp
-      { width: 20 }, // D: Ngày
-      { width: 20 }, // E: Trạng thái
-      { width: 30 }  // F: Ghi chú
+      { width: 15 }, // D: Ngày
+      { width: 15 }, // E: Buổi
+      { width: 20 }, // F: Trạng thái
+      { width: 30 }  // G: Ghi chú
     ];
 
     // Row 1 & 2: Header Left
-    worksheet.mergeCells('A1:C2');
+    worksheet.mergeCells('A1:D2');
     const cellA1 = worksheet.getCell('A1');
     cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG\nTRƯỜNG THCS LÊ ANH XUÂN";
     cellA1.font = { name: 'Times New Roman', size: 13, bold: true };
     cellA1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
     // Row 1 & 2: Header Right
-    worksheet.mergeCells('D1:F2');
+    worksheet.mergeCells('E1:G2');
     const cellD1 = worksheet.getCell('D1');
     cellD1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc";
     cellD1.font = { name: 'Times New Roman', size: 13, bold: true };
     cellD1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
     // Row 4: Title
-    worksheet.mergeCells('A4:F4');
+    worksheet.mergeCells('A4:G4');
     const cellA4 = worksheet.getCell('A4');
     cellA4.value = "DANH SÁCH THEO DÕI TÌNH HÌNH CHUYÊN CẦN CỦA HỌC SINH";
     cellA4.font = { name: 'Times New Roman', size: 16, bold: true };
     cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 6: Headers
-    const headers = ["STT", "Họ tên", "Lớp", "Ngày", "Trạng thái", "Ghi chú"];
+    const headers = ["STT", "Họ tên", "Lớp", "Ngày", "Buổi", "Trạng thái", "Ghi chú"];
     const headerRow = worksheet.getRow(6);
     headerRow.values = headers;
     headerRow.font = { name: 'Times New Roman', size: 13, bold: true };
@@ -415,6 +424,7 @@ export function AttendanceSearch() {
         v.hoten || '',
         v.className || '',
         v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : '',
+        v.session || '',
         statusStr,
         reasonStr
       ];
@@ -428,7 +438,7 @@ export function AttendanceSearch() {
           bottom: { style: 'thin' },
           right: { style: 'thin' }
         };
-        if (colNumber === 6) {
+        if (colNumber === 7) {
           cell.alignment = { vertical: 'middle', wrapText: true };
         } else {
           cell.alignment = { vertical: 'middle' };
@@ -524,6 +534,21 @@ export function AttendanceSearch() {
                 />
               </div>
 
+              {/* Filter 4: Buổi học */}
+              <div className="filter-group">
+                <label className="text-sm font-semibold mb-1 block">Buổi học</label>
+                <Select 
+                  value={sessionFilter} 
+                  onChange={e => setSessionFilter(e.target.value)}
+                  options={[
+                    {value: 'all', label: 'Tất cả buổi'},
+                    {value: 'Sáng', label: 'Sáng'},
+                    {value: 'Chiều', label: 'Chiều'}
+                  ]}
+                  style={{ minWidth: '120px' }}
+                />
+              </div>
+
             </div>
           </CardBody>
         </Card>
@@ -549,6 +574,7 @@ export function AttendanceSearch() {
                     <th>Họ tên</th>
                     <th>Lớp</th>
                     <th>Ngày</th>
+                    <th>Buổi</th>
                     <th>Trạng thái</th>
                     <th>Phép</th>
                     <th style={{ width: '80px', textAlign: 'center' }}>Chi tiết</th>
@@ -560,6 +586,7 @@ export function AttendanceSearch() {
                       <td className="font-semibold text-dark">{v.hoten}</td>
                       <td><span className="class-badge-modern table-badge">{v.className}</span></td>
                       <td className="font-medium">{v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : ''}</td>
+                      <td><span className="badge badge-secondary">{v.session}</span></td>
                       <td>
                         {v.status.startsWith('absent') ? (
                           <span className="attendance-status-label absent inline-flex">
