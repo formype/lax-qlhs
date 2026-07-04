@@ -11,7 +11,13 @@ export const AuthProvider = ({ children }) => {
     // Check local storage for persistent login
     const storedUser = localStorage.getItem('qlhs_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      let parsedUser = JSON.parse(storedUser);
+      if (typeof parsedUser.role === 'string') {
+        parsedUser.role = [parsedUser.role];
+      } else if (!parsedUser.role) {
+        parsedUser.role = [];
+      }
+      setUser(parsedUser);
     }
     setLoading(false);
   }, []);
