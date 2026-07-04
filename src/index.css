@@ -342,3 +342,40 @@ body.dark .modal-content {
   background: #1e293b;
   color: #f8fafc;
 }
+
+/* Autofill fix for dark mode */
+body.dark .input-field:-webkit-autofill,
+body.dark .input-field:-webkit-autofill:hover, 
+body.dark .input-field:-webkit-autofill:focus, 
+body.dark .input-field:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* =============================================
+   DESKTOP / HORIZONTAL SCREEN LAYOUT
+   ============================================= */
+@media screen and (min-width: 768px) {
+  #root {
+    max-width: 480px;
+    margin: 0 auto;
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    background-color: var(--bg-app);
+    position: relative;
+    height: 100vh !important;
+  }
+
+  body {
+    background-color: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  body.dark {
+    background-color: #020617;
+  }
+}
