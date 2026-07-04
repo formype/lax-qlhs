@@ -111,8 +111,6 @@ export function Attendance() {
       
       // Send notifications for absentees
       const updaterName = user?.fullName || user?.username || 'Hệ thống';
-      const isMyClass = user?.teacherClass === selectedClass;
-      const targetClasses = isMyClass ? [] : [selectedClass];
       
       // Count absentees
       let absentCount = 0;
@@ -121,10 +119,12 @@ export function Attendance() {
       });
 
       // 1. Send Class-level notification (Only to homeroom teacher)
+      // targetRoles is empty so Admins do not receive this.
+      // targetClasses contains the class name so the teacher of this class receives it.
       createNotification(
         `Tài khoản ${updaterName} đã điểm danh lớp ${selectedClass}. Có ${absentCount} học sinh vắng.`,
-        [], // Empty roles so admin doesn't receive it
-        targetClasses, 
+        [], 
+        [selectedClass], 
         {
           type: 'attendance_class',
           className: selectedClass,
@@ -134,31 +134,6 @@ export function Attendance() {
           updatedBy: updaterName
         }
       );
-
-      // 2. Send notifications for individual absentees
-      Object.keys(payload).forEach(studentId => {
-        const status = payload[studentId];
-        if (status === 'absent_kp' || status === 'absent_p' || status === 'absent') {
-          const student = students.find(s => s.id === studentId);
-          if (student) {
-            createNotification(
-              `Tài khoản ${updaterName} đã ghi nhận học sinh ${student.hoten} lớp ${selectedClass} vắng mặt (${status === 'absent_p' ? 'Có phép' : 'Không phép'}).`,
-              ['admin', 'vip-admin'],
-              targetClasses,
-              {
-                type: 'attendance_absence',
-                recordId: `${selectedClass.replace(/\//g, '-')}_${date}_${session}_${studentId}`,
-                studentName: student.hoten,
-                className: selectedClass,
-                status: status,
-                date: date,
-                session: session,
-                updatedBy: updaterName
-              }
-            );
-          }
-        }
-      });
       
     } else {
       alert("Lưu thất bại. Chi tiết lỗi: " + result.error);
