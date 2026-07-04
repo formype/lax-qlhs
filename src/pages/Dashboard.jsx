@@ -23,9 +23,22 @@ export function Dashboard() {
       ]);
       setViolations(data);
 
+      const isGlobalView = user?.role?.some(r => ['admin', 'vip-admin', 'giamthi'].includes(r));
+      const teacherClass = user?.teacherClass;
+      const currentSession = new Date().getHours() < 12 ? 'Sáng' : 'Chiều';
+
       let presentCount = 0;
       let absentCount = 0;
       attendanceData.forEach(doc => {
+        // Filter by class if not global view
+        if (!isGlobalView && teacherClass && doc.className !== teacherClass) {
+          return;
+        }
+        // Filter by current session
+        if (doc.session !== currentSession) {
+          return;
+        }
+
         if (doc.records) {
           Object.values(doc.records).forEach(status => {
             if (status === 'present') presentCount++;
@@ -33,22 +46,31 @@ export function Dashboard() {
           });
         }
       });
-      setAttendanceStats({ present: presentCount, absent: absentCount });
+      setAttendanceStats({ present: presentCount, absent: absentCount, session: currentSession });
       setLoading(false);
     };
     fetchStats();
   }, []);
 
-  const todayCount = violations.filter(v => {
+  const isGlobalView = user?.role?.some(r => ['admin', 'vip-admin', 'giamthi'].includes(r));
+  const teacherClass = user?.teacherClass;
+
+  const filteredViolations = violations.filter(v => {
+    if (isGlobalView) return true;
+    if (teacherClass && v.lop === teacherClass) return true;
+    return false;
+  });
+
+  const todayCount = filteredViolations.filter(v => {
     try { return isToday(parseISO(v.ngayvipham)); } catch { return false; }
   }).length;
 
-  const weekCount = violations.filter(v => {
+  const weekCount = filteredViolations.filter(v => {
     try { return isThisWeek(parseISO(v.ngayvipham)); } catch { return false; }
   }).length;
 
-  const pendingCount = violations.filter(v => v.trangthai === 'Chưa xử lý').length;
-  const resolvedCount = violations.filter(v => v.trangthai === 'Đã xử lý').length;
+  const pendingCount = filteredViolations.filter(v => v.trangthai === 'Chưa xử lý').length;
+  const resolvedCount = filteredViolations.filter(v => v.trangthai === 'Đã xử lý').length;
 
   return (
     <>
@@ -101,7 +123,7 @@ export function Dashboard() {
             <CardBody className="flex-col gap-2">
               <div className="flex-row gap-2 text-muted">
                 <UserCheck size={16} color="var(--primary-color)" />
-                <span>Có mặt ({format(new Date(), 'dd/MM/yyyy')})</span>
+                <span>Có mặt ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
               </div>
               <div className="stat-number" style={{ color: 'var(--primary-color)' }}>{loading ? '-' : attendanceStats.present}</div>
             </CardBody>
@@ -110,7 +132,7 @@ export function Dashboard() {
             <CardBody className="flex-col gap-2">
               <div className="flex-row gap-2 text-muted">
                 <UserX size={16} color="var(--danger)" />
-                <span>Vắng ({format(new Date(), 'dd/MM/yyyy')})</span>
+                <span>Vắng ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
               </div>
               <div className="stat-number" style={{ color: 'var(--danger)' }}>{loading ? '-' : attendanceStats.absent}</div>
             </CardBody>
