@@ -120,11 +120,11 @@ export function Attendance() {
         if (status === 'absent_kp' || status === 'absent_p' || status === 'absent') absentCount++;
       });
 
-      // 1. Send Class-level notification
+      // 1. Send Class-level notification (Only to homeroom teacher)
       createNotification(
         `Tài khoản ${updaterName} đã điểm danh lớp ${selectedClass}. Có ${absentCount} học sinh vắng.`,
-        ['admin', 'vip-admin'],
-        targetClasses, // or [] to send to teacher too
+        [], // Empty roles so admin doesn't receive it
+        targetClasses, 
         {
           type: 'attendance_class',
           className: selectedClass,
