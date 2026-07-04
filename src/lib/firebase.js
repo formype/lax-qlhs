@@ -349,7 +349,7 @@ export const saveAttendance = async (date, session, className, attendanceData, c
   }
 };
 
-export const updateAttendanceStudent = async (date, session, className, studentId, newStatus, proofBase64) => {
+export const updateAttendanceStudent = async (date, session, className, studentId, newStatus, proofBase64, updatedBy = null) => {
   try {
     const safeClassName = className.replace(/\//g, '-');
     const docId = `${safeClassName}_${date}_${session}`;
@@ -361,6 +361,9 @@ export const updateAttendanceStudent = async (date, session, className, studentI
     };
     if (proofBase64) {
       updates[`proofs.${studentId}`] = proofBase64;
+    }
+    if (updatedBy) {
+      updates[`updatedBy.${studentId}`] = updatedBy;
     }
     
     await updateDoc(docRef, updates);

@@ -77,6 +77,7 @@ export function AttendanceSearch() {
               status: status,
               proofImage: att.proofs ? att.proofs[studentId] : null,
               createdBy: att.createdBy || 'Hệ thống',
+              updatedBy: att.updatedBy ? att.updatedBy[studentId] : null,
               updatedAt: att.updatedAt
             });
           }
@@ -285,7 +286,8 @@ export function AttendanceSearch() {
   const handleUpdateStatus = async () => {
     if (!selectedRecord) return;
     setIsUpdating(true);
-    const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage);
+    const updaterName = user?.fullName || user?.username || 'Giáo viên';
+    const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage, updaterName);
     setIsUpdating(false);
     if (result.success) {
       if (isGiaovienOnly) {
@@ -296,7 +298,7 @@ export function AttendanceSearch() {
       }
       setAttendanceData(prev => prev.map(item => {
         if (item.id === selectedRecord.id) {
-          return { ...item, status: 'absent_p', proofImage: proofImage };
+          return { ...item, status: 'absent_p', proofImage: proofImage, updatedBy: updaterName, updatedAt: { toMillis: () => Date.now() } };
         }
         return item;
       }));
@@ -711,7 +713,10 @@ export function AttendanceSearch() {
                 {selectedRecord.updatedAt && (
                   <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
                     <span className="text-muted">Cập nhật lúc:</span>
-                    <span className="font-medium text-dark">{formatTimestamp(selectedRecord.updatedAt)}</span>
+                    <span className="font-medium text-dark">
+                      {formatTimestamp(selectedRecord.updatedAt)} 
+                      {selectedRecord.updatedBy && ` (bởi ${selectedRecord.updatedBy})`}
+                    </span>
                   </div>
                 )}
 
