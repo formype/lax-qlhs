@@ -67,14 +67,14 @@ export function Settings() {
             </div>
             <div>
               <h3 className="profile-name">{user ? user.fullName : 'Chưa đăng nhập'}</h3>
-              <p className="text-muted">Vai trò: {user ? (user.role === 'admin' ? 'Quản trị viên' : user.role === 'giamthi' ? 'Giám thị' : 'Giáo viên') : 'Khách'}</p>
+              <p className="text-muted">Vai trò: {user ? (Array.isArray(user.role) ? user.role.map(r => r === 'vip-admin' ? 'VIP Admin' : r === 'admin' ? 'Quản trị viên' : r === 'giamthi' ? 'Giám thị' : 'Giáo viên').join(', ') : 'Khách') : 'Khách'}</p>
             </div>
           </CardBody>
         </Card>
 
         {/* Removed Quản lý Dữ liệu as requested */}
 
-        {user && (user.role === 'admin' || user.role === 'vip-admin') && (
+        {user && (user.role?.includes('admin') || user.role?.includes('vip-admin')) && (
           <>
             <h4 className="settings-group-title mt-4">Quản lý</h4>
             <div className="settings-list">
@@ -86,7 +86,7 @@ export function Settings() {
                   </div>
                 </CardBody>
               </Card>
-              {user.role === 'vip-admin' && (
+              {user.role?.includes('vip-admin') && (
                 <Card className="settings-item mt-2" onClick={() => navigate('/manage-updates')} style={{ cursor: 'pointer' }}>
                   <CardBody className="flex-between">
                     <div className="flex-row gap-3">
@@ -112,7 +112,7 @@ export function Settings() {
           </Card>
         </div>
 
-        {user && (user.role === 'admin' || user.role === 'vip-admin') && (
+        {user && (user.role?.includes('admin') || user.role?.includes('vip-admin')) && (
           <>
             <h4 className="settings-group-title mt-4">Cấu hình Năm học</h4>
             <Card className="mb-3">

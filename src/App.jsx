@@ -36,21 +36,22 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/" replace />;
   }
 
-  if (user.role === 'giaovien' && (
+  const isAdmin = user.role.includes('admin') || user.role.includes('vip-admin');
+  const isGiamthi = user.role.includes('giamthi');
+
+  if (!isAdmin && !isGiamthi && (
       location.pathname === '/add' || 
-      location.pathname === '/attendance' || 
-      location.pathname === '/classes' || 
-      location.pathname === '/students'
+      location.pathname === '/attendance'
   )) {
     alert("Giáo viên không có quyền truy cập chức năng này!");
     return <Navigate to="/" replace />;
   }
 
-  if (user.role === 'giamthi' && (
+  if (!isAdmin && (
       location.pathname === '/classes' || 
       location.pathname === '/students'
   )) {
-    alert("Giám thị không có quyền truy cập chức năng này!");
+    alert("Bạn không có quyền truy cập chức năng này!");
     return <Navigate to="/" replace />;
   }
 
@@ -146,7 +147,7 @@ const UpdateChecker = () => {
           <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
             <Button fullWidth>Tải xuống bản cập nhật</Button>
           </a>
-          {user?.role === 'vip-admin' && (
+          {user?.role?.includes('vip-admin') && (
             <Button variant="secondary" fullWidth onClick={() => setShowUpdate(false)}>
               Bỏ qua (Dành cho VIP Admin)
             </Button>

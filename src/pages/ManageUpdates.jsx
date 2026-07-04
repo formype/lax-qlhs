@@ -19,7 +19,7 @@ export function ManageUpdates() {
   });
 
   useEffect(() => {
-    if (user?.role !== 'vip-admin') {
+    if (!user?.role?.includes('vip-admin')) {
       alert('Bạn không có quyền truy cập trang này.');
       navigate('/');
       return;

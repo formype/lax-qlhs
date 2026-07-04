@@ -34,13 +34,14 @@ export const loginUser = async (username, password) => {
     
     if (!querySnapshot.empty) {
       const userData = querySnapshot.docs[0].data();
+      let roles = Array.isArray(userData.role) ? userData.role : (userData.role ? [userData.role] : []);
       return { 
         success: true, 
         user: {
           id: querySnapshot.docs[0].id,
           username: userData.username,
           fullName: userData.fullName,
-          role: userData.role,
+          role: roles, // Store as array in context
           password: userData.password,
           blockedPages: userData.blockedPages || []
         } 
@@ -60,7 +61,9 @@ export const fetchUsers = async () => {
     const querySnapshot = await getDocs(q);
     const users = [];
     querySnapshot.forEach((doc) => {
-      users.push({ id: doc.id, ...doc.data() });
+      const d = doc.data();
+      const roles = Array.isArray(d.role) ? d.role : (d.role ? [d.role] : []);
+      users.push({ id: doc.id, ...d, role: roles });
     });
     return users;
   } catch (error) {
@@ -114,7 +117,9 @@ export const getUserByUsername = async (username) => {
     );
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      return { success: true, id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+      const d = querySnapshot.docs[0].data();
+      const roles = Array.isArray(d.role) ? d.role : (d.role ? [d.role] : []);
+      return { success: true, id: querySnapshot.docs[0].id, ...d, role: roles };
     }
     return { success: false };
   } catch (error) {

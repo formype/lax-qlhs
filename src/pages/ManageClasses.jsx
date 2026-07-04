@@ -20,7 +20,7 @@ export function ManageClasses() {
     setLoading(true);
     const [data, users] = await Promise.all([fetchClasses(), fetchUsers()]);
     setClasses(data);
-    const gvs = users.filter(u => u.role === 'giaovien');
+    const gvs = users.filter(u => u.role?.includes('giaovien'));
     setTeachers(gvs);
     setLoading(false);
   };

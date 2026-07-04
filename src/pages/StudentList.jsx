@@ -180,7 +180,7 @@ export function StudentList() {
                     <button className="action-btn edit-btn" onClick={() => openEditModal(s)}>
                       <Edit size={16} />
                     </button>
-                    {user?.role !== 'giamthi' && user?.role !== 'giaovien' && (
+                    {(user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
                       <button className="action-btn delete-btn" onClick={() => handleDelete(s.id)}>
                         <Trash2 size={16} />
                       </button>

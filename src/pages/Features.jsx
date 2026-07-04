@@ -93,7 +93,9 @@ export function Features() {
       <Header title="Tính năng" />
       <div className="features-content">
         {FEATURE_SECTIONS.map((section) => {
-          if (section.title === 'Nhập thông tin' && user?.role === 'giaovien') {
+          const isAdmin = user?.role?.includes('admin') || user?.role?.includes('vip-admin');
+          const isGiamthi = user?.role?.includes('giamthi');
+          if (section.title === 'Nhập thông tin' && !isAdmin && !isGiamthi) {
             return null;
           }
           return (
@@ -104,15 +106,13 @@ export function Features() {
               </div>
               <div className="feature-grid">
               {section.items.map((item) => {
-                if (user?.role === 'giaovien' && (
+                if (!isAdmin && !isGiamthi && (
                   item.path === '/add' || 
-                  item.path === '/attendance' || 
-                  item.path === '/classes' || 
-                  item.path === '/students'
+                  item.path === '/attendance'
                 )) {
                   return null;
                 }
-                if (user?.role === 'giamthi' && (
+                if (!isAdmin && (
                   item.path === '/classes' || 
                   item.path === '/students'
                 )) {

@@ -111,7 +111,7 @@ export function AccountSettings() {
 
             <div className="form-group mb-3">
               <label className="input-label">Vai trò</label>
-              <input type="text" className="input-field" value={user?.role === 'vip-admin' ? 'VIP Admin' : user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'giamthi' ? 'Giám thị' : 'Giáo viên'} disabled style={{ backgroundColor: 'var(--bg-app)', opacity: 0.7 }} />
+              <input type="text" className="input-field" value={Array.isArray(user?.role) ? user.role.map(r => r === 'vip-admin' ? 'VIP Admin' : r === 'admin' ? 'Quản trị viên' : r === 'giamthi' ? 'Giám thị' : 'Giáo viên').join(', ') : 'Khách'} disabled style={{ backgroundColor: 'var(--bg-app)', opacity: 0.7 }} />
             </div>
 
             <div className="form-group mb-3">

@@ -463,7 +463,7 @@ export function Search() {
             <div className="modal-header">
               <h3>Chi tiết vi phạm</h3>
               <div className="flex-row gap-2">
-                {(user?.role === 'admin' || user?.role === 'vip-admin') && (
+                {(user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
                   <button className="btn-icon-link text-danger" onClick={() => handleDelete(selectedViolation.id)} title="Xóa vi phạm">
                     <Trash2 size={20} />
                   </button>

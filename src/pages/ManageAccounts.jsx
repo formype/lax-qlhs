@@ -30,13 +30,13 @@ export function ManageAccounts() {
     username: '',
     password: '',
     fullName: '',
-    role: 'giamthi',
+    roles: ['giamthi'],
     blockedPages: []
   });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user?.role !== 'admin' && user?.role !== 'vip-admin') {
+    if (!user?.role?.includes('admin') && !user?.role?.includes('vip-admin')) {
       alert('Bạn không có quyền truy cập trang này.');
       navigate('/');
       return;
@@ -52,7 +52,7 @@ export function ManageAccounts() {
   };
 
   const handleOpenModal = (u = null) => {
-    if (u && user?.role === 'admin' && (u.role === 'admin' || u.role === 'vip-admin')) {
+    if (u && user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
       alert("Bạn không có quyền chỉnh sửa tài khoản ngang hoặc cao hơn cấp của mình!");
       return;
     }
@@ -62,7 +62,7 @@ export function ManageAccounts() {
         username: u.username,
         password: '',
         fullName: u.fullName,
-        role: u.role,
+        roles: Array.isArray(u.role) ? u.role : (u.role ? [u.role] : []),
         blockedPages: u.blockedPages || []
       });
     } else {
@@ -71,7 +71,7 @@ export function ManageAccounts() {
         username: '',
         password: '',
         fullName: '',
-        role: 'giamthi',
+        roles: ['giamthi'],
         blockedPages: []
       });
     }
@@ -104,7 +104,7 @@ export function ManageAccounts() {
     if (editingUser) {
       const updates = {
         fullName: formData.fullName,
-        role: formData.role,
+        role: formData.roles,
         blockedPages: formData.blockedPages
       };
       if (formData.password) {
@@ -141,7 +141,7 @@ export function ManageAccounts() {
       alert("Bạn không thể xóa chính mình!");
       return;
     }
-    if (user?.role === 'admin' && (u.role === 'admin' || u.role === 'vip-admin')) {
+    if (user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
       alert("Bạn không có quyền xóa tài khoản ngang hoặc cao hơn cấp của mình!");
       return;
     }
@@ -185,18 +185,24 @@ export function ManageAccounts() {
                     <td className="font-medium text-dark">{u.username}</td>
                     <td>{u.fullName}</td>
                     <td>
-                      <span className={`badge ${u.role === 'admin' || u.role === 'vip-admin' ? 'badge-danger' : (u.role === 'giamthi' ? 'badge-primary' : 'badge-success')}`}>
-                        {u.role === 'vip-admin' ? 'VIP Admin' : u.role === 'admin' ? 'Quản trị viên' : u.role === 'giamthi' ? 'Giám thị' : 'Giáo viên'}
-                      </span>
+                      <div className="flex-row gap-1 flex-wrap">
+                        {Array.isArray(u.role) ? u.role.map(r => (
+                          <span key={r} className={`badge ${r === 'admin' || r === 'vip-admin' ? 'badge-danger' : (r === 'giamthi' ? 'badge-primary' : 'badge-success')}`}>
+                            {r === 'vip-admin' ? 'VIP Admin' : r === 'admin' ? 'Quản trị viên' : r === 'giamthi' ? 'Giám thị' : 'Giáo viên'}
+                          </span>
+                        )) : (
+                          <span className="badge badge-secondary">Khách</span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div className="flex-row gap-2 justify-center">
-                        {!(user?.role === 'admin' && (u.role === 'admin' || u.role === 'vip-admin')) && (
+                        {!(user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
                           <button className="action-btn edit-btn" onClick={() => handleOpenModal(u)}>
                             <Edit2 size={16} />
                           </button>
                         )}
-                        {u.id !== user?.id && !(user?.role === 'admin' && (u.role === 'admin' || u.role === 'vip-admin')) && (
+                        {u.id !== user?.id && !(user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
                           <button className="action-btn delete-btn" onClick={() => handleDelete(u)}>
                             <Trash2 size={16} />
                           </button>
@@ -259,21 +265,67 @@ export function ManageAccounts() {
 
               <div className="form-group mb-4">
                 <label className="input-label">Vai trò</label>
-                <select 
-                  className="input-field"
-                  value={formData.role}
-                  onChange={e => setFormData({...formData, role: e.target.value})}
-                >
-                  <option value="giaovien">Giáo viên</option>
-                  <option value="giamthi">Giám thị</option>
-                  <option value="admin">Quản trị viên (Admin)</option>
-                  {user?.role === 'vip-admin' && (
-                    <option value="vip-admin">VIP Admin</option>
+                <div className="flex-col gap-2">
+                  <label className="flex-row gap-2 cursor-pointer" style={{ alignItems: 'center' }}>
+                    <input 
+                      type="checkbox"
+                      checked={formData.roles.includes('giaovien')}
+                      onChange={(e) => {
+                        let newRoles = [...formData.roles].filter(r => r !== 'admin' && r !== 'vip-admin');
+                        if (e.target.checked) newRoles.push('giaovien');
+                        else newRoles = newRoles.filter(r => r !== 'giaovien');
+                        if (newRoles.length === 0) newRoles = ['giamthi'];
+                        setFormData({...formData, roles: newRoles});
+                      }}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span>Giáo viên</span>
+                  </label>
+                  <label className="flex-row gap-2 cursor-pointer" style={{ alignItems: 'center' }}>
+                    <input 
+                      type="checkbox"
+                      checked={formData.roles.includes('giamthi')}
+                      onChange={(e) => {
+                        let newRoles = [...formData.roles].filter(r => r !== 'admin' && r !== 'vip-admin');
+                        if (e.target.checked) newRoles.push('giamthi');
+                        else newRoles = newRoles.filter(r => r !== 'giamthi');
+                        if (newRoles.length === 0) newRoles = ['giaovien'];
+                        setFormData({...formData, roles: newRoles});
+                      }}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span>Giám thị</span>
+                  </label>
+                  <label className="flex-row gap-2 cursor-pointer" style={{ alignItems: 'center' }}>
+                    <input 
+                      type="checkbox"
+                      checked={formData.roles.includes('admin')}
+                      onChange={(e) => {
+                        if (e.target.checked) setFormData({...formData, roles: ['admin']});
+                        else setFormData({...formData, roles: ['giaovien']});
+                      }}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span style={{ color: 'var(--danger)' }}>Quản trị viên (Admin)</span>
+                  </label>
+                  {user?.role?.includes('vip-admin') && (
+                    <label className="flex-row gap-2 cursor-pointer" style={{ alignItems: 'center' }}>
+                      <input 
+                        type="checkbox"
+                        checked={formData.roles.includes('vip-admin')}
+                        onChange={(e) => {
+                          if (e.target.checked) setFormData({...formData, roles: ['vip-admin']});
+                          else setFormData({...formData, roles: ['admin']});
+                        }}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>VIP Admin</span>
+                    </label>
                   )}
-                </select>
+                </div>
               </div>
 
-              {formData.role !== 'admin' && formData.role !== 'vip-admin' && (
+              {!formData.roles.includes('admin') && !formData.roles.includes('vip-admin') && (
                 <div className="form-group mb-2">
                   <label className="input-label flex-row gap-2" style={{ color: 'var(--danger)' }}>
                     <Shield size={16} /> Phân quyền (Chặn truy cập trang)
