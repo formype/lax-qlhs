@@ -90,10 +90,6 @@ export function NotificationModal({ isOpen, onClose, notification }) {
                     <span className="font-medium text-danger">{data.violationName}</span>
                   </div>
                   <div className="info-row">
-                    <span className="text-muted">Điểm trừ:</span>
-                    <span className="font-medium text-danger">-{data.points}</span>
-                  </div>
-                  <div className="info-row">
                     <span className="text-muted"><User size={16} className="inline mr-1"/> Người ghi nhận:</span>
                     <span className="font-medium text-dark">{data.createdBy || 'Hệ thống'}</span>
                   </div>

@@ -270,7 +270,6 @@ export function AddViolation() {
           className: formData.tenlop,
           date: formData.ngayvipham,
           violationName: finalViolationType,
-          points: isCustomSelected ? Math.abs(parseInt(customPoints) || 0) : Math.abs(selectedViolation?.points || 0),
           createdBy: createdBy
         }
       );
@@ -289,7 +288,6 @@ export function AddViolation() {
         }));
         setEvidenceList([]);
         setCustomViolation('');
-        setCustomPoints('');
         setIsCustomSelected(false);
       }, 2000);
     } else {
