@@ -168,3 +168,32 @@
 body.dark .notification-item.unread {
   background: rgba(99, 102, 241, 0.1);
 }
+
+.notification-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-app);
+  display: flex;
+  justify-content: center;
+}
+
+.mark-all-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.mark-all-btn:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}

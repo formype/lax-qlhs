@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Clock } from 'lucide-react';
-import { listenToNotifications, markNotificationAsRead } from '../../lib/firebase';
+import { useNavigate } from 'react-router-dom';
+import { listenToNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
@@ -10,6 +11,7 @@ import './Header.css';
 
 export function Header({ title }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -98,6 +100,23 @@ export function Header({ title }) {
     await markNotificationAsRead(notifId, user.id);
   };
 
+  const handleMarkAllAsRead = async () => {
+    await markAllNotificationsAsRead(user.id);
+  };
+
+  const handleNotificationClick = async (notif) => {
+    // 1. Mark as read
+    if (!notif.readBy?.includes(user.id)) {
+      await markNotificationAsRead(notif.id, user.id);
+    }
+    // 2. Close dropdown
+    setShowDropdown(false);
+    // 3. Navigate if it has a recordId
+    if (notif.data?.recordId && notif.data?.type === 'attendance_approval') {
+      navigate('/attendance-search', { state: { openRecordId: notif.data.recordId } });
+    }
+  };
+
   const formatTime = (ts) => {
     if (!ts) return '';
     try {
@@ -135,7 +154,11 @@ export function Header({ title }) {
                   notifications.map(notif => {
                     const isRead = notif.readBy?.includes(user.id);
                     return (
-                      <div key={notif.id} className={`notification-item ${isRead ? 'read' : 'unread'}`}>
+                      <div 
+                        key={notif.id} 
+                        className={`notification-item ${isRead ? 'read' : 'unread'} cursor-pointer`}
+                        onClick={() => handleNotificationClick(notif)}
+                      >
                         <div className="notification-content">
                           <p>{notif.message}</p>
                           <span className="notification-time">
@@ -157,6 +180,13 @@ export function Header({ title }) {
                   })
                 )}
               </div>
+              {unreadCount > 0 && (
+                <div className="notification-footer">
+                  <button className="mark-all-btn" onClick={handleMarkAllAsRead}>
+                    <Check size={16} className="mr-1" /> Đánh dấu đã đọc toàn bộ
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

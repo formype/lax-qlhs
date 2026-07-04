@@ -733,3 +733,33 @@ export const markNotificationAsRead = async (notificationId, userId) => {
     return false;
   }
 };
+
+export const markAllNotificationsAsRead = async (userId) => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.NOTIFICATIONS),
+      limit(100) // we'll just update recent ones for simplicity, or we can fetch all where readBy doesn't contain userId
+    );
+    const snap = await getDocs(q);
+    let batch = writeBatch(db);
+    let count = 0;
+    
+    snap.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (!data.readBy || !data.readBy.includes(userId)) {
+        batch.update(docSnap.ref, {
+          readBy: arrayUnion(userId)
+        });
+        count++;
+      }
+    });
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+    return true;
+  } catch (error) {
+    console.error("Lỗi khi đánh dấu đã đọc toàn bộ:", error);
+    return false;
+  }
+};

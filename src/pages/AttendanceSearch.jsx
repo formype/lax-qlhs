@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardBody } from '../components/ui/Card';
@@ -44,6 +45,9 @@ export function AttendanceSearch() {
   const isGiaovienOnly = user?.role?.includes('giaovien') && !user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && !user?.role?.includes('giamthi');
   const [teacherClass, setTeacherClass] = useState(null);
   const [teacherStudents, setTeacherStudents] = useState([]);
+
+  const location = useLocation();
+  const navigate = useNavigate();
   
   const [statusFilter, setStatusFilter] = useState('absent'); // all, present, absent
   const [sessionFilter, setSessionFilter] = useState('all'); // all, Sáng, Chiều
@@ -137,6 +141,18 @@ export function AttendanceSearch() {
       return { value: (i + 1).toString(), label };
     });
   }, [settings]);
+
+  // Handle openRecordId from navigation
+  useEffect(() => {
+    if (location.state?.openRecordId && attendanceData.length > 0) {
+      const recordToOpen = attendanceData.find(item => item.id === location.state.openRecordId);
+      if (recordToOpen) {
+        handleOpenDetail(recordToOpen);
+        // Clear state so it doesn't reopen on refresh
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [location.state?.openRecordId, attendanceData, navigate, location.pathname]);
 
   // Filtering Logic
   const filteredData = useMemo(() => {
@@ -293,7 +309,8 @@ export function AttendanceSearch() {
       if (isGiaovienOnly) {
         createNotification(
           `Giáo viên ${user?.fullName || user?.username} đã duyệt phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}.`,
-          ['admin', 'vip-admin']
+          ['admin', 'vip-admin'],
+          { type: 'attendance_approval', recordId: selectedRecord.id }
         );
       }
       setAttendanceData(prev => prev.map(item => {
