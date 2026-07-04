@@ -700,7 +700,6 @@ export const createNotification = async (message, targetRoles, data = {}) => {
 export const listenToNotifications = (userRoles, callback) => {
   const q = query(
     collection(db, COLLECTIONS.NOTIFICATIONS),
-    where("targetRoles", "array-contains-any", userRoles),
     orderBy("createdAt", "desc"),
     limit(50)
   );
@@ -708,7 +707,11 @@ export const listenToNotifications = (userRoles, callback) => {
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const notifications = [];
     snapshot.forEach((doc) => {
-      notifications.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      // Filter client-side to avoid Firestore composite index requirement
+      if (data.targetRoles && data.targetRoles.some(r => userRoles.includes(r))) {
+        notifications.push({ id: doc.id, ...data });
+      }
     });
     callback(notifications);
   }, (error) => {
