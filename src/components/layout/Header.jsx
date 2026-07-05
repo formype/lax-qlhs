@@ -137,9 +137,9 @@ export function Header({ title }) {
 
   return (
     <header className="app-header glass">
-      <div className="flex items-center gap-2">
-        <img src="/school-logo.png" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-        <div className="header-title" style={{ marginLeft: '4px' }}>{title}</div>
+      <div className="flex items-center gap-2" style={{ height: '100%' }}>
+        <img src="/favicon.svg" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', display: 'block' }} />
+        <div className="header-title" style={{ marginLeft: '4px', lineHeight: 1, display: 'flex', alignItems: 'center' }}>{title}</div>
       </div>
       
       {user && (user.role.includes('admin') || user.role.includes('vip-admin') || (user.role.includes('giaovien') && user.teacherClass)) && (
