@@ -115,3 +115,33 @@ body.dark .modern-table tr:hover td {
   padding: 4px 10px;
   font-size: 0.8rem;
 }
+
+@media (max-width: 767px) {
+  .modern-table th,
+  .modern-table td {
+    padding: 6px 4px; /* Reduce padding significantly */
+    font-size: 0.7rem; /* Reduce font size */
+  }
+
+  .modern-table th {
+    font-size: 0.65rem;
+    letter-spacing: 0;
+  }
+
+  /* Hide Ngày and Buổi columns on mobile portrait */
+  .modern-table th:nth-child(3),
+  .modern-table td:nth-child(3),
+  .modern-table th:nth-child(4),
+  .modern-table td:nth-child(4) {
+    display: none;
+  }
+
+  .attendance-status-label {
+    font-size: 0.7rem;
+  }
+  
+  .table-badge {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+  }
+}
