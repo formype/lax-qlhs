@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { fetchStudents, fetchClasses, deleteStudent, updateStudent } from '../lib/firebase';
-import { UserCircle, Users, Edit, Trash2, X } from 'lucide-react';
+import { UserCircle, Users, Edit, Trash2, X, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Input, Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -16,7 +16,9 @@ export function StudentList() {
   const [filterClass, setFilterClass] = useState('');
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-
+  const isAdmin = user?.role?.includes('admin') || user?.role?.includes('vip-admin');
+  const isGiaoVienOnly = user?.role?.includes('giaovien') && !isAdmin;
+  const teacherClass = user?.teacherClass;
   // Edit Modal State
   const [editingStudent, setEditingStudent] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -68,6 +70,9 @@ export function StudentList() {
   // Filter students locally
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
+      if (isGiaoVienOnly) {
+        return s.tenlop === teacherClass;
+      }
       if (filterGrade && s.khoi !== filterGrade && !s.tenlop?.startsWith(filterGrade)) {
         // Fallback: If student doesn't have 'khoi' field, we guess from 'tenlop' prefix (e.g. 10A1 -> starts with 10)
         return false;
@@ -75,7 +80,7 @@ export function StudentList() {
       if (filterClass && s.tenlop !== filterClass) return false;
       return true;
     });
-  }, [students, filterGrade, filterClass]);
+  }, [students, filterGrade, filterClass, isGiaoVienOnly, teacherClass]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xoá học sinh này? Tất cả dữ liệu liên quan sẽ bị mất.')) {
@@ -141,18 +146,27 @@ export function StudentList() {
           </div>
           
           <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
-            <Select
-              value={filterGrade}
-              onChange={handleGradeChange}
-              options={gradeOptions}
-              className="filter-select"
-            />
-            <Select
-              value={filterClass}
-              onChange={(e) => setFilterClass(e.target.value)}
-              options={classOptions}
-              className="filter-select"
-            />
+            {!isGiaoVienOnly && (
+              <>
+                <Select
+                  value={filterGrade}
+                  onChange={handleGradeChange}
+                  options={gradeOptions}
+                  className="filter-select"
+                />
+                <Select
+                  value={filterClass}
+                  onChange={(e) => setFilterClass(e.target.value)}
+                  options={classOptions}
+                  className="filter-select"
+                />
+              </>
+            )}
+            {isGiaoVienOnly && (
+              <div className="text-primary font-medium flex items-center">
+                Lớp chủ nhiệm: {teacherClass || 'Chưa phân công'}
+              </div>
+            )}
           </div>
         </div>
 
@@ -178,9 +192,9 @@ export function StudentList() {
                   </div>
                   <div className="student-actions">
                     <button className="action-btn edit-btn" onClick={() => openEditModal(s)}>
-                      <Edit size={16} />
+                      {isGiaoVienOnly ? <Eye size={16} /> : <Edit size={16} />}
                     </button>
-                    {(user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
+                    {isAdmin && (
                       <button className="action-btn delete-btn" onClick={() => handleDelete(s.id)}>
                         <Trash2 size={16} />
                       </button>
@@ -197,7 +211,7 @@ export function StudentList() {
         <div className="modal-overlay" onClick={() => setEditingStudent(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Sửa Thông Tin Học Sinh</h3>
+              <h3>{isGiaoVienOnly ? 'Chi Tiết Thông Tin Học Sinh' : 'Sửa Thông Tin Học Sinh'}</h3>
               <button className="close-btn" onClick={() => setEditingStudent(null)}>
                 <X size={20} />
               </button>
@@ -208,18 +222,29 @@ export function StudentList() {
                   label="MÃ HỌC SINH *" 
                   value={editForm.mahs} 
                   onChange={e => setEditForm({...editForm, mahs: e.target.value})} 
+                  disabled={isGiaoVienOnly}
                 />
                 <Input 
                   label="HỌ VÀ TÊN *" 
                   value={editForm.hoten} 
                   onChange={e => setEditForm({...editForm, hoten: e.target.value})} 
+                  disabled={isGiaoVienOnly}
                 />
                 <div className="input-group full-width">
                   <label className="input-label">NGÀY SINH</label>
-                  <DayPicker 
-                    value={editForm.ngaysinh} 
-                    onChange={v => setEditForm({...editForm, ngaysinh: v})} 
-                  />
+                  {isGiaoVienOnly ? (
+                    <div style={{ pointerEvents: 'none' }}>
+                      <DayPicker 
+                        value={editForm.ngaysinh} 
+                        onChange={v => {}} 
+                      />
+                    </div>
+                  ) : (
+                    <DayPicker 
+                      value={editForm.ngaysinh} 
+                      onChange={v => setEditForm({...editForm, ngaysinh: v})} 
+                    />
+                  )}
                 </div>
                 <Select
                   label="GIỚI TÍNH"
@@ -230,12 +255,14 @@ export function StudentList() {
                     { value: 'Nam', label: 'Nam' },
                     { value: 'Nữ', label: 'Nữ' }
                   ]}
+                  disabled={isGiaoVienOnly}
                 />
                 <Select
                   label="KHỐI *"
                   value={editForm.khoi}
                   onChange={e => setEditForm({...editForm, khoi: e.target.value, tenlop: ''})}
                   options={gradeOptions}
+                  disabled={isGiaoVienOnly}
                 />
                 <Select
                   label="LỚP *"
@@ -245,6 +272,7 @@ export function StudentList() {
                     { value: '', label: '-- Chọn lớp --' },
                     ...classes.filter(c => String(c.khoi) === String(editForm.khoi)).map(c => ({ value: c.tenlop, label: c.tenlop }))
                   ]}
+                  disabled={isGiaoVienOnly}
                 />
               </div>
               <div className="input-group full-width mt-3">
@@ -254,6 +282,7 @@ export function StudentList() {
                   rows="2" 
                   value={editForm.diachi}
                   onChange={e => setEditForm({...editForm, diachi: e.target.value})}
+                  disabled={isGiaoVienOnly}
                 ></textarea>
               </div>
               <div className="input-group full-width mt-3">
@@ -262,11 +291,12 @@ export function StudentList() {
                   value={editForm.lienhe}
                   onChange={e => setEditForm({...editForm, lienhe: e.target.value})}
                   hideLabel
+                  disabled={isGiaoVienOnly}
                 />
               </div>
               <div className="modal-footer">
-                <Button variant="outline" type="button" onClick={() => setEditingStudent(null)}>Huỷ</Button>
-                <Button type="submit">Lưu Thay Đổi</Button>
+                <Button variant="outline" type="button" onClick={() => setEditingStudent(null)}>{isGiaoVienOnly ? 'Đóng' : 'Huỷ'}</Button>
+                {!isGiaoVienOnly && <Button type="submit">Lưu Thay Đổi</Button>}
               </div>
             </form>
           </div>
