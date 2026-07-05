@@ -95,6 +95,7 @@ export function Features() {
         {FEATURE_SECTIONS.map((section) => {
           const isAdmin = user?.role?.includes('admin') || user?.role?.includes('vip-admin');
           const isGiamthi = user?.role?.includes('giamthi');
+          const isGiaovien = user?.role?.includes('giaovien');
           if (section.title === 'Nhập thông tin' && !isAdmin && !isGiamthi) {
             return null;
           }
@@ -108,7 +109,11 @@ export function Features() {
               {section.items.map((item) => {
                 if (!isAdmin && !isGiamthi && (
                   item.path === '/add' || 
-                  item.path === '/attendance' ||
+                  item.path === '/attendance'
+                )) {
+                  return null;
+                }
+                if (!isAdmin && !isGiamthi && !isGiaovien && (
                   item.path === '/student-list'
                 )) {
                   return null;
