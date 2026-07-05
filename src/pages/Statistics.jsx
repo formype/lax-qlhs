@@ -463,7 +463,7 @@ export function Statistics() {
                      { value: 'month', label: 'Theo tháng' },
                      { value: 'semester', label: 'Theo học kỳ' },
                    ]}
-                   className="filter-select flex-1"
+                   className="w-full flex-1"
                  />
                  {timeFilterType === 'day' && (
                    <div className="date-picker-wrapper flex-1" onClick={() => dateInputRef.current?.showPicker()}>
@@ -482,7 +482,7 @@ export function Statistics() {
                      value={timeValueWeek}
                      onChange={(e) => setTimeValueWeek(e.target.value)}
                      options={weekOptions}
-                     className="filter-select flex-1"
+                     className="w-full flex-1"
                    />
                  )}
                  {timeFilterType === 'month' && (
@@ -505,7 +505,7 @@ export function Statistics() {
                        { value: '1', label: 'Học kỳ 1' },
                        { value: '2', label: 'Học kỳ 2' },
                      ]}
-                     className="filter-select flex-1"
+                     className="w-full flex-1"
                    />
                  )}
                </div>
@@ -522,7 +522,7 @@ export function Statistics() {
                        { value: '', label: 'Tất cả học sinh trong lớp' },
                        ...students.filter(s => s.tenlop === teacherClass).map(s => ({ value: s.mahs, label: `${s.mahs} - ${s.hoten}` }))
                      ]}
-                     className="filter-select flex-1"
+                     className="w-full flex-1"
                    />
                  ) : (
                    <>
@@ -538,14 +538,14 @@ export function Statistics() {
                          { value: 'grade', label: 'Theo khối' },
                          { value: 'class', label: 'Theo lớp' }
                        ]}
-                       className="filter-select flex-1"
+                       className="w-full flex-1"
                      />
                      {targetFilterType === 'grade' && (
                        <Select
                          value={targetValueGrade}
                          onChange={(e) => setTargetValueGrade(e.target.value)}
                          options={[{ value: '', label: 'Khối...' }, ...gradeOptions]}
-                         className="filter-select flex-1"
+                         className="w-full flex-1"
                        />
                      )}
                      {targetFilterType === 'class' && (
@@ -553,7 +553,7 @@ export function Statistics() {
                          value={targetValueClass}
                          onChange={(e) => setTargetValueClass(e.target.value)}
                          options={[{ value: '', label: 'Lớp...' }, ...classOptions]}
-                         className="filter-select flex-1"
+                         className="w-full flex-1"
                        />
                      )}
                      <div className="search-input-wrapper flex-1 min-w-[200px]">
@@ -582,7 +582,7 @@ export function Statistics() {
                      { value: 'absent_p', label: 'Vắng có phép' },
                      { value: 'absent_kp', label: 'Vắng không phép' }
                    ]}
-                   className="filter-select w-full"
+                   className="w-full"
                  />
                </div>
              )}
@@ -599,7 +599,7 @@ export function Statistics() {
                      { value: 'Việc riêng', label: 'Việc riêng' },
                      { value: 'absent_no_reason', label: 'Không có lý do (Không phép)' }
                    ]}
-                   className="filter-select w-full"
+                   className="w-full"
                  />
                </div>
              )}
@@ -615,7 +615,7 @@ export function Statistics() {
                      { value: 'Sáng', label: 'Buổi Sáng' },
                      { value: 'Chiều', label: 'Buổi Chiều' }
                    ]}
-                   className="filter-select w-full"
+                   className="w-full"
                  />
                </div>
              )}
@@ -630,7 +630,7 @@ export function Statistics() {
                      { value: 'all', label: 'Tất cả các lỗi' },
                      ...violationTypes.map(t => ({ value: t.tenloai, label: t.tenloai }))
                    ]}
-                   className="filter-select w-full"
+                   className="w-full"
                  />
                </div>
              )}
