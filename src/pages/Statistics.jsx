@@ -959,21 +959,21 @@ export function Statistics() {
       {showModal && (
         <div className="stats-modal-overlay" onClick={(e) => { if (e.target.classList.contains('stats-modal-overlay')) setShowModal(false) }}>
           <div className="stats-modal-content">
-            <div className="stats-modal-header flex justify-between items-center">
+            <div className="stats-modal-header">
               <h2 className="stats-modal-title">{modalTitle}</h2>
-              <div className="flex gap-2 items-center">
-                <button className="btn-export pdf !py-1 !px-2 !text-xs" onClick={exportModalPDF}>
-                  <FileText size={14} /> Xuất PDF
-                </button>
-                <button className="btn-export excel !py-1 !px-2 !text-xs" onClick={exportModalExcel}>
-                  <Download size={14} /> Xuất Excel
-                </button>
-                <button className="stats-modal-close ml-2" onClick={() => setShowModal(false)}>
-                  <X size={24} />
-                </button>
-              </div>
+              <button className="stats-modal-close" onClick={() => setShowModal(false)}>
+                <X size={24} />
+              </button>
             </div>
             <div className="stats-modal-body">
+              <div className="flex justify-end gap-3 mb-4">
+                <button className="btn-export pdf" onClick={exportModalPDF} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+                  <FileText size={16} /> Xuất PDF
+                </button>
+                <button className="btn-export excel" onClick={exportModalExcel} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+                  <Download size={16} /> Xuất Excel
+                </button>
+              </div>
               <div className="stats-table-card">
                  <div className="overflow-x-auto">
                     {modalType?.startsWith('attendance_') ? (
