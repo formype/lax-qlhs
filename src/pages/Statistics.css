@@ -127,7 +127,7 @@
 /* Stats Cards Summary (Matching Image 2 exactly) */
 .stats-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }

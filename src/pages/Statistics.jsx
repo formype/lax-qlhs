@@ -256,33 +256,124 @@ export function Statistics() {
     });
   }, [violations, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, timeValueSemester, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, typeFilter, isGiaovienOnly, teacherClass]);
 
+  const formatAbsenceDetails = (absences) => {
+    if (!absences || absences.length === 0) return '';
+    const getDays = (d) => Math.floor(parse(d, 'yyyy-MM-dd', new Date()).getTime() / 86400000);
+    const formatD = (d) => format(parse(d, 'yyyy-MM-dd', new Date()), 'd/M/yyyy');
+    
+    const sorted = [...absences].sort((a,b) => {
+      const da = getDays(a.date);
+      const db = getDays(b.date);
+      if (da !== db) return da - db;
+      return (a.session === 'Sáng' ? 0 : 1) - (b.session === 'Sáng' ? 0 : 1);
+    }).map(a => ({ 
+      ...a, 
+      day: getDays(a.date),
+      absIndex: getDays(a.date) * 2 + (a.session === 'Sáng' ? 0 : 1),
+      dateStr: formatD(a.date)
+    }));
+
+    const blocks = [];
+    let i = 0;
+    while(i < sorted.length) {
+      let j = i;
+      while (j + 1 < sorted.length && sorted[j+1].absIndex === sorted[j].absIndex + 1) {
+         j++;
+      }
+      blocks.push(sorted.slice(i, j + 1));
+      i = j + 1;
+    }
+
+    const finalResults = [];
+    let k = 0;
+    while(k < blocks.length) {
+      const block = blocks[k];
+      if (block.length === 1) {
+         let m = k;
+         while (m + 1 < blocks.length 
+                && blocks[m+1].length === 1
+                && blocks[m+1][0].session === block[0].session
+                && blocks[m+1][0].day === blocks[m][0].day + 1) {
+            m++;
+         }
+         if (m > k) {
+            finalResults.push(`Các buổi ${block[0].session.toLowerCase()} từ ${block[0].dateStr} đến ${blocks[m][0].dateStr}`);
+            k = m + 1;
+            continue;
+         }
+      }
+      
+      if (block.length >= 3) {
+         finalResults.push(`Từ ${block[0].session.toLowerCase()} ${block[0].dateStr} đến ${block[block.length-1].session.toLowerCase()} ${block[block.length-1].dateStr}`);
+      } else if (block.length === 2) {
+         if (block[0].day === block[1].day) {
+            finalResults.push(`Cả ngày ${block[0].dateStr}`);
+         } else {
+            finalResults.push(`Chiều ${block[0].dateStr}, Sáng ${block[1].dateStr}`);
+         }
+      } else {
+         finalResults.push(`${block[0].session} ${block[0].dateStr}`);
+      }
+      k++;
+    }
+    return finalResults.join(', ');
+  };
+
   const attendanceStats = useMemo(() => {
      let present = 0;
      let absent_p = 0;
      let absent_kp = 0;
+     let absent_benh = 0;
+     let absent_viecrieng = 0;
      
      const studentMap = {};
 
      filteredAttendance.forEach(a => {
         if (a.status === 'present') present++;
-        else if (a.status === 'absent_p') absent_p++;
+        else if (a.status === 'absent_p') {
+           absent_p++;
+           if (a.reason === 'Bệnh') absent_benh++;
+           else if (a.reason === 'Việc riêng') absent_viecrieng++;
+        }
         else if (a.status === 'absent_kp') absent_kp++;
 
         if (!studentMap[a.studentId]) {
-           studentMap[a.studentId] = { mahs: a.mahs, hoten: a.hoten, className: a.className, present: 0, absent_p: 0, absent_kp: 0, total_absent: 0 };
+           studentMap[a.studentId] = { 
+              mahs: a.mahs, hoten: a.hoten, className: a.className, 
+              present: 0, absent_p: 0, absent_kp: 0, absent_benh: 0, absent_viecrieng: 0, total_absent: 0,
+              absences: []
+           };
         }
-        if (a.status === 'present') studentMap[a.studentId].present++;
-        else if (a.status === 'absent_p') { studentMap[a.studentId].absent_p++; studentMap[a.studentId].total_absent++; }
-        else if (a.status === 'absent_kp') { studentMap[a.studentId].absent_kp++; studentMap[a.studentId].total_absent++; }
+        const s = studentMap[a.studentId];
+        
+        if (a.status === 'present') s.present++;
+        else {
+           if (a.status === 'absent_p') {
+              s.absent_p++;
+              if (a.reason === 'Bệnh') s.absent_benh++;
+              else if (a.reason === 'Việc riêng') s.absent_viecrieng++;
+           } else if (a.status === 'absent_kp') {
+              s.absent_kp++;
+           }
+           s.total_absent++;
+           s.absences.push({ date: a.date, session: a.session, status: a.status, reason: a.reason });
+        }
      });
 
-     const studentList = Object.values(studentMap).sort((a,b) => b.total_absent - a.total_absent).filter(s => s.total_absent > 0);
+     const studentList = Object.values(studentMap).map(s => ({
+       ...s,
+       absentDetails_p: formatAbsenceDetails(s.absences.filter(x => x.status === 'absent_p')),
+       absentDetails_kp: formatAbsenceDetails(s.absences.filter(x => x.status === 'absent_kp')),
+       absentDetails_benh: formatAbsenceDetails(s.absences.filter(x => x.reason === 'Bệnh')),
+       absentDetails_viecrieng: formatAbsenceDetails(s.absences.filter(x => x.reason === 'Việc riêng'))
+     }));
+     
      const pieData = [
         { name: 'Có mặt', value: present },
         { name: 'Vắng có phép', value: absent_p },
         { name: 'Vắng không phép', value: absent_kp }
      ];
-     return { present, absent_p, absent_kp, studentList, pieData };
+     return { present, absent_p, absent_kp, absent_benh, absent_viecrieng, studentList, pieData };
   }, [filteredAttendance]);
 
   const violationStats = useMemo(() => {
@@ -587,7 +678,7 @@ export function Statistics() {
                </div>
              )}
 
-             {mode === 'attendance' && (
+             {mode === 'attendance' && (statusFilter === 'all' || statusFilter === 'absent_p') && (
                <div className="filter-group-vertical">
                  <label>Lý do vắng</label>
                  <Select
@@ -597,7 +688,7 @@ export function Statistics() {
                      { value: 'all', label: 'Tất cả lý do' },
                      { value: 'Bệnh', label: 'Bệnh' },
                      { value: 'Việc riêng', label: 'Việc riêng' },
-                     { value: 'absent_no_reason', label: 'Không có lý do (Không phép)' }
+                     ...(statusFilter === 'all' ? [{ value: 'absent_no_reason', label: 'Không có lý do (Không phép)' }] : [])
                    ]}
                    className="w-full"
                  />
@@ -640,24 +731,44 @@ export function Statistics() {
         {!loading && mode === 'attendance' && (
            <>
               <div className="stats-summary-grid">
-                 <div className="premium-stat-card" onClick={() => { setModalType('attendance'); setModalTitle('Học sinh đi học'); setShowModal(true); }}>
-                    <div className="stat-left-col">
-                       <span className="stat-title">Tổng đi học</span>
-                       <span className="stat-value">{attendanceStats.present}</span>
-                    </div>
-                 </div>
-                 <div className="premium-stat-card" onClick={() => { setModalType('attendance'); setModalTitle('Học sinh vắng có phép'); setShowModal(true); }}>
-                    <div className="stat-left-col">
-                       <span className="stat-title">Vắng có phép</span>
-                       <span className="stat-value">{attendanceStats.absent_p}</span>
-                    </div>
-                 </div>
-                 <div className="premium-stat-card" onClick={() => { setModalType('attendance'); setModalTitle('Học sinh vắng không phép'); setShowModal(true); }}>
-                    <div className="stat-left-col">
-                       <span className="stat-title">Vắng không phép</span>
-                       <span className="stat-value">{attendanceStats.absent_kp}</span>
-                    </div>
-                 </div>
+                 {(statusFilter === 'all' || statusFilter === 'present') && (
+                   <div className="premium-stat-card" onClick={() => { setModalType('attendance_present'); setModalTitle('Học sinh đi học'); setShowModal(true); }}>
+                      <div className="stat-left-col">
+                         <span className="stat-title">Tổng đi học</span>
+                         <span className="stat-value">{attendanceStats.present}</span>
+                      </div>
+                   </div>
+                 )}
+                 {(statusFilter === 'all' || statusFilter === 'absent_p') && (
+                   <>
+                     <div className="premium-stat-card" onClick={() => { setModalType('attendance_absent_p'); setModalTitle('Học sinh vắng có phép'); setShowModal(true); }}>
+                        <div className="stat-left-col">
+                           <span className="stat-title">Vắng có phép</span>
+                           <span className="stat-value">{attendanceStats.absent_p}</span>
+                        </div>
+                     </div>
+                     <div className="premium-stat-card" onClick={() => { setModalType('attendance_absent_benh'); setModalTitle('Học sinh vắng vì bệnh'); setShowModal(true); }}>
+                        <div className="stat-left-col">
+                           <span className="stat-title">Vắng vì bệnh</span>
+                           <span className="stat-value">{attendanceStats.absent_benh}</span>
+                        </div>
+                     </div>
+                     <div className="premium-stat-card" onClick={() => { setModalType('attendance_absent_viecrieng'); setModalTitle('Học sinh vắng việc riêng'); setShowModal(true); }}>
+                        <div className="stat-left-col">
+                           <span className="stat-title">Vắng vì việc riêng</span>
+                           <span className="stat-value">{attendanceStats.absent_viecrieng}</span>
+                        </div>
+                     </div>
+                   </>
+                 )}
+                 {(statusFilter === 'all' || statusFilter === 'absent_kp') && (
+                   <div className="premium-stat-card" onClick={() => { setModalType('attendance_absent_kp'); setModalTitle('Học sinh vắng không phép'); setShowModal(true); }}>
+                      <div className="stat-left-col">
+                         <span className="stat-title">Vắng không phép</span>
+                         <span className="stat-value">{attendanceStats.absent_kp}</span>
+                      </div>
+                   </div>
+                 )}
               </div>
 
               <div className="stats-charts-grid">
@@ -785,49 +896,56 @@ export function Statistics() {
             <div className="stats-modal-body">
               <div className="stats-table-card">
                  <div className="overflow-x-auto">
-                    {modalType === 'attendance' ? (
+                    {modalType?.startsWith('attendance_') ? (() => {
+                        let listToRender = [];
+                        if (modalType === 'attendance_present') listToRender = attendanceStats.studentList.filter(s => s.present > 0);
+                        else if (modalType === 'attendance_absent_p') listToRender = attendanceStats.studentList.filter(s => s.absent_p > 0);
+                        else if (modalType === 'attendance_absent_kp') listToRender = attendanceStats.studentList.filter(s => s.absent_kp > 0);
+                        else if (modalType === 'attendance_absent_benh') listToRender = attendanceStats.studentList.filter(s => s.absent_benh > 0);
+                        else if (modalType === 'attendance_absent_viecrieng') listToRender = attendanceStats.studentList.filter(s => s.absent_viecrieng > 0);
+                        
+                        return (
+                          <table className="premium-table">
+                             <thead>
+                                <tr>
+                                   <th style={{width: '60px'}}>STT</th>
+                                   <th>Họ và tên</th>
+                                   <th style={{width: '100px'}}>Lớp</th>
+                                   {modalType === 'attendance_present' ? <th>Tổng số buổi đi học</th> : <th>Chi tiết vắng</th>}
+                                </tr>
+                             </thead>
+                             <tbody>
+                                {listToRender.length > 0 ? listToRender.map((s, idx) => (
+                                   <tr key={s.mahs}>
+                                      <td className="text-gray-500">{idx + 1}</td>
+                                      <td className="font-semibold text-gray-900">{s.hoten}</td>
+                                      <td><span className="badge-gray">{s.className}</span></td>
+                                      {modalType === 'attendance_present' ? (
+                                         <td className="font-bold text-gray-900 text-center">{s.present}</td>
+                                      ) : (
+                                         <td className="text-sm text-gray-700">
+                                            {modalType === 'attendance_absent_p' ? s.absentDetails_p :
+                                             modalType === 'attendance_absent_kp' ? s.absentDetails_kp :
+                                             modalType === 'attendance_absent_benh' ? s.absentDetails_benh :
+                                             modalType === 'attendance_absent_viecrieng' ? s.absentDetails_viecrieng : ''}
+                                         </td>
+                                      )}
+                                   </tr>
+                                )) : (
+                                   <tr>
+                                      <td colSpan="4" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
+                                   </tr>
+                                )}
+                             </tbody>
+                          </table>
+                        );
+                    })() : (
                         <table className="premium-table">
                            <thead>
                               <tr>
-                                 <th>STT</th>
-                                 <th>Mã HS</th>
+                                 <th style={{width: '60px'}}>STT</th>
                                  <th>Họ và tên</th>
-                                 <th>Lớp</th>
-                                 <th>Vắng CP</th>
-                                 <th>Vắng KP</th>
-                                 <th>Tổng vắng</th>
-                              </tr>
-                           </thead>
-                           <tbody>
-                              {attendanceStats.studentList.length > 0 ? attendanceStats.studentList.map((s, idx) => (
-                                 <tr key={s.mahs}>
-                                    <td className="text-gray-500">{idx + 1}</td>
-                                    <td className="font-medium text-gray-700">{s.mahs}</td>
-                                    <td className="font-semibold text-gray-900">{s.hoten}</td>
-                                    <td><span className="badge-gray">{s.className}</span></td>
-                                    <td>
-                                      {s.absent_p > 0 ? <span className="badge-yellow">{s.absent_p}</span> : '-'}
-                                    </td>
-                                    <td>
-                                      {s.absent_kp > 0 ? <span className="badge-red">{s.absent_kp}</span> : '-'}
-                                    </td>
-                                    <td className="font-bold text-gray-900">{s.total_absent}</td>
-                                 </tr>
-                              )) : (
-                                 <tr>
-                                    <td colSpan="7" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
-                                 </tr>
-                              )}
-                           </tbody>
-                        </table>
-                    ) : (
-                        <table className="premium-table">
-                           <thead>
-                              <tr>
-                                 <th>STT</th>
-                                 <th>Mã HS</th>
-                                 <th>Họ và tên</th>
-                                 <th>Lớp</th>
+                                 <th style={{width: '100px'}}>Lớp</th>
                                  <th>Số lần VP</th>
                                  <th>Tổng điểm trừ</th>
                               </tr>
@@ -836,15 +954,14 @@ export function Statistics() {
                               {violationStats.studentList.length > 0 ? violationStats.studentList.map((s, idx) => (
                                  <tr key={s.mahs}>
                                     <td className="text-gray-500">{idx + 1}</td>
-                                    <td className="font-medium text-gray-700">{s.mahs}</td>
                                     <td className="font-semibold text-gray-900">{s.hoten}</td>
                                     <td><span className="badge-gray">{s.className}</span></td>
-                                    <td><span className="badge-gray">{s.count}</span></td>
-                                    <td><span className="badge-red">-{s.points}</span></td>
+                                    <td className="text-center"><span className="badge-gray">{s.count}</span></td>
+                                    <td className="text-center"><span className="badge-red">-{s.points}</span></td>
                                  </tr>
                               )) : (
                                  <tr>
-                                    <td colSpan="6" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
+                                    <td colSpan="5" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
                                  </tr>
                               )}
                            </tbody>
