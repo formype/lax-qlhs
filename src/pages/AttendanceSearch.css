@@ -128,12 +128,9 @@ body.dark .modern-table tr:hover td {
     letter-spacing: 0;
   }
 
-  /* Hide Ngày and Buổi columns on mobile portrait */
-  .modern-table th:nth-child(3),
-  .modern-table td:nth-child(3),
-  .modern-table th:nth-child(4),
-  .modern-table td:nth-child(4) {
-    display: none;
+  /* Compact the time column */
+  .modern-table td:nth-child(3) {
+    padding: 4px;
   }
 
   .attendance-status-label {

@@ -654,8 +654,7 @@ export function AttendanceSearch() {
                   <tr>
                     <th>Họ tên</th>
                     <th>Lớp</th>
-                    <th>Ngày</th>
-                    <th>Buổi</th>
+                    <th>Thời gian</th>
                     <th>Trạng thái</th>
                     <th>Phép</th>
                     <th style={{ width: '80px', textAlign: 'center' }}>Chi tiết</th>
@@ -666,8 +665,12 @@ export function AttendanceSearch() {
                     <tr key={v.id}>
                       <td className="font-semibold text-dark">{v.hoten}</td>
                       <td><span className="class-badge-modern table-badge">{v.className}</span></td>
-                      <td className="font-medium">{v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : ''}</td>
-                      <td><span className="badge badge-secondary">{v.session}</span></td>
+                      <td>
+                        <div className="flex flex-col text-xs gap-1">
+                          <span className="font-medium whitespace-nowrap">{v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : ''}</span>
+                          <span className="badge badge-secondary" style={{ width: 'fit-content', padding: '2px 4px', fontSize: '0.65rem' }}>{v.session}</span>
+                        </div>
+                      </td>
                       <td>
                         {v.status.startsWith('absent') ? (
                           <span className="attendance-status-label absent inline-flex">
