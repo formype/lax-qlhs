@@ -966,11 +966,11 @@ export function Statistics() {
               </button>
             </div>
             <div className="stats-modal-body">
-              <div className="flex justify-end items-center gap-3 mb-4 pr-1">
-                <button className="btn-export pdf !py-1.5 !px-3 !text-sm shadow-sm" onClick={exportModalPDF}>
+              <div className="stats-export-actions" style={{ justifyContent: 'flex-end', marginBottom: '16px', marginRight: '4px' }}>
+                <button className="btn-export pdf" onClick={exportModalPDF} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
                   <FileText size={16} /> Xuất PDF
                 </button>
-                <button className="btn-export excel !py-1.5 !px-3 !text-sm shadow-sm" onClick={exportModalExcel}>
+                <button className="btn-export excel" onClick={exportModalExcel} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
                   <Download size={16} /> Xuất Excel
                 </button>
               </div>
