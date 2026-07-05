@@ -341,19 +341,26 @@ export const updateViolationStatus = async (violationId, newStatus) => {
 };
 
 // --- ATTENDANCE ---
-export const saveAttendance = async (date, session, className, attendanceData, createdBy = 'Hệ thống') => {
+export const saveAttendance = async (date, session, className, attendanceData, createdBy = 'Hệ thống', reasonsData = {}) => {
   try {
     const safeClassName = className.replace(/\//g, '-');
     const docId = `${safeClassName}_${date}_${session}`; // e.g. 10A1_2026-09-07_Sáng
     const docRef = doc(db, COLLECTIONS.ATTENDANCE, docId);
-    await setDoc(docRef, {
+    
+    const docData = {
       date,
       session,
       className,
       records: attendanceData, // Object mapping studentId -> status (present, absent)
       createdBy,
       updatedAt: serverTimestamp()
-    });
+    };
+    
+    if (Object.keys(reasonsData).length > 0) {
+      docData.reasons = reasonsData;
+    }
+
+    await setDoc(docRef, docData, { merge: true });
     return { success: true };
   } catch (error) {
     console.error("Error saving attendance:", error);
@@ -361,7 +368,7 @@ export const saveAttendance = async (date, session, className, attendanceData, c
   }
 };
 
-export const updateAttendanceStudent = async (date, session, className, studentId, newStatus, proofBase64, updatedBy = null) => {
+export const updateAttendanceStudent = async (date, session, className, studentId, newStatus, proofBase64, updatedBy = null, reason = null) => {
   try {
     const safeClassName = className.replace(/\//g, '-');
     const docId = `${safeClassName}_${date}_${session}`;
@@ -376,6 +383,9 @@ export const updateAttendanceStudent = async (date, session, className, studentI
     }
     if (updatedBy) {
       updates[`updatedBy.${studentId}`] = updatedBy;
+    }
+    if (reason) {
+      updates[`reasons.${studentId}`] = reason;
     }
     
     await updateDoc(docRef, updates);

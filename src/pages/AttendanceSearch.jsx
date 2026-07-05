@@ -24,7 +24,8 @@ export function AttendanceSearch() {
   
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [proofImage, setProofImage] = useState('');
+  const [proofImage, setProofImage] = useState(null);
+  const [updateReason, setUpdateReason] = useState('Việc riêng');
   const [isUpdating, setIsUpdating] = useState(false);
   const { user } = useAuth();
 
@@ -79,6 +80,7 @@ export function AttendanceSearch() {
               hoten: student.hoten || '',
               khoi: student.khoi || '',
               status: status,
+              reason: att.reasons ? att.reasons[studentId] : (status === 'absent_p' ? 'Việc riêng' : null),
               proofImage: att.proofs ? att.proofs[studentId] : null,
               createdBy: att.createdBy || 'Hệ thống',
               updatedBy: att.updatedBy ? att.updatedBy[studentId] : null,
@@ -303,12 +305,12 @@ export function AttendanceSearch() {
     if (!selectedRecord) return;
     setIsUpdating(true);
     const updaterName = user?.fullName || user?.username || 'Giáo viên';
-    const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage, updaterName);
+    const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage, updaterName, updateReason);
     setIsUpdating(false);
     if (result.success) {
       if (isGiaovienOnly) {
         createNotification(
-          `Giáo viên ${user?.fullName || user?.username} đã duyệt phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}.`,
+          `Giáo viên ${user?.fullName || user?.username} đã duyệt phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}. Lý do: ${updateReason}`,
           ['admin', 'vip-admin'],
           [], // targetClasses
           { 
@@ -317,6 +319,7 @@ export function AttendanceSearch() {
             studentName: selectedRecord.hoten,
             className: selectedRecord.className,
             status: 'absent_p',
+            reason: updateReason,
             date: selectedRecord.date,
             session: selectedRecord.session,
             proofImage: proofImage || selectedRecord.proofImage,
@@ -326,7 +329,7 @@ export function AttendanceSearch() {
       }
       setAttendanceData(prev => prev.map(item => {
         if (item.id === selectedRecord.id) {
-          return { ...item, status: 'absent_p', proofImage: proofImage, updatedBy: updaterName, updatedAt: { toMillis: () => Date.now() } };
+          return { ...item, status: 'absent_p', reason: updateReason, proofImage: proofImage, updatedBy: updaterName, updatedAt: { toMillis: () => Date.now() } };
         }
         return item;
       }));
@@ -404,7 +407,6 @@ export function AttendanceSearch() {
 
     doc.save(`BaoCaoChuyenCan_${format(new Date(), 'ddMMyyyy')}.pdf`);
   };
-
   const exportExcel = async () => {
     if (filteredData.length === 0) return;
 
@@ -421,7 +423,8 @@ export function AttendanceSearch() {
       { width: 15 }, // D: Ngày
       { width: 15 }, // E: Buổi
       { width: 20 }, // F: Trạng thái
-      { width: 30 }  // G: Ghi chú
+      { width: 20 }, // G: Lý do vắng
+      { width: 30 }  // H: Ghi chú
     ];
 
     // Row 1
@@ -431,7 +434,7 @@ export function AttendanceSearch() {
     cellA1.font = { name: 'Times New Roman', size: 13, bold: false };
     cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    worksheet.mergeCells('E1:G1');
+    worksheet.mergeCells('E1:H1');
     const cellE1 = worksheet.getCell('E1');
     cellE1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
     cellE1.font = { name: 'Times New Roman', size: 13, bold: true };
@@ -444,21 +447,21 @@ export function AttendanceSearch() {
     cellA2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
     cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    worksheet.mergeCells('E2:G2');
+    worksheet.mergeCells('E2:H2');
     const cellE2 = worksheet.getCell('E2');
     cellE2.value = "Độc lập - Tự do - Hạnh phúc";
-    cellE2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
+    cellE2.font = { name: 'Times New Roman', size: 14, bold: true, underline: true };
     cellE2.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 4: Title
-    worksheet.mergeCells('A4:G4');
+    worksheet.mergeCells('A4:H4');
     const cellA4 = worksheet.getCell('A4');
     cellA4.value = "DANH SÁCH THEO DÕI TÌNH HÌNH CHUYÊN CẦN CỦA HỌC SINH";
     cellA4.font = { name: 'Times New Roman', size: 16, bold: true };
     cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 6: Headers
-    const headers = ["STT", "Họ tên", "Lớp", "Ngày", "Buổi", "Trạng thái", "Ghi chú"];
+    const headers = ["STT", "Họ tên", "Lớp", "Ngày", "Buổi", "Trạng thái", "Lý do vắng", "Ghi chú"];
     const headerRow = worksheet.getRow(6);
     headerRow.values = headers;
     headerRow.font = { name: 'Times New Roman', size: 13, bold: true };
@@ -477,9 +480,9 @@ export function AttendanceSearch() {
     // Row 7+: Data
     filteredData.forEach((v, index) => {
       let statusStr = 'Có mặt';
-      let reasonStr = '';
-      if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonStr = 'Có phép (P)'; }
-      else if (v.status === 'absent_kp') { statusStr = 'Vắng'; reasonStr = 'Không phép (KP)'; }
+      let reasonTypeStr = '';
+      if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonTypeStr = 'Có phép (P)'; }
+      else if (v.status === 'absent_kp') { statusStr = 'Vắng'; reasonTypeStr = 'Không phép (KP)'; }
 
       const rowData = [
         index + 1,
@@ -488,7 +491,8 @@ export function AttendanceSearch() {
         v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : '',
         v.session || '',
         statusStr,
-        reasonStr
+        v.status === 'absent_p' ? (v.reason || 'Việc riêng') : reasonTypeStr,
+        '' // Ghi chú
       ];
       const row = worksheet.addRow(rowData);
       row.font = { name: 'Times New Roman', size: 13 };
@@ -500,7 +504,7 @@ export function AttendanceSearch() {
           bottom: { style: 'thin' },
           right: { style: 'thin' }
         };
-        if (colNumber === 7) {
+        if (colNumber === 8) {
           cell.alignment = { vertical: 'middle', wrapText: true };
         } else {
           cell.alignment = { vertical: 'middle' };
@@ -734,6 +738,12 @@ export function AttendanceSearch() {
                     {selectedRecord.status === 'present' ? 'Có mặt' : (selectedRecord.status === 'absent_p' ? 'Vắng có phép' : 'Vắng không phép')}
                   </span>
                 </div>
+                {selectedRecord.status === 'absent_p' && (
+                  <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
+                    <span className="text-muted">Lý do nghỉ:</span>
+                    <span className="font-medium text-dark">{selectedRecord.reason || 'Việc riêng'}</span>
+                  </div>
+                )}
                 <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
                   <span className="text-muted">Ghi nhận bởi:</span>
                   <span className="font-medium text-dark">{selectedRecord.createdBy || 'Hệ thống'}</span>
@@ -761,6 +771,19 @@ export function AttendanceSearch() {
                         <Upload size={16} className="mr-1" /> Tải ảnh lên
                         <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
                       </label>
+                    </div>
+
+                    <div className="flex-row justify-center mb-3 items-center">
+                      <span className="text-sm mr-2 text-dark font-medium">Lý do nghỉ:</span>
+                      <select 
+                        className="input-select text-sm p-1"
+                        style={{ width: 'auto', display: 'inline-block' }}
+                        value={updateReason}
+                        onChange={(e) => setUpdateReason(e.target.value)}
+                      >
+                        <option value="Việc riêng">Việc riêng</option>
+                        <option value="Bệnh">Bệnh</option>
+                      </select>
                     </div>
 
                     {proofImage && (

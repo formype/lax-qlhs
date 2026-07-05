@@ -25,6 +25,8 @@ export function Attendance() {
   const dateInputRef = React.useRef(null);
   const [attendance, setAttendance] = useState({});
   const attendanceRef = React.useRef({});
+  const [reasons, setReasons] = useState({});
+  const reasonsRef = React.useRef({});
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,6 +45,8 @@ export function Attendance() {
         setStudents([]);
         setAttendance({});
         attendanceRef.current = {};
+        setReasons({});
+        reasonsRef.current = {};
         return;
       }
 
@@ -56,15 +60,21 @@ export function Attendance() {
         setStudents(studentsData);
 
         const newAtt = {};
+        const newReasons = {};
         if (existingData && existingData.records) {
           studentsData.forEach(s => {
             newAtt[s.id] = existingData.records[s.id] || 'present';
+            if (existingData.reasons && existingData.reasons[s.id]) {
+              newReasons[s.id] = existingData.reasons[s.id];
+            }
           });
         } else {
           studentsData.forEach(s => { newAtt[s.id] = 'present'; });
         }
         setAttendance(newAtt);
         attendanceRef.current = newAtt;
+        setReasons(newReasons);
+        reasonsRef.current = newReasons;
       } catch (err) {
         console.error("Failed to load class data", err);
       }
@@ -96,13 +106,29 @@ export function Attendance() {
       attendanceRef.current = newState;
       return newState;
     });
+    if (isExcused) {
+      setReasons(prev => {
+        const newState = { ...prev, [studentId]: prev[studentId] || 'Việc riêng' };
+        reasonsRef.current = newState;
+        return newState;
+      });
+    }
+  };
+
+  const updateDetailReason = (studentId, reason) => {
+    setReasons(prev => {
+      const newState = { ...prev, [studentId]: reason };
+      reasonsRef.current = newState;
+      return newState;
+    });
   };
 
   const handleSave = async () => {
     if (!selectedClass || !date || students.length === 0) return;
     setSaving(true);
     const payload = attendanceRef.current;
-    const result = await saveAttendance(date, session, selectedClass, payload, user?.fullName || user?.username || 'Hệ thống');
+    const reasonsPayload = reasonsRef.current;
+    const result = await saveAttendance(date, session, selectedClass, payload, user?.fullName || user?.username || 'Hệ thống', reasonsPayload);
     setSaving(false);
     
     if (result.success) {
@@ -254,19 +280,33 @@ export function Attendance() {
                     
                     <div className="attendance-actions" onClick={e => e.stopPropagation()}>
                       {isAbsent && (
-                        <div className="absent-reason-group mr-3" onClick={e => e.stopPropagation()}>
-                          <button 
-                            className={`reason-btn ${isExcused ? 'active-p' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); setAbsentReason(s.id, true); }}
-                          >
-                            P
-                          </button>
-                          <button 
-                            className={`reason-btn ${!isExcused ? 'active-kp' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); setAbsentReason(s.id, false); }}
-                          >
-                            KP
-                          </button>
+                        <div className="absent-reason-group mr-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                          <div className="flex">
+                            <button 
+                              className={`reason-btn ${isExcused ? 'active-p' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); setAbsentReason(s.id, true); }}
+                            >
+                              Phép
+                            </button>
+                            <button 
+                              className={`reason-btn ${!isExcused ? 'active-kp' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); setAbsentReason(s.id, false); }}
+                            >
+                              K.Phép
+                            </button>
+                          </div>
+                          {isExcused && (
+                            <select 
+                              className="input-select text-xs p-1 h-auto min-h-0 ml-1"
+                              style={{ width: 'auto', display: 'inline-block' }}
+                              value={reasons[s.id] || 'Việc riêng'}
+                              onChange={(e) => { e.stopPropagation(); updateDetailReason(s.id, e.target.value); }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="Việc riêng">Việc riêng</option>
+                              <option value="Bệnh">Bệnh</option>
+                            </select>
+                          )}
                         </div>
                       )}
                       
