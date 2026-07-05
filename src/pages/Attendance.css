@@ -18,8 +18,9 @@
 .reason-btn {
   background-color: transparent;
   border: none;
-  padding: 4px 0;
-  width: 36px;
+  padding: 4px 8px;
+  width: auto;
+  min-width: 44px;
   display: flex;
   justify-content: center;
   align-items: center;

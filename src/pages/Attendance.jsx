@@ -280,8 +280,8 @@ export function Attendance() {
                     
                     <div className="attendance-actions" onClick={e => e.stopPropagation()}>
                       {isAbsent && (
-                        <div className="absent-reason-group mr-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                          <div className="flex">
+                        <div className="flex items-center gap-2 mr-3" onClick={e => e.stopPropagation()}>
+                          <div className="absent-reason-group flex items-center">
                             <button 
                               className={`reason-btn ${isExcused ? 'active-p' : ''}`}
                               onClick={(e) => { e.stopPropagation(); setAbsentReason(s.id, true); }}
@@ -297,8 +297,8 @@ export function Attendance() {
                           </div>
                           {isExcused && (
                             <select 
-                              className="input-select text-xs p-1 h-auto min-h-0 ml-1"
-                              style={{ width: 'auto', display: 'inline-block' }}
+                              className="input-select text-xs p-1 h-auto min-h-0"
+                              style={{ width: 'auto', display: 'inline-block', borderRadius: '12px' }}
                               value={reasons[s.id] || 'Việc riêng'}
                               onChange={(e) => { e.stopPropagation(); updateDetailReason(s.id, e.target.value); }}
                               onClick={(e) => e.stopPropagation()}
