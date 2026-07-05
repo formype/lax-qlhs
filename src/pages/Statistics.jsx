@@ -405,101 +405,180 @@ export function Statistics() {
      
      return { totalPoints, typeList, studentList, pieData };
   }, [filteredViolations]);
+  const listToRender = useMemo(() => {
+     if (!modalType) return [];
+     if (modalType === 'violation') return violationStats.studentList;
+     if (modalType === 'attendance_present') return attendanceStats.studentList.filter(s => s.present > 0);
+     if (modalType === 'attendance_absent_p') return attendanceStats.studentList.filter(s => s.absent_p > 0);
+     if (modalType === 'attendance_absent_kp') return attendanceStats.studentList.filter(s => s.absent_kp > 0);
+     if (modalType === 'attendance_absent_benh') return attendanceStats.studentList.filter(s => s.absent_benh > 0);
+     if (modalType === 'attendance_absent_viecrieng') return attendanceStats.studentList.filter(s => s.absent_viecrieng > 0);
+     return [];
+  }, [modalType, attendanceStats.studentList, violationStats.studentList]);
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
+  const exportModalPDF = async () => {
+    if (listToRender.length === 0) return;
+
+    const fetchFont = async (url) => {
+      const response = await fetch(url);
+      const buffer = await response.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    };
+
+    const regularBase64 = await fetchFont('/fonts/Tinos-Regular.ttf');
+    const boldBase64 = await fetchFont('/fonts/Tinos-Bold.ttf');
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    
+    doc.addFileToVFS('Tinos-Regular.ttf', regularBase64);
+    doc.addFont('Tinos-Regular.ttf', 'Tinos', 'normal');
+    doc.addFileToVFS('Tinos-Bold.ttf', boldBase64);
+    doc.addFont('Tinos-Bold.ttf', 'Tinos', 'bold');
+
+    doc.setFont('Tinos', 'bold');
+    doc.setFontSize(13);
+    
+    doc.text("ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG", 14, 15);
+    doc.text("TRƯỜNG THCS LÊ ANH XUÂN", 14, 21);
+    
     const pageWidth = doc.internal.pageSize.getWidth();
-    doc.setFont("helvetica");
+    doc.text("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", pageWidth - 14, 15, { align: 'right' });
+    doc.text("Độc lập - Tự do - Hạnh phúc", pageWidth - 14, 21, { align: 'right' });
 
-    if (mode === 'attendance') {
-       doc.text("THONG KE CHUYEN CAN", pageWidth / 2, 20, { align: 'center' });
-       doc.text(`Tong vang co phep: ${attendanceStats.absent_p} | Tong vang khong phep: ${attendanceStats.absent_kp}`, 14, 30);
-       
-       const tableData = attendanceStats.studentList.map((s, index) => [
+    doc.setFontSize(16);
+    doc.text(`DANH SÁCH CHI TIẾT - ${modalTitle.toUpperCase()}`, pageWidth / 2, 35, { align: 'center' });
+
+    let tableColumn = [];
+    let tableRows = [];
+
+    if (modalType?.startsWith('attendance_')) {
+       tableColumn = ["STT", "Họ và tên", "Lớp", modalType === 'attendance_present' ? "Tổng số buổi đi học" : "Chi tiết vắng"];
+       tableRows = listToRender.map((s, index) => [
          index + 1,
-         s.mahs,
-         s.hoten,
-         s.className,
-         s.absent_p,
-         s.absent_kp,
-         s.total_absent
+         s.hoten || '',
+         s.className || '',
+         modalType === 'attendance_present' ? s.present : 
+            modalType === 'attendance_absent_p' ? s.absentDetails_p :
+            modalType === 'attendance_absent_kp' ? s.absentDetails_kp :
+            modalType === 'attendance_absent_benh' ? s.absentDetails_benh : s.absentDetails_viecrieng
        ]);
-   
-       autoTable(doc, {
-         startY: 40,
-         head: [['STT', 'Ma HS', 'Ho ten', 'Lop', 'Co phep', 'Khong phep', 'Tong vang']],
-         body: tableData,
-       });
     } else {
-       doc.text("THONG KE VI PHAM", pageWidth / 2, 20, { align: 'center' });
-       doc.text(`Tong diem tru: ${violationStats.totalPoints}`, 14, 30);
-       
-       const tableData = violationStats.studentList.map((s, index) => [
+       tableColumn = ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"];
+       tableRows = listToRender.map((s, index) => [
          index + 1,
-         s.mahs,
-         s.hoten,
-         s.className,
+         s.hoten || '',
+         s.className || '',
          s.count,
-         s.points
+         `-${s.points}`
        ]);
-   
-       autoTable(doc, {
-         startY: 40,
-         head: [['STT', 'Ma HS', 'Ho ten', 'Lop', 'So lan VP', 'Tong diem tru']],
-         body: tableData,
-       });
     }
-    doc.save(`ThongKe_${mode}_${format(new Date(), 'ddMMyyyy')}.pdf`);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { font: 'Tinos', fontSize: 13, lineWidth: 0.1, lineColor: [0, 0, 0] },
+      headStyles: { font: 'Tinos', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+    });
+
+    doc.save(`ChiTietThongKe_${format(new Date(), 'ddMMyyyy')}.pdf`);
   };
 
-  const handleExportExcel = async () => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('ThongKe');
+  const exportModalExcel = async () => {
+    if (listToRender.length === 0) return;
 
-    if (mode === 'attendance') {
-       worksheet.columns = [
-         { header: 'STT', key: 'stt', width: 5 },
-         { header: 'Mã HS', key: 'mahs', width: 15 },
-         { header: 'Họ và tên', key: 'hoten', width: 25 },
-         { header: 'Lớp', key: 'className', width: 15 },
-         { header: 'Vắng có phép', key: 'absent_p', width: 15 },
-         { header: 'Vắng không phép', key: 'absent_kp', width: 15 },
-         { header: 'Tổng vắng', key: 'total_absent', width: 15 }
-       ];
-       attendanceStats.studentList.forEach((s, index) => {
-         worksheet.addRow({
-           stt: index + 1,
-           mahs: s.mahs,
-           hoten: s.hoten,
-           className: s.className,
-           absent_p: s.absent_p,
-           absent_kp: s.absent_kp,
-           total_absent: s.total_absent
-         });
-       });
-    } else {
-       worksheet.columns = [
-         { header: 'STT', key: 'stt', width: 5 },
-         { header: 'Mã HS', key: 'mahs', width: 15 },
-         { header: 'Họ và tên', key: 'hoten', width: 25 },
-         { header: 'Lớp', key: 'className', width: 15 },
-         { header: 'Số lần VP', key: 'count', width: 15 },
-         { header: 'Tổng điểm trừ', key: 'points', width: 15 }
-       ];
-       violationStats.studentList.forEach((s, index) => {
-         worksheet.addRow({
-           stt: index + 1,
-           mahs: s.mahs,
-           hoten: s.hoten,
-           className: s.className,
-           count: s.count,
-           points: s.points
-         });
-       });
-    }
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('ChiTietThongKe');
+
+    worksheet.pageSetup.orientation = 'landscape';
+    worksheet.pageSetup.paperSize = 9;
+
+    worksheet.columns = modalType?.startsWith('attendance_') ? [
+      { width: 10 }, { width: 30 }, { width: 15 }, { width: 40 }
+    ] : [
+      { width: 10 }, { width: 30 }, { width: 15 }, { width: 15 }, { width: 15 }
+    ];
+
+    worksheet.mergeCells('A1:B1');
+    const cellA1 = worksheet.getCell('A1');
+    cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG";
+    cellA1.font = { name: 'Times New Roman', size: 13, bold: false };
+    cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const lastColIndex = modalType?.startsWith('attendance_') ? 4 : 5;
+    const lastColLetter = modalType?.startsWith('attendance_') ? 'D' : 'E';
+
+    worksheet.mergeCells(`C1:${lastColLetter}1`);
+    const cellRight1 = worksheet.getCell('C1');
+    cellRight1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
+    cellRight1.font = { name: 'Times New Roman', size: 13, bold: true };
+    cellRight1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('A2:B2');
+    const cellA2 = worksheet.getCell('A2');
+    cellA2.value = "TRƯỜNG THCS LÊ ANH XUÂN";
+    cellA2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
+    cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells(`C2:${lastColLetter}2`);
+    const cellRight2 = worksheet.getCell('C2');
+    cellRight2.value = "Độc lập - Tự do - Hạnh phúc";
+    cellRight2.font = { name: 'Times New Roman', size: 14, bold: true, underline: true };
+    cellRight2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells(`A4:${lastColLetter}4`);
+    const cellA4 = worksheet.getCell('A4');
+    cellA4.value = `DANH SÁCH CHI TIẾT - ${modalTitle.toUpperCase()}`;
+    cellA4.font = { name: 'Times New Roman', size: 16, bold: true };
+    cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const headers = modalType?.startsWith('attendance_') 
+      ? ["STT", "Họ và tên", "Lớp", modalType === 'attendance_present' ? "Tổng số buổi đi học" : "Chi tiết vắng"]
+      : ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"];
+
+    const headerRow = worksheet.getRow(6);
+    headerRow.values = headers;
+    headerRow.font = { name: 'Times New Roman', size: 13, bold: true };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+    headers.forEach((_, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    listToRender.forEach((s, index) => {
+      const rowData = modalType?.startsWith('attendance_') ? [
+        index + 1,
+        s.hoten || '',
+        s.className || '',
+        modalType === 'attendance_present' ? s.present : 
+            modalType === 'attendance_absent_p' ? s.absentDetails_p :
+            modalType === 'attendance_absent_kp' ? s.absentDetails_kp :
+            modalType === 'attendance_absent_benh' ? s.absentDetails_benh : s.absentDetails_viecrieng
+      ] : [
+        index + 1,
+        s.hoten || '',
+        s.className || '',
+        s.count,
+        `-${s.points}`
+      ];
+
+      const row = worksheet.addRow(rowData);
+      row.font = { name: 'Times New Roman', size: 13 };
+      
+      row.eachCell((cell, colNumber) => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+      });
+    });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `ThongKe_${mode}_${format(new Date(), 'ddMMyyyy')}.xlsx`);
+    saveAs(new Blob([buffer]), `ChiTietThongKe_${format(new Date(), 'ddMMyyyy')}.xlsx`);
   };
 
   return (
@@ -515,15 +594,6 @@ export function Statistics() {
              </button>
              <button className={`mode-btn ${mode === 'violation' ? 'active' : ''}`} onClick={() => setMode('violation')}>
                <FileWarning size={18} /> Vi phạm
-             </button>
-          </div>
-          
-          <div className="stats-export-actions">
-             <button className="btn-export pdf" onClick={handleExportPDF}>
-                <FileText size={16} /> Xuất PDF
-             </button>
-             <button className="btn-export excel" onClick={handleExportExcel}>
-                <Download size={16} /> Xuất Excel
              </button>
           </div>
         </div>
@@ -889,25 +959,25 @@ export function Statistics() {
       {showModal && (
         <div className="stats-modal-overlay" onClick={(e) => { if (e.target.classList.contains('stats-modal-overlay')) setShowModal(false) }}>
           <div className="stats-modal-content">
-            <div className="stats-modal-header">
+            <div className="stats-modal-header flex justify-between items-center">
               <h2 className="stats-modal-title">{modalTitle}</h2>
-              <button className="stats-modal-close" onClick={() => setShowModal(false)}>
-                <X size={24} />
-              </button>
+              <div className="flex gap-2 items-center">
+                <button className="btn-export pdf !py-1 !px-2 !text-xs" onClick={exportModalPDF}>
+                  <FileText size={14} /> Xuất PDF
+                </button>
+                <button className="btn-export excel !py-1 !px-2 !text-xs" onClick={exportModalExcel}>
+                  <Download size={14} /> Xuất Excel
+                </button>
+                <button className="stats-modal-close ml-2" onClick={() => setShowModal(false)}>
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             <div className="stats-modal-body">
               <div className="stats-table-card">
                  <div className="overflow-x-auto">
-                    {modalType?.startsWith('attendance_') ? (() => {
-                        let listToRender = [];
-                        if (modalType === 'attendance_present') listToRender = attendanceStats.studentList.filter(s => s.present > 0);
-                        else if (modalType === 'attendance_absent_p') listToRender = attendanceStats.studentList.filter(s => s.absent_p > 0);
-                        else if (modalType === 'attendance_absent_kp') listToRender = attendanceStats.studentList.filter(s => s.absent_kp > 0);
-                        else if (modalType === 'attendance_absent_benh') listToRender = attendanceStats.studentList.filter(s => s.absent_benh > 0);
-                        else if (modalType === 'attendance_absent_viecrieng') listToRender = attendanceStats.studentList.filter(s => s.absent_viecrieng > 0);
-                        
-                        return (
-                          <table className="premium-table">
+                    {modalType?.startsWith('attendance_') ? (
+                        <table className="premium-table">
                              <thead>
                                 <tr>
                                    <th style={{width: '60px'}}>STT</th>
@@ -940,8 +1010,7 @@ export function Statistics() {
                                 )}
                              </tbody>
                           </table>
-                        );
-                    })() : (
+                    ) : (
                         <table className="premium-table">
                            <thead>
                               <tr>
