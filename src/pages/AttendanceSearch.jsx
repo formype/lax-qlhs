@@ -748,7 +748,7 @@ export function AttendanceSearch() {
                   </div>
                 )}
 
-                {selectedRecord.status === 'absent_kp' && (user?.role?.includes('giamthi') || user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
+                {selectedRecord.status === 'absent_kp' && (user?.role?.includes('giamthi') || user?.role?.includes('admin') || user?.role?.includes('vip-admin') || (isGiaovienOnly && teacherClass === selectedRecord.className)) && (
                   <div className="upload-proof-section mt-4 p-4 rounded" style={{ backgroundColor: 'rgba(239,68,68,0.05)', border: '1px dashed #ef4444' }}>
                     <p className="text-sm text-center mb-3 text-dark">Học sinh đang vắng không phép. Bạn có thể bổ sung đơn xin phép và đổi trạng thái thành có phép.</p>
                     
