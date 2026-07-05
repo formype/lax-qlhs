@@ -88,15 +88,15 @@ export function AccountSettings() {
   };
 
   return (
-    <>
-      <div className="header-container" style={{ display: 'flex', alignItems: 'center', padding: '16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+      <div className="header-container" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
         <button className="action-btn" onClick={() => navigate(-1)} style={{ marginRight: '16px' }}>
           <ChevronLeft size={24} />
         </button>
         <h2 className="section-title" style={{ margin: 0, fontSize: '1.25rem' }}>Cài đặt tài khoản</h2>
       </div>
 
-      <div className="settings-content" style={{ padding: '20px', paddingBottom: '100px', overflowY: 'auto', height: '100%' }}>
+      <div className="settings-content" style={{ flex: 1, padding: '20px', paddingBottom: '100px', overflowY: 'auto' }}>
         <Card className="mb-4">
           <CardBody>
             <div className="flex-row gap-3 mb-4">
@@ -174,6 +174,6 @@ export function AccountSettings() {
           {saving ? 'Đang cập nhật...' : 'Lưu thay đổi'}
         </Button>
       </div>
-    </>
+    </div>
   );
 }
