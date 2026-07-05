@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button';
 import { getAttendanceHistory, getRecentViolations, fetchStudents, fetchClasses, fetchViolationTypes, fetchSystemSettings } from '../lib/firebase';
 import { format, parseISO, startOfDay, endOfDay, isWithinInterval, parse, getMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Search as SearchIcon, FileText, Download, BarChart2, PieChart as PieIcon, CalendarCheck, FileWarning } from 'lucide-react';
+import { Search as SearchIcon, FileText, Download, BarChart2, PieChart as PieIcon, CalendarCheck, FileWarning, X, ClipboardList } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -24,6 +24,9 @@ export function Statistics() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('attendance'); // 'attendance' or 'violation'
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalType, setModalType] = useState(''); // 'attendance' or 'violation'
   
   const [attendanceData, setAttendanceData] = useState([]);
   const [violations, setViolations] = useState([]);
@@ -201,7 +204,7 @@ export function Statistics() {
       if (statusFilter !== 'all' && a.status !== statusFilter) return false;
       if (sessionFilter !== 'all' && a.session !== sessionFilter) return false;
       if (reasonFilter !== 'all') {
-         if (reasonFilter === 'absent_no_reason' && a.status === 'absent_np') {
+         if (reasonFilter === 'absent_no_reason' && a.status === 'absent_kp') {
             // Match
          } else if (a.reason !== reasonFilter) {
             return false;
@@ -256,30 +259,30 @@ export function Statistics() {
   const attendanceStats = useMemo(() => {
      let present = 0;
      let absent_p = 0;
-     let absent_np = 0;
+     let absent_kp = 0;
      
      const studentMap = {};
 
      filteredAttendance.forEach(a => {
         if (a.status === 'present') present++;
         else if (a.status === 'absent_p') absent_p++;
-        else if (a.status === 'absent_np') absent_np++;
+        else if (a.status === 'absent_kp') absent_kp++;
 
         if (!studentMap[a.studentId]) {
-           studentMap[a.studentId] = { mahs: a.mahs, hoten: a.hoten, className: a.className, present: 0, absent_p: 0, absent_np: 0, total_absent: 0 };
+           studentMap[a.studentId] = { mahs: a.mahs, hoten: a.hoten, className: a.className, present: 0, absent_p: 0, absent_kp: 0, total_absent: 0 };
         }
         if (a.status === 'present') studentMap[a.studentId].present++;
         else if (a.status === 'absent_p') { studentMap[a.studentId].absent_p++; studentMap[a.studentId].total_absent++; }
-        else if (a.status === 'absent_np') { studentMap[a.studentId].absent_np++; studentMap[a.studentId].total_absent++; }
+        else if (a.status === 'absent_kp') { studentMap[a.studentId].absent_kp++; studentMap[a.studentId].total_absent++; }
      });
 
      const studentList = Object.values(studentMap).sort((a,b) => b.total_absent - a.total_absent).filter(s => s.total_absent > 0);
      const pieData = [
         { name: 'Có mặt', value: present },
         { name: 'Vắng có phép', value: absent_p },
-        { name: 'Vắng không phép', value: absent_np }
+        { name: 'Vắng không phép', value: absent_kp }
      ];
-     return { present, absent_p, absent_np, studentList, pieData };
+     return { present, absent_p, absent_kp, studentList, pieData };
   }, [filteredAttendance]);
 
   const violationStats = useMemo(() => {
@@ -317,7 +320,7 @@ export function Statistics() {
 
     if (mode === 'attendance') {
        doc.text("THONG KE CHUYEN CAN", pageWidth / 2, 20, { align: 'center' });
-       doc.text(`Tong vang co phep: ${attendanceStats.absent_p} | Tong vang khong phep: ${attendanceStats.absent_np}`, 14, 30);
+       doc.text(`Tong vang co phep: ${attendanceStats.absent_p} | Tong vang khong phep: ${attendanceStats.absent_kp}`, 14, 30);
        
        const tableData = attendanceStats.studentList.map((s, index) => [
          index + 1,
@@ -325,7 +328,7 @@ export function Statistics() {
          s.hoten,
          s.className,
          s.absent_p,
-         s.absent_np,
+         s.absent_kp,
          s.total_absent
        ]);
    
@@ -367,7 +370,7 @@ export function Statistics() {
          { header: 'Họ và tên', key: 'hoten', width: 25 },
          { header: 'Lớp', key: 'className', width: 15 },
          { header: 'Vắng có phép', key: 'absent_p', width: 15 },
-         { header: 'Vắng không phép', key: 'absent_np', width: 15 },
+         { header: 'Vắng không phép', key: 'absent_kp', width: 15 },
          { header: 'Tổng vắng', key: 'total_absent', width: 15 }
        ];
        attendanceStats.studentList.forEach((s, index) => {
@@ -377,7 +380,7 @@ export function Statistics() {
            hoten: s.hoten,
            className: s.className,
            absent_p: s.absent_p,
-           absent_np: s.absent_np,
+           absent_kp: s.absent_kp,
            total_absent: s.total_absent
          });
        });
@@ -410,400 +413,449 @@ export function Statistics() {
     <>
       <Header title="Thống kê dữ liệu" />
       <div className="search-container statistics-container pb-10">
-        <div className="flex gap-4 mb-4 mt-2">
-           <button className={`tab-btn ${mode === 'attendance' ? 'active' : ''}`} onClick={() => setMode('attendance')}>
-             <CalendarCheck size={18} /> Chuyên cần
-           </button>
-           <button className={`tab-btn ${mode === 'violation' ? 'active' : ''}`} onClick={() => setMode('violation')}>
-             <FileWarning size={18} /> Vi phạm
-           </button>
+        
+        {/* HEADER ACTIONS */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 mt-2 gap-4">
+          <div className="stats-mode-switch">
+             <button className={`mode-btn ${mode === 'attendance' ? 'active' : ''}`} onClick={() => setMode('attendance')}>
+               <CalendarCheck size={18} /> Chuyên cần
+             </button>
+             <button className={`mode-btn ${mode === 'violation' ? 'active' : ''}`} onClick={() => setMode('violation')}>
+               <FileWarning size={18} /> Vi phạm
+             </button>
+          </div>
+          
+          <div className="stats-export-actions">
+             <button className="btn-export pdf" onClick={handleExportPDF}>
+                <FileText size={16} /> Xuất PDF
+             </button>
+             <button className="btn-export excel" onClick={handleExportExcel}>
+                <Download size={16} /> Xuất Excel
+             </button>
+          </div>
         </div>
 
-        {/* ===================== FILTERS ===================== */}
-        <Card className="mb-4">
-          <CardBody>
-            <div className="filter-group">
-              <label className="filter-label">Thời gian</label>
-              <div className="filter-row">
-                <Select
-                  value={timeFilterType}
-                  onChange={(e) => setTimeFilterType(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'Tất cả' },
-                    { value: 'day', label: 'Theo ngày' },
-                    { value: 'week', label: 'Theo tuần' },
-                    { value: 'month', label: 'Theo tháng' },
-                    { value: 'semester', label: 'Theo học kỳ' },
-                  ]}
-                  className="filter-select"
-                />
-                
-                {timeFilterType === 'day' && (
-                  <div className="date-picker-wrapper" onClick={() => dateInputRef.current?.showPicker()}>
-                    <input 
-                      ref={dateInputRef}
-                      type="date" 
-                      className="input-field native-date-input" 
-                      value={timeValueDay}
-                      onChange={(e) => setTimeValueDay(e.target.value)}
-                    />
-                    <DayPicker 
-                      value={timeValueDay} 
-                      onChange={setTimeValueDay} 
-                    />
-                  </div>
-                )}
-
-                {timeFilterType === 'week' && (
-                  <Select
-                    value={timeValueWeek}
-                    onChange={(e) => setTimeValueWeek(e.target.value)}
-                    options={weekOptions}
-                    className="filter-select"
-                  />
-                )}
-
-                {timeFilterType === 'month' && (
-                  <div className="date-picker-wrapper" onClick={() => monthInputRef.current?.showPicker()}>
-                    <input 
-                      ref={monthInputRef}
-                      type="month" 
-                      className="input-field native-date-input" 
-                      value={timeValueMonth}
-                      onChange={(e) => setTimeValueMonth(e.target.value)}
-                    />
-                    <MonthPicker 
-                      value={timeValueMonth} 
-                      onChange={setTimeValueMonth} 
-                    />
-                  </div>
-                )}
-
-                {timeFilterType === 'semester' && (
-                  <Select
-                    value={timeValueSemester}
-                    onChange={(e) => setTimeValueSemester(e.target.value)}
-                    options={[
-                      { value: '1', label: 'Học kỳ 1' },
-                      { value: '2', label: 'Học kỳ 2' },
-                    ]}
-                    className="filter-select"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="filter-group mt-3">
-              <label className="filter-label">Đối tượng & Tìm kiếm</label>
-              <div className="filter-row">
-                {!isGiaovienOnly && (
-                  <Select
-                    value={targetFilterType}
-                    onChange={(e) => {
-                      setTargetFilterType(e.target.value);
-                      setTargetValueGrade('');
-                      setTargetValueClass('');
-                    }}
-                    options={[
-                      { value: 'all', label: 'Toàn trường' },
-                      { value: 'grade', label: 'Theo khối' },
-                      { value: 'class', label: 'Theo lớp' }
-                    ]}
-                    className="filter-select"
-                  />
-                )}
-
-                {targetFilterType === 'grade' && !isGiaovienOnly && (
-                  <Select
-                    value={targetValueGrade}
-                    onChange={(e) => setTargetValueGrade(e.target.value)}
-                    options={[{ value: '', label: 'Chọn khối...' }, ...gradeOptions]}
-                    className="filter-select"
-                  />
-                )}
-
-                {targetFilterType === 'class' && !isGiaovienOnly && (
-                  <Select
-                    value={targetValueClass}
-                    onChange={(e) => setTargetValueClass(e.target.value)}
-                    options={[{ value: '', label: 'Chọn lớp...' }, ...classOptions]}
-                    className="filter-select"
-                  />
-                )}
-
-                <div className="search-input-wrapper" style={{ flex: 1, minWidth: '200px' }}>
-                  <SearchIcon className="search-icon" size={18} />
-                  <Input
-                    placeholder="Tìm mã hoặc tên HS..."
-                    value={targetValueStudentId}
-                    onChange={(e) => setTargetValueStudentId(e.target.value)}
-                    hideLabel
-                  />
-                </div>
-              </div>
-            </div>
-
-            {mode === 'attendance' && (
-              <div className="filter-group mt-3">
-                <label className="filter-label">Trạng thái, Buổi & Lý do</label>
-                <div className="filter-row">
-                  <Select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    options={[
-                      { value: 'all', label: 'Tất cả trạng thái' },
-                      { value: 'present', label: 'Đi học' },
-                      { value: 'absent_p', label: 'Vắng có phép' },
-                      { value: 'absent_np', label: 'Vắng không phép' }
-                    ]}
-                    className="filter-select"
-                  />
-                  <Select
-                    value={sessionFilter}
-                    onChange={(e) => setSessionFilter(e.target.value)}
-                    options={[
-                      { value: 'all', label: 'Tất cả các buổi' },
-                      { value: 'Sáng', label: 'Buổi Sáng' },
-                      { value: 'Chiều', label: 'Buổi Chiều' }
-                    ]}
-                    className="filter-select"
-                  />
-                  <Select
-                    value={reasonFilter}
-                    onChange={(e) => setReasonFilter(e.target.value)}
-                    options={[
-                      { value: 'all', label: 'Tất cả lý do' },
-                      { value: 'Bệnh', label: 'Bệnh' },
-                      { value: 'Việc riêng', label: 'Việc riêng' },
-                      { value: 'absent_no_reason', label: 'Không có lý do (Không phép)' }
-                    ]}
-                    className="filter-select"
-                  />
-                </div>
-              </div>
-            )}
-
-            {mode === 'violation' && (
-              <div className="filter-group mt-3">
-                <label className="filter-label">Loại vi phạm</label>
-                <div className="filter-row">
-                  <Select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    options={[
-                      { value: 'all', label: 'Tất cả các lỗi' },
-                      ...violationTypes.map(t => ({ value: t.tenloai, label: t.tenloai }))
-                    ]}
-                    className="filter-select"
-                  />
-                </div>
-              </div>
-            )}
-
-            {isGiaovienOnly && (
-               <div className="text-primary mt-2 font-medium">
-                  Chỉ hiển thị dữ liệu của lớp chủ nhiệm: {teacherClass || 'Chưa phân công'}
+        {/* ===================== PREMIUM FILTERS ===================== */}
+        <div className="stats-filter-card">
+          <div className="stats-filter-header">
+             <div className="stats-filter-title">
+                <SearchIcon size={20} color="var(--primary-color)"/>
+                Bộ lọc dữ liệu
+             </div>
+             {isGiaovienOnly && (
+               <div className="text-sm font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                  Lớp chủ nhiệm: {teacherClass || 'Chưa phân công'}
                </div>
-            )}
-          </CardBody>
-        </Card>
+             )}
+          </div>
+          
+          <div className="filter-stack-vertical">
+             <div className="filter-group-vertical">
+               <label>Thời gian</label>
+               <div className="flex flex-wrap gap-2">
+                 <Select
+                   value={timeFilterType}
+                   onChange={(e) => setTimeFilterType(e.target.value)}
+                   options={[
+                     { value: 'all', label: 'Tất cả' },
+                     { value: 'day', label: 'Theo ngày' },
+                     { value: 'week', label: 'Theo tuần' },
+                     { value: 'month', label: 'Theo tháng' },
+                     { value: 'semester', label: 'Theo học kỳ' },
+                   ]}
+                   className="filter-select flex-1"
+                 />
+                 {timeFilterType === 'day' && (
+                   <div className="date-picker-wrapper flex-1" onClick={() => dateInputRef.current?.showPicker()}>
+                     <input 
+                       ref={dateInputRef}
+                       type="date" 
+                       className="input-field native-date-input" 
+                       value={timeValueDay}
+                       onChange={(e) => setTimeValueDay(e.target.value)}
+                     />
+                     <DayPicker value={timeValueDay} onChange={setTimeValueDay} />
+                   </div>
+                 )}
+                 {timeFilterType === 'week' && (
+                   <Select
+                     value={timeValueWeek}
+                     onChange={(e) => setTimeValueWeek(e.target.value)}
+                     options={weekOptions}
+                     className="filter-select flex-1"
+                   />
+                 )}
+                 {timeFilterType === 'month' && (
+                   <div className="date-picker-wrapper flex-1" onClick={() => monthInputRef.current?.showPicker()}>
+                     <input 
+                       ref={monthInputRef}
+                       type="month" 
+                       className="input-field native-date-input" 
+                       value={timeValueMonth}
+                       onChange={(e) => setTimeValueMonth(e.target.value)}
+                     />
+                     <MonthPicker value={timeValueMonth} onChange={setTimeValueMonth} />
+                   </div>
+                 )}
+                 {timeFilterType === 'semester' && (
+                   <Select
+                     value={timeValueSemester}
+                     onChange={(e) => setTimeValueSemester(e.target.value)}
+                     options={[
+                       { value: '1', label: 'Học kỳ 1' },
+                       { value: '2', label: 'Học kỳ 2' },
+                     ]}
+                     className="filter-select flex-1"
+                   />
+                 )}
+               </div>
+             </div>
 
-        {/* ===================== EXPORT BUTTONS ===================== */}
-        <div className="flex gap-3 mb-4">
-           <Button variant="outline" onClick={handleExportPDF}>
-              <FileText size={18} className="mr-2" /> Xuất PDF
-           </Button>
-           <Button variant="outline" onClick={handleExportExcel}>
-              <Download size={18} className="mr-2" /> Xuất Excel
-           </Button>
+             <div className="filter-group-vertical">
+               <label>{isGiaovienOnly ? "Tìm kiếm học sinh" : "Đối tượng & Tìm kiếm"}</label>
+               <div className="flex flex-wrap gap-2">
+                 {isGiaovienOnly ? (
+                   <Select
+                     value={targetValueStudentId}
+                     onChange={(e) => setTargetValueStudentId(e.target.value)}
+                     options={[
+                       { value: '', label: 'Tất cả học sinh trong lớp' },
+                       ...students.filter(s => s.tenlop === teacherClass).map(s => ({ value: s.mahs, label: `${s.mahs} - ${s.hoten}` }))
+                     ]}
+                     className="filter-select flex-1"
+                   />
+                 ) : (
+                   <>
+                     <Select
+                       value={targetFilterType}
+                       onChange={(e) => {
+                         setTargetFilterType(e.target.value);
+                         setTargetValueGrade('');
+                         setTargetValueClass('');
+                       }}
+                       options={[
+                         { value: 'all', label: 'Toàn trường' },
+                         { value: 'grade', label: 'Theo khối' },
+                         { value: 'class', label: 'Theo lớp' }
+                       ]}
+                       className="filter-select flex-1"
+                     />
+                     {targetFilterType === 'grade' && (
+                       <Select
+                         value={targetValueGrade}
+                         onChange={(e) => setTargetValueGrade(e.target.value)}
+                         options={[{ value: '', label: 'Khối...' }, ...gradeOptions]}
+                         className="filter-select flex-1"
+                       />
+                     )}
+                     {targetFilterType === 'class' && (
+                       <Select
+                         value={targetValueClass}
+                         onChange={(e) => setTargetValueClass(e.target.value)}
+                         options={[{ value: '', label: 'Lớp...' }, ...classOptions]}
+                         className="filter-select flex-1"
+                       />
+                     )}
+                     <div className="search-input-wrapper flex-1 min-w-[200px]">
+                       <SearchIcon className="search-icon" size={18} />
+                       <Input
+                         placeholder="Tìm mã hoặc tên HS..."
+                         value={targetValueStudentId}
+                         onChange={(e) => setTargetValueStudentId(e.target.value)}
+                         hideLabel
+                       />
+                     </div>
+                   </>
+                 )}
+               </div>
+             </div>
+             
+             {mode === 'attendance' && (
+               <div className="filter-group-vertical pt-2 border-t border-gray-100">
+                 <label>Trạng thái</label>
+                 <Select
+                   value={statusFilter}
+                   onChange={(e) => setStatusFilter(e.target.value)}
+                   options={[
+                     { value: 'all', label: 'Tất cả trạng thái' },
+                     { value: 'present', label: 'Đi học' },
+                     { value: 'absent_p', label: 'Vắng có phép' },
+                     { value: 'absent_kp', label: 'Vắng không phép' }
+                   ]}
+                   className="filter-select w-full"
+                 />
+               </div>
+             )}
+
+             {mode === 'attendance' && (
+               <div className="filter-group-vertical">
+                 <label>Lý do vắng</label>
+                 <Select
+                   value={reasonFilter}
+                   onChange={(e) => setReasonFilter(e.target.value)}
+                   options={[
+                     { value: 'all', label: 'Tất cả lý do' },
+                     { value: 'Bệnh', label: 'Bệnh' },
+                     { value: 'Việc riêng', label: 'Việc riêng' },
+                     { value: 'absent_no_reason', label: 'Không có lý do (Không phép)' }
+                   ]}
+                   className="filter-select w-full"
+                 />
+               </div>
+             )}
+
+             {mode === 'attendance' && (
+               <div className="filter-group-vertical">
+                 <label>Buổi học</label>
+                 <Select
+                   value={sessionFilter}
+                   onChange={(e) => setSessionFilter(e.target.value)}
+                   options={[
+                     { value: 'all', label: 'Tất cả buổi' },
+                     { value: 'Sáng', label: 'Buổi Sáng' },
+                     { value: 'Chiều', label: 'Buổi Chiều' }
+                   ]}
+                   className="filter-select w-full"
+                 />
+               </div>
+             )}
+
+             {mode === 'violation' && (
+               <div className="filter-group-vertical pt-2 border-t border-gray-100">
+                 <label>Loại vi phạm</label>
+                 <Select
+                   value={typeFilter}
+                   onChange={(e) => setTypeFilter(e.target.value)}
+                   options={[
+                     { value: 'all', label: 'Tất cả các lỗi' },
+                     ...violationTypes.map(t => ({ value: t.tenloai, label: t.tenloai }))
+                   ]}
+                   className="filter-select w-full"
+                 />
+               </div>
+             )}
+          </div>
         </div>
 
-        {/* ===================== STATISTICS DISPLAY ===================== */}
         {!loading && mode === 'attendance' && (
            <>
-              <div className="stats-cards flex gap-4 mb-4 overflow-x-auto">
-                 <div className="stat-card bg-white p-4 rounded-lg shadow min-w-[150px] flex-1 text-center border-b-4 border-green-500">
-                    <div className="text-sm text-gray-500">Tổng đi học</div>
-                    <div className="text-2xl font-bold text-green-600">{attendanceStats.present}</div>
-                 </div>
-                 <div className="stat-card bg-white p-4 rounded-lg shadow min-w-[150px] flex-1 text-center border-b-4 border-yellow-500">
-                    <div className="text-sm text-gray-500">Vắng có phép</div>
-                    <div className="text-2xl font-bold text-yellow-600">{attendanceStats.absent_p}</div>
-                 </div>
-                 <div className="stat-card bg-white p-4 rounded-lg shadow min-w-[150px] flex-1 text-center border-b-4 border-red-500">
-                    <div className="text-sm text-gray-500">Vắng không phép</div>
-                    <div className="text-2xl font-bold text-red-600">{attendanceStats.absent_np}</div>
-                 </div>
-              </div>
-
-              <div className="charts-container grid md:grid-cols-2 gap-4 mb-4">
-                 <Card>
-                    <CardBody>
-                       <h3 className="font-semibold mb-4 flex items-center"><PieIcon size={18} className="mr-2"/> Tỷ lệ chuyên cần</h3>
-                       <div style={{ width: '100%', height: 250 }}>
-                          <ResponsiveContainer>
-                             <PieChart>
-                                <Pie data={attendanceStats.pieData} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label>
-                                   {attendanceStats.pieData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                   ))}
-                                </Pie>
-                                <RechartsTooltip />
-                                <Legend />
-                             </PieChart>
-                          </ResponsiveContainer>
-                       </div>
-                    </CardBody>
-                 </Card>
-                 <Card>
-                    <CardBody>
-                       <h3 className="font-semibold mb-4 flex items-center"><BarChart2 size={18} className="mr-2"/> Top học sinh vắng nhiều</h3>
-                       <div style={{ width: '100%', height: 250 }}>
-                          <ResponsiveContainer>
-                             <BarChart data={attendanceStats.studentList.slice(0, 5)}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="hoten" tick={{fontSize: 12}} width={100} />
-                                <YAxis />
-                                <RechartsTooltip />
-                                <Legend />
-                                <Bar dataKey="absent_p" name="Có phép" stackId="a" fill="#FFBB28" />
-                                <Bar dataKey="absent_np" name="Không phép" stackId="a" fill="#FF8042" />
-                             </BarChart>
-                          </ResponsiveContainer>
-                       </div>
-                    </CardBody>
-                 </Card>
-              </div>
-
-              <Card>
-                 <CardBody>
-                    <h3 className="font-semibold mb-4">Bảng dữ liệu chi tiết</h3>
-                    <div className="modern-table-container">
-                       <table className="modern-table">
-                          <thead>
-                             <tr>
-                                <th>STT</th>
-                                <th>Mã HS</th>
-                                <th>Họ và tên</th>
-                                <th>Lớp</th>
-                                <th>Vắng CP</th>
-                                <th>Vắng KP</th>
-                                <th>Tổng vắng</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                             {attendanceStats.studentList.length > 0 ? attendanceStats.studentList.map((s, idx) => (
-                                <tr key={s.mahs}>
-                                   <td>{idx + 1}</td>
-                                   <td>{s.mahs}</td>
-                                   <td>{s.hoten}</td>
-                                   <td>{s.className}</td>
-                                   <td className="text-yellow-600 font-medium">{s.absent_p}</td>
-                                   <td className="text-red-600 font-medium">{s.absent_np}</td>
-                                   <td className="font-bold">{s.total_absent}</td>
-                                </tr>
-                             )) : (
-                                <tr>
-                                   <td colSpan="7" className="text-center py-4 text-gray-500">Không có dữ liệu vắng mặt</td>
-                                </tr>
-                             )}
-                          </tbody>
-                       </table>
+              <div className="stats-summary-grid">
+                 <div className="premium-stat-card" onClick={() => { setModalType('attendance'); setModalTitle('Học sinh đi học'); setShowModal(true); }}>
+                    <div className="stat-left-col">
+                       <span className="stat-title">Tổng đi học</span>
+                       <span className="stat-value">{attendanceStats.present}</span>
                     </div>
-                 </CardBody>
-              </Card>
+                 </div>
+                 <div className="premium-stat-card" onClick={() => { setModalType('attendance'); setModalTitle('Học sinh vắng có phép'); setShowModal(true); }}>
+                    <div className="stat-left-col">
+                       <span className="stat-title">Vắng có phép</span>
+                       <span className="stat-value">{attendanceStats.absent_p}</span>
+                    </div>
+                 </div>
+                 <div className="premium-stat-card" onClick={() => { setModalType('attendance'); setModalTitle('Học sinh vắng không phép'); setShowModal(true); }}>
+                    <div className="stat-left-col">
+                       <span className="stat-title">Vắng không phép</span>
+                       <span className="stat-value">{attendanceStats.absent_kp}</span>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="stats-charts-grid">
+                 <div className="chart-card">
+                    <h3 className="chart-title">
+                       <PieIcon size={20} className="text-indigo-500" />
+                       Tỷ lệ chuyên cần
+                    </h3>
+                    <div style={{ width: '100%', height: 280 }}>
+                       <ResponsiveContainer>
+                          <PieChart>
+                             <Pie data={attendanceStats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" label>
+                                {attendanceStats.pieData.map((entry, index) => (
+                                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                             </Pie>
+                             <RechartsTooltip />
+                             <Legend verticalAlign="bottom" height={36}/>
+                          </PieChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+                 
+                 <div className="chart-card">
+                    <h3 className="chart-title">
+                       <BarChart2 size={20} className="text-indigo-500" />
+                       Học sinh vắng nhiều nhất
+                    </h3>
+                    <div style={{ width: '100%', height: 280 }}>
+                       <ResponsiveContainer>
+                          <BarChart data={attendanceStats.studentList.slice(0, 5)} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
+                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                             <XAxis dataKey="hoten" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                             <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                             <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
+                             <Legend />
+                             <Bar dataKey="absent_p" name="Có phép" stackId="a" fill="#f59e0b" radius={[0,0,4,4]} barSize={40} />
+                             <Bar dataKey="absent_kp" name="Không phép" stackId="a" fill="#ef4444" radius={[4,4,0,0]} />
+                          </BarChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+              </div>
            </>
         )}
 
         {!loading && mode === 'violation' && (
            <>
-              <div className="stats-cards flex gap-4 mb-4 overflow-x-auto">
-                 <div className="stat-card bg-white p-4 rounded-lg shadow min-w-[150px] flex-1 text-center border-b-4 border-red-500">
-                    <div className="text-sm text-gray-500">Tổng điểm trừ</div>
-                    <div className="text-2xl font-bold text-red-600">{violationStats.totalPoints}</div>
-                 </div>
-                 <div className="stat-card bg-white p-4 rounded-lg shadow min-w-[150px] flex-1 text-center border-b-4 border-orange-500">
-                    <div className="text-sm text-gray-500">Số lượt vi phạm</div>
-                    <div className="text-2xl font-bold text-orange-600">{filteredViolations.length}</div>
-                 </div>
-              </div>
-
-              <div className="charts-container grid md:grid-cols-2 gap-4 mb-4">
-                 <Card>
-                    <CardBody>
-                       <h3 className="font-semibold mb-4 flex items-center"><PieIcon size={18} className="mr-2"/> Phân bổ loại vi phạm</h3>
-                       <div style={{ width: '100%', height: 250 }}>
-                          <ResponsiveContainer>
-                             <PieChart>
-                                <Pie data={violationStats.pieData} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label>
-                                   {violationStats.pieData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                   ))}
-                                </Pie>
-                                <RechartsTooltip />
-                                <Legend />
-                             </PieChart>
-                          </ResponsiveContainer>
-                       </div>
-                    </CardBody>
-                 </Card>
-                 <Card>
-                    <CardBody>
-                       <h3 className="font-semibold mb-4 flex items-center"><BarChart2 size={18} className="mr-2"/> Top học sinh vi phạm</h3>
-                       <div style={{ width: '100%', height: 250 }}>
-                          <ResponsiveContainer>
-                             <BarChart data={violationStats.studentList.slice(0, 5)} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" />
-                                <YAxis dataKey="hoten" type="category" width={100} tick={{fontSize: 12}} />
-                                <RechartsTooltip />
-                                <Legend />
-                                <Bar dataKey="points" name="Điểm trừ" fill="#EF4444" />
-                             </BarChart>
-                          </ResponsiveContainer>
-                       </div>
-                    </CardBody>
-                 </Card>
-              </div>
-
-              <Card>
-                 <CardBody>
-                    <h3 className="font-semibold mb-4">Bảng dữ liệu chi tiết</h3>
-                    <div className="modern-table-container">
-                       <table className="modern-table">
-                          <thead>
-                             <tr>
-                                <th>STT</th>
-                                <th>Mã HS</th>
-                                <th>Họ và tên</th>
-                                <th>Lớp</th>
-                                <th>Số lần VP</th>
-                                <th>Tổng điểm trừ</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                             {violationStats.studentList.length > 0 ? violationStats.studentList.map((s, idx) => (
-                                <tr key={s.mahs}>
-                                   <td>{idx + 1}</td>
-                                   <td>{s.mahs}</td>
-                                   <td>{s.hoten}</td>
-                                   <td>{s.className}</td>
-                                   <td className="font-medium">{s.count}</td>
-                                   <td className="text-red-600 font-bold">{s.points}</td>
-                                </tr>
-                             )) : (
-                                <tr>
-                                   <td colSpan="6" className="text-center py-4 text-gray-500">Không có dữ liệu vi phạm</td>
-                                </tr>
-                             )}
-                          </tbody>
-                       </table>
+              <div className="stats-summary-grid">
+                 <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle('Chi tiết vi phạm'); setShowModal(true); }}>
+                    <div className="stat-left-col">
+                       <span className="stat-title">Tổng điểm trừ</span>
+                       <span className="stat-value">{violationStats.totalPoints}</span>
+                       <span className="stat-subtitle">Từ các lỗi vi phạm</span>
                     </div>
-                 </CardBody>
-              </Card>
+                    <div className="stat-right-col stat-violations-icon">
+                       <FileWarning size={24} />
+                    </div>
+                 </div>
+                 <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle('Danh sách lượt vi phạm'); setShowModal(true); }}>
+                    <div className="stat-left-col">
+                       <span className="stat-title">Số lượt vi phạm</span>
+                       <span className="stat-value">{filteredViolations.length}</span>
+                       <span className="stat-subtitle">Học sinh vi phạm</span>
+                    </div>
+                    <div className="stat-right-col stat-absent-kp-icon">
+                       <ClipboardList size={24} />
+                    </div>
+                 </div>
+              </div>
+
+              <div className="stats-charts-grid">
+                 <div className="chart-card">
+                    <h3 className="chart-title">
+                       <PieIcon size={20} className="text-indigo-500" />
+                       Phân bổ loại vi phạm
+                    </h3>
+                    <div style={{ width: '100%', height: 280 }}>
+                       <ResponsiveContainer>
+                          <PieChart>
+                             <Pie data={violationStats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} fill="#8884d8" dataKey="value" label>
+                                {violationStats.pieData.map((entry, index) => (
+                                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                             </Pie>
+                             <RechartsTooltip />
+                             <Legend verticalAlign="bottom" height={36}/>
+                          </PieChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+                 
+                 <div className="chart-card">
+                    <h3 className="chart-title">
+                       <BarChart2 size={20} className="text-indigo-500" />
+                       Top học sinh vi phạm
+                    </h3>
+                    <div style={{ width: '100%', height: 280 }}>
+                       <ResponsiveContainer>
+                          <BarChart data={violationStats.studentList.slice(0, 5)} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+                             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                             <XAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                             <YAxis dataKey="hoten" type="category" width={120} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                             <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
+                             <Bar dataKey="points" name="Điểm trừ" fill="#ef4444" radius={[0,4,4,0]} barSize={24} />
+                          </BarChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+              </div>
            </>
         )}
       </div>
+
+      {/* MODAL CHI TIẾT */}
+      {showModal && (
+        <div className="stats-modal-overlay" onClick={(e) => { if (e.target.classList.contains('stats-modal-overlay')) setShowModal(false) }}>
+          <div className="stats-modal-content">
+            <div className="stats-modal-header">
+              <h2 className="stats-modal-title">{modalTitle}</h2>
+              <button className="stats-modal-close" onClick={() => setShowModal(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            <div className="stats-modal-body">
+              <div className="stats-table-card">
+                 <div className="overflow-x-auto">
+                    {modalType === 'attendance' ? (
+                        <table className="premium-table">
+                           <thead>
+                              <tr>
+                                 <th>STT</th>
+                                 <th>Mã HS</th>
+                                 <th>Họ và tên</th>
+                                 <th>Lớp</th>
+                                 <th>Vắng CP</th>
+                                 <th>Vắng KP</th>
+                                 <th>Tổng vắng</th>
+                              </tr>
+                           </thead>
+                           <tbody>
+                              {attendanceStats.studentList.length > 0 ? attendanceStats.studentList.map((s, idx) => (
+                                 <tr key={s.mahs}>
+                                    <td className="text-gray-500">{idx + 1}</td>
+                                    <td className="font-medium text-gray-700">{s.mahs}</td>
+                                    <td className="font-semibold text-gray-900">{s.hoten}</td>
+                                    <td><span className="badge-gray">{s.className}</span></td>
+                                    <td>
+                                      {s.absent_p > 0 ? <span className="badge-yellow">{s.absent_p}</span> : '-'}
+                                    </td>
+                                    <td>
+                                      {s.absent_kp > 0 ? <span className="badge-red">{s.absent_kp}</span> : '-'}
+                                    </td>
+                                    <td className="font-bold text-gray-900">{s.total_absent}</td>
+                                 </tr>
+                              )) : (
+                                 <tr>
+                                    <td colSpan="7" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
+                                 </tr>
+                              )}
+                           </tbody>
+                        </table>
+                    ) : (
+                        <table className="premium-table">
+                           <thead>
+                              <tr>
+                                 <th>STT</th>
+                                 <th>Mã HS</th>
+                                 <th>Họ và tên</th>
+                                 <th>Lớp</th>
+                                 <th>Số lần VP</th>
+                                 <th>Tổng điểm trừ</th>
+                              </tr>
+                           </thead>
+                           <tbody>
+                              {violationStats.studentList.length > 0 ? violationStats.studentList.map((s, idx) => (
+                                 <tr key={s.mahs}>
+                                    <td className="text-gray-500">{idx + 1}</td>
+                                    <td className="font-medium text-gray-700">{s.mahs}</td>
+                                    <td className="font-semibold text-gray-900">{s.hoten}</td>
+                                    <td><span className="badge-gray">{s.className}</span></td>
+                                    <td><span className="badge-gray">{s.count}</span></td>
+                                    <td><span className="badge-red">-{s.points}</span></td>
+                                 </tr>
+                              )) : (
+                                 <tr>
+                                    <td colSpan="6" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
+                                 </tr>
+                              )}
+                           </tbody>
+                        </table>
+                    )}
+                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
