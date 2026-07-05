@@ -360,6 +360,27 @@
 .badge-yellow { background: #fef3c7; color: #d97706; }
 .badge-gray { background: #f1f5f9; color: #64748b; }
 
+/* Modal Table Responsiveness for Mobile */
+@media (max-width: 768px) {
+  .stats-modal-body .premium-table th,
+  .stats-modal-body .premium-table td {
+    padding: 8px 4px;
+    font-size: 11px;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .stats-modal-body .premium-table th {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+  .stats-modal-body .badge-yellow,
+  .stats-modal-body .badge-red,
+  .stats-modal-body .badge-gray {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+}
+
 /* ================= DARK MODE OVERRIDES ================= */
 body.dark .stats-mode-switch {
   background: #1e293b !important;
