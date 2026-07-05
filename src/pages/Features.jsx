@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
-import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare } from 'lucide-react';
+import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
 
@@ -79,6 +79,15 @@ const FEATURE_SECTIONS = [
         border: 'rgba(239, 68, 68, 0.2)',
         shadow: 'rgba(239, 68, 68, 0.15)',
         path: '/search'
+      },
+      {
+        label: 'Thống kê',
+        icon: BarChart2,
+        color: '#f97316',
+        bg: 'rgba(249, 115, 22, 0.08)',
+        border: 'rgba(249, 115, 22, 0.2)',
+        shadow: 'rgba(249, 115, 22, 0.15)',
+        path: '/statistics'
       },
     ]
   }
