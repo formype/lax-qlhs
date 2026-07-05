@@ -137,10 +137,7 @@ export function Header({ title }) {
 
   return (
     <header className="app-header glass">
-      <div className="flex items-center gap-2" style={{ height: '100%', flexWrap: 'nowrap' }}>
-        <img src="/school-logo.png" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', display: 'block', mixBlendMode: 'multiply' }} />
-        <div className="header-title" style={{ marginLeft: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>{title}</div>
-      </div>
+      <div className="header-title">{title}</div>
       
       {user && (user.role.includes('admin') || user.role.includes('vip-admin') || (user.role.includes('giaovien') && user.teacherClass)) && (
         <div className="notification-wrapper" ref={dropdownRef}>
