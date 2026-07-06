@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Select, Input } from '../components/ui/Input';
@@ -6,13 +6,14 @@ import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
 import { getRecentViolations, fetchClasses, fetchViolationTypes, fetchSystemSettings, fetchStudents, deleteViolation, updateViolationDetails, createNotification } from '../lib/firebase';
 import { parseISO, format, startOfDay, endOfDay, isWithinInterval, parse, getMonth, getYear } from 'date-fns';
-import { Search as SearchIcon, FileText, Download, ExternalLink, Eye, X, Trash2, Edit3, Save } from 'lucide-react';
+import { Search as SearchIcon, FileText, Download, ExternalLink, Eye, X, Trash2, Edit3, Save, Upload, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import './Search.css';
+import './AddViolation.css';
 
 export function Search() {
   const { user } = useAuth();
@@ -45,6 +46,10 @@ export function Search() {
   const [selectedViolation, setSelectedViolation] = useState(null);
 
   const [isEditing, setIsEditing] = useState(false);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [editData, setEditData] = useState({ loaivipham: '', trangthai: '', minhchung: '' });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
  // For modal
@@ -81,6 +86,84 @@ export function Search() {
   }, []);
 
   
+  const handleFileUpload = async (e, isCamera) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress(10);
+
+    const appsScriptUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL;
+    let addedUrls = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileType = file.type || '';
+      
+      if (appsScriptUrl && appsScriptUrl.trim()) {
+        try {
+          const reader = new FileReader();
+          const base64Promise = new Promise((resolve) => {
+            reader.onloadend = () => {
+              const pureBase64 = reader.result.split(',')[1];
+              resolve(pureBase64);
+            };
+          });
+          reader.readAsDataURL(file);
+          const base64Data = await base64Promise;
+
+          const response = await fetch(appsScriptUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+              filename: file.name || `Upload_${Date.now()}`,
+              mimeType: fileType,
+              base64: base64Data,
+              folderId: '1Et-Jz9EiFoFpGHp139dmf504ZDFe9yhD'
+            })
+          });
+          
+          const responseText = await response.text();
+          let result = JSON.parse(responseText);
+
+          if (result.result === 'success' || result.success === true || result.url) {
+            addedUrls.push(result.url);
+          } else {
+            throw new Error(result.error || 'Lỗi không xác định từ Apps Script');
+          }
+        } catch (error) {
+          console.error("Upload Google Drive thất bại:", error);
+          alert("Không thể upload minh chứng lên Google Drive. Lỗi: " + error.message);
+          setUploading(false);
+          setUploadProgress(0);
+          return;
+        }
+      } else {
+        alert("Chưa cấu hình URL của Google Apps Script trong .env.local!");
+        setUploading(false);
+        setUploadProgress(0);
+        return;
+      }
+      
+      setUploadProgress(10 + Math.round(((i + 1) / files.length) * 90));
+    }
+
+    if (addedUrls.length > 0) {
+      const newLinks = addedUrls.join(', ');
+      setEditData(prev => ({
+        ...prev,
+        minhchung: prev.minhchung ? `${prev.minhchung}, ${newLinks}` : newLinks
+      }));
+    }
+
+    setUploading(false);
+    setUploadProgress(0);
+    // Reset inputs
+    if (isCamera && cameraInputRef.current) cameraInputRef.current.value = '';
+    if (!isCamera && fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSaveEdit = async () => {
     if (!selectedViolation) return;
     setIsSavingEdit(true);
@@ -620,11 +703,8 @@ export function Search() {
                     value={editData.loaivipham}
                     onChange={(e) => setEditData({...editData, loaivipham: e.target.value})}
                     style={{ flex: 1 }}
-                  >
-                    {violationTypes.map(t => (
-                      <option key={t.id} value={t.name}>{t.name}</option>
-                    ))}
-                  </Select>
+                    options={violationTypes.map(t => ({ value: t.name, label: t.name }))}
+                  />
                 ) : (
                   <span className="detail-value text-danger font-semibold">{selectedViolation.loaivipham}</span>
                 )}
@@ -640,10 +720,8 @@ export function Search() {
                     value={editData.trangthai}
                     onChange={(e) => setEditData({...editData, trangthai: e.target.value})}
                     style={{ flex: 1 }}
-                  >
-                    <option value="Chưa xử lý">Chưa xử lý</option>
-                    <option value="Đã xử lý">Đã xử lý</option>
-                  </Select>
+                    options={[{value: 'Chưa xử lý', label: 'Chưa xử lý'}, {value: 'Đã xử lý', label: 'Đã xử lý'}]}
+                  />
                 ) : (
                   <span className={`badge ${selectedViolation.trangthai === 'Đã xử lý' ? 'badge-success' : 'badge-warning'}`}>
                     {selectedViolation.trangthai}
@@ -685,19 +763,52 @@ export function Search() {
                     );
                   })}
                   {isEditing && (
-                    <div className="mt-2 w-full flex-row gap-2">
-                      <Input
-                        placeholder="Dán link minh chứng mới vào đây..."
-                        onBlur={(e) => {
-                          const val = e.target.value.trim();
-                          if (val) {
-                            const newLinks = editData.minhchung ? `${editData.minhchung}, ${val}` : val;
-                            setEditData({...editData, minhchung: newLinks});
-                            e.target.value = ''; // clear input
-                          }
-                        }}
-                        style={{ flex: 1 }}
+                    <div className="mt-3 w-full">
+                      <div className="file-upload-container" style={{ marginBottom: '8px' }}>
+                        <button
+                          type="button"
+                          className="upload-btn"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          <Upload size={18} />
+                          Upload minh chứng
+                        </button>
+                        <button
+                          type="button"
+                          className="upload-btn camera-upload"
+                          onClick={() => cameraInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          <Camera size={18} />
+                          Chụp ảnh minh chứng
+                        </button>
+                      </div>
+
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={(e) => handleFileUpload(e, false)}
+                        style={{ display: 'none' }}
+                        accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+                        multiple
                       />
+
+                      <input
+                        type="file"
+                        ref={cameraInputRef}
+                        onChange={(e) => handleFileUpload(e, true)}
+                        style={{ display: 'none' }}
+                        accept="image/*"
+                        capture="environment"
+                      />
+
+                      {uploading && (
+                        <div className="upload-progress-container mt-2">
+                          <div className="upload-progress-bar" style={{ width: `${uploadProgress}%` }}></div>
+                          <span className="upload-progress-text">Đang tải file lên... {uploadProgress}%</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
