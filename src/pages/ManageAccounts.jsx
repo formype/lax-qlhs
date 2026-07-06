@@ -4,7 +4,7 @@ import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { fetchUsers, addUser, updateUserAccount, deleteUser } from '../lib/firebase';
-import { UserPlus, Edit2, Trash2, Shield, Lock, RefreshCw } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Shield, Lock, RefreshCw, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const AVAILABLE_PAGES = [
@@ -188,60 +188,59 @@ export function ManageAccounts() {
         {loading ? (
           <p className="text-center text-muted mt-4">Đang tải dữ liệu...</p>
         ) : (
-          <div className="table-responsive">
-            <table className="modern-table">
-              <thead>
-                <tr>
-                  <th>Tên đăng nhập</th>
-                  <th>Họ và tên</th>
-                  <th>Vai trò</th>
-                  <th style={{ textAlign: 'center', width: '100px' }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td className="font-medium text-dark">{u.username}</td>
-                    <td>{u.fullName}</td>
-                    <td>
-                      <div className="flex-row gap-1 flex-wrap">
-                        {Array.isArray(u.role) ? u.role.map(r => (
-                          <span key={r} className={`badge ${r === 'admin' || r === 'vip-admin' ? 'badge-danger' : (r === 'giamthi' ? 'badge-primary' : 'badge-success')}`}>
-                            {r === 'vip-admin' ? 'VIP Admin' : r === 'admin' ? 'Quản trị viên' : r === 'giamthi' ? 'Giám thị' : 'Giáo viên'}
-                          </span>
-                        )) : (
-                          <span className="badge badge-secondary">Khách</span>
-                        )}
+          <div className="account-list-container" style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+            {users.map((u) => (
+              <Card key={u.id} className="account-card" style={{ transition: 'all 0.2s ease', border: '1px solid var(--border-color)', borderRadius: '16px', overflow: 'hidden' }}>
+                <CardBody style={{ padding: '20px' }}>
+                  <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div className="flex-row gap-3">
+                      <div className="avatar-circle" style={{ background: 'var(--primary-light)', color: 'var(--primary-color)', fontSize: '1.25rem', fontWeight: 'bold' }}>
+                        {u.fullName ? u.fullName.charAt(0).toUpperCase() : '?'}
                       </div>
-                    </td>
-                    <td>
-                      <div className="flex-row gap-2 justify-center">
-                        {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
-                          <button className="action-btn edit-btn" onClick={() => handleOpenModal(u)} title="Sửa thông tin">
-                            <Edit2 size={16} />
-                          </button>
-                        )}
-                        {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && u.id !== user?.id && (
-                          <button className="action-btn" style={{ color: '#eab308' }} onClick={() => handleResetPassword(u)} title="Khôi phục mật khẩu mặc định (123)">
-                            <RefreshCw size={16} />
-                          </button>
-                        )}
-                        {u.id !== user?.id && !(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
-                          <button className="action-btn delete-btn" onClick={() => handleDelete(u)} title="Xóa tài khoản">
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                      <div className="flex-col">
+                        <span className="font-bold text-dark" style={{ fontSize: '1.1rem' }}>{u.fullName}</span>
+                        <span className="text-muted text-sm mt-1">@{u.username}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="text-center text-muted py-4">Chưa có tài khoản nào.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-row gap-1 flex-wrap mb-4">
+                    {Array.isArray(u.role) ? u.role.map(r => (
+                      <span key={r} className={`badge ${r === 'admin' || r === 'vip-admin' ? 'badge-danger' : (r === 'giamthi' ? 'badge-primary' : 'badge-success')}`} style={{ padding: '6px 12px', fontSize: '0.75rem' }}>
+                        {r === 'vip-admin' ? 'VIP Admin' : r === 'admin' ? 'Quản trị viên' : r === 'giamthi' ? 'Giám thị' : 'Giáo viên'}
+                      </span>
+                    )) : (
+                      <span className="badge badge-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>Khách</span>
+                    )}
+                  </div>
+
+                  <div className="flex-row gap-2" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', justifyContent: 'flex-end' }}>
+                    {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
+                      <button className="action-btn edit-btn" onClick={() => handleOpenModal(u)} title="Sửa thông tin" style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-app)' }}>
+                        <Edit2 size={18} />
+                      </button>
+                    )}
+                    {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && u.id !== user?.id && (
+                      <button className="action-btn" onClick={() => handleResetPassword(u)} title="Khôi phục mật khẩu mặc định (123)" style={{ color: '#eab308', padding: '8px', borderRadius: '8px', background: 'var(--bg-app)' }}>
+                        <RefreshCw size={18} />
+                      </button>
+                    )}
+                    {u.id !== user?.id && !(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
+                      <button className="action-btn delete-btn" onClick={() => handleDelete(u)} title="Xóa tài khoản" style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-app)' }}>
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                </CardBody>
+              </Card>
+            ))}
+            {users.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card)', borderRadius: '16px', border: '1px dashed var(--border-color)' }}>
+                <Users size={48} className="text-muted" style={{ margin: '0 auto', marginBottom: '16px', opacity: 0.5 }} />
+                <p className="text-muted text-lg">Chưa có tài khoản nào được tạo.</p>
+                <Button variant="primary" className="mt-4" onClick={() => handleOpenModal()}>Tạo tài khoản đầu tiên</Button>
+              </div>
+            )}
           </div>
         )}
       </div>
