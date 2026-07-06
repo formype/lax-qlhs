@@ -500,7 +500,7 @@ export function Statistics() {
              classMap[cName].points += s.points;
              classMap[cName].count += s.count;
          });
-         return Object.values(classMap).sort((a, b) => b.points - a.points);
+         return Object.values(classMap).sort((a, b) => b.count - a.count);
      }
   }, [violationStats.studentList, isGiaovienOnly, targetFilterType]);
 
@@ -999,22 +999,10 @@ export function Statistics() {
         {!loading && mode === 'violation' && (
            <>
               <div className="stats-summary-grid">
-                 {!isGiaovienOnly && (
-                 <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle('Chi tiết vi phạm'); setShowModal(true); }}>
+                 <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle('Danh sách học sinh vi phạm'); setShowModal(true); }}>
                     <div className="stat-left-col">
-                       <span className="stat-title">Tổng điểm trừ</span>
-                       <span className="stat-value">{violationStats.totalPoints}</span>
-                       <span className="stat-subtitle">Từ các lỗi vi phạm</span>
-                    </div>
-                    <div className="stat-right-col stat-violations-icon">
-                       <FileWarning size={24} />
-                    </div>
-                 </div>
-                 )}
-                 <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle(isGiaovienOnly ? 'Danh sách học sinh vi phạm' : 'Danh sách lượt vi phạm'); setShowModal(true); }}>
-                    <div className="stat-left-col">
-                       <span className="stat-title">{isGiaovienOnly ? 'Số học sinh vi phạm' : 'Số lượt vi phạm'}</span>
-                       <span className="stat-value">{isGiaovienOnly ? violationStats.studentList.length : filteredViolations.length}</span>
+                       <span className="stat-title">Số học sinh vi phạm</span>
+                       <span className="stat-value">{violationStats.studentList.length}</span>
                        <span className="stat-subtitle">Trong thời gian chọn</span>
                     </div>
                     <div className="stat-right-col stat-absent-kp-icon">
@@ -1059,7 +1047,7 @@ export function Statistics() {
                              <YAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
                              <Legend verticalAlign="top" height={36} />
-                             <Bar dataKey={isGiaovienOnly ? "count" : "points"} name={isGiaovienOnly ? "Số lần vi phạm" : "Điểm trừ"} fill="#ef4444" radius={[4,4,0,0]} barSize={20} />
+                             <Bar dataKey="count" name="Số lần vi phạm" fill="#ef4444" radius={[4,4,0,0]} barSize={20} />
                           </BarChart>
                        </ResponsiveContainer>
                     </div>
@@ -1133,14 +1121,7 @@ export function Statistics() {
                                  <th style={{width: '60px'}}>STT</th>
                                  <th>Họ và tên</th>
                                  <th style={{width: '100px'}}>Lớp</th>
-                                 {isGiaovienOnly ? (
-                                    <th>Lỗi vi phạm</th>
-                                 ) : (
-                                    <>
-                                       <th>Số lần VP</th>
-                                       <th>Tổng điểm trừ</th>
-                                    </>
-                                 )}
+                                 <th>Lỗi vi phạm</th>
                               </tr>
                            </thead>
                            <tbody>
@@ -1149,19 +1130,11 @@ export function Statistics() {
                                     <td className="text-gray-500">{idx + 1}</td>
                                     <td className="font-semibold text-gray-900">{s.hoten}</td>
                                     <td><span className="badge-gray">{s.className}</span></td>
-                                    {isGiaovienOnly ? (
-                                       <td className="text-sm text-gray-700">{s.errorDetails}</td>
-                                    ) : (
-                                       <>
-                                          <td className="text-center"><span className="badge-gray">{s.count}</span></td>
-                                          <td className="text-center"><span className="badge-red">-{s.points}</span></td>
-                                       </>
-                                    )}
+                                    <td className="text-sm text-gray-700">{s.errorDetails}</td>
                                  </tr>
                               )) : (
                                  <tr>
-                                    <td colSpan={isGiaovienOnly ? "4" : "5"} className="text-center py-10 text-gray-400">Không có dữ liệu</td>
-
+                                    <td colSpan="4" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
                                  </tr>
                               )}
                            </tbody>
