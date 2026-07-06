@@ -69,13 +69,32 @@ export function ManageAccounts() {
       setEditingUser(null);
       setFormData({
         username: '',
-        password: '',
+        password: '123',
         fullName: '',
         roles: ['giamthi'],
         blockedPages: []
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleResetPassword = async (u) => {
+    if (u.id === user.id) {
+      alert("Bạn không thể reset mật khẩu của chính mình qua tính năng này.");
+      return;
+    }
+    if (user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
+      alert("Bạn không có quyền reset mật khẩu cho tài khoản quản trị ngang hoặc cao hơn cấp của mình!");
+      return;
+    }
+    if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản ${u.username} về mặc định "123" không?`)) {
+      const res = await updateUserAccount(u.id, { password: '123' });
+      if (res.success) {
+        alert(`Đã reset mật khẩu của tài khoản ${u.username} thành công. Mật khẩu mới là: 123`);
+      } else {
+        alert("Reset mật khẩu thất bại: " + res.error);
+      }
+    }
   };
 
   const handleCloseModal = () => {
@@ -141,7 +160,7 @@ export function ManageAccounts() {
       alert("Bạn không thể xóa chính mình!");
       return;
     }
-    if (user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
+    if (user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
       alert("Bạn không có quyền xóa tài khoản ngang hoặc cao hơn cấp của mình!");
       return;
     }
@@ -197,13 +216,18 @@ export function ManageAccounts() {
                     </td>
                     <td>
                       <div className="flex-row gap-2 justify-center">
-                        {!(user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
-                          <button className="action-btn edit-btn" onClick={() => handleOpenModal(u)}>
+                        {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
+                          <button className="action-btn edit-btn" onClick={() => handleOpenModal(u)} title="Sửa thông tin">
                             <Edit2 size={16} />
                           </button>
                         )}
-                        {u.id !== user?.id && !(user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
-                          <button className="action-btn delete-btn" onClick={() => handleDelete(u)}>
+                        {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && u.id !== user?.id && (
+                          <button className="action-btn" style={{ color: '#eab308' }} onClick={() => handleResetPassword(u)} title="Khôi phục mật khẩu mặc định (123)">
+                            <RefreshCw size={16} />
+                          </button>
+                        )}
+                        {u.id !== user?.id && !(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
+                          <button className="action-btn delete-btn" onClick={() => handleDelete(u)} title="Xóa tài khoản">
                             <Trash2 size={16} />
                           </button>
                         )}
@@ -252,16 +276,29 @@ export function ManageAccounts() {
                 />
               </div>
 
-              <div className="form-group mb-3">
-                <label className="input-label">Mật khẩu {editingUser ? '(Để trống nếu không đổi)' : ''}</label>
-                <input 
-                  type="password" 
-                  className="input-field" 
-                  value={formData.password}
-                  onChange={e => setFormData({...formData, password: e.target.value})}
-                  placeholder={editingUser ? "Nhập mật khẩu mới..." : "Nhập mật khẩu..."}
-                />
-              </div>
+              {editingUser ? (
+                <div className="form-group mb-3">
+                  <label className="input-label">Mật khẩu mới (Để trống nếu không đổi)</label>
+                  <input 
+                    type="password" 
+                    className="input-field" 
+                    value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})}
+                    placeholder="Nhập mật khẩu mới..."
+                  />
+                </div>
+              ) : (
+                <div className="form-group mb-3">
+                  <label className="input-label">Mật khẩu</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    value="123 (Mặc định)"
+                    disabled
+                  />
+                  <p className="text-xs text-muted mt-1">Mật khẩu mặc định cho tài khoản mới là 123.</p>
+                </div>
+              )}
 
               <div className="form-group mb-4">
                 <label className="input-label">Vai trò</label>
