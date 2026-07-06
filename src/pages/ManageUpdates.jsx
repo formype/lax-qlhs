@@ -57,7 +57,7 @@ export function ManageUpdates() {
   return (
     <>
       <Header title="Quản lý cập nhật" />
-      <div className="main-content" style={{ padding: '16px', paddingBottom: '100px' }}>
+      <div className="page-wrapper" style={{ padding: '16px', paddingBottom: '100px' }}>
         <p className="text-muted" style={{ marginTop: '-12px', marginBottom: '24px' }}>Phát hành phiên bản mới cho ứng dụng</p>
         
         {loading ? (

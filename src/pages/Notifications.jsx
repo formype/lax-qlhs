@@ -103,7 +103,7 @@ export function Notifications() {
     <div className="page-container">
       <Header title="Tất cả thông báo" />
       
-      <main className="main-content">
+      <main className="page-wrapper">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={() => navigate(-1)} className="icon-btn" style={{ background: 'var(--card-bg)' }}>

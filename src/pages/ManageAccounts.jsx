@@ -178,7 +178,7 @@ export function ManageAccounts() {
   return (
     <>
       <Header title="Quản lý Tài khoản" />
-      <div className="main-content" style={{ padding: '16px', paddingBottom: '100px' }}>
+      <div className="page-wrapper" style={{ padding: '16px', paddingBottom: '100px' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
           <Button onClick={() => handleOpenModal()} size="sm">
             <UserPlus size={16} className="mr-1" /> Thêm tài khoản
