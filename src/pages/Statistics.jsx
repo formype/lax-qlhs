@@ -87,7 +87,7 @@ export function Statistics() {
               hoten: student.hoten || '',
               khoi: student.khoi || '',
               status: status,
-              reason: att.reasons ? att.reasons[studentId] : (status === 'absent_p' ? 'Việc riêng' : null),
+              reason: (att.reasons && att.reasons[studentId]) ? att.reasons[studentId] : (status === 'absent_p' ? 'Việc riêng' : null),
             });
           }
         });
