@@ -207,10 +207,10 @@ export function Statistics() {
       } else {
         if (targetFilterType === 'grade') {
           if (targetValueGrade) {
-            const kStr = String(a.khoi || '');
-            const gMatch = a.className ? a.className.match(/\d+/) : null;
-            const ext = gMatch ? gMatch[0] : '';
-            if (kStr !== String(targetValueGrade) && ext !== String(targetValueGrade)) return false;
+            const targetDigits = String(targetValueGrade).match(/\d+/) ? String(targetValueGrade).match(/\d+/)[0] : String(targetValueGrade);
+            const kDigits = String(a.khoi || '').match(/\d+/) ? String(a.khoi).match(/\d+/)[0] : '';
+            const ext = a.className ? (a.className.match(/\d+/) ? a.className.match(/\d+/)[0] : '') : '';
+            if (kDigits !== targetDigits && ext !== targetDigits) return false;
           }
         } else if (targetFilterType === 'class') {
           if (targetValueClass && a.className !== targetValueClass) return false;
@@ -261,10 +261,10 @@ export function Statistics() {
       } else {
         if (targetFilterType === 'grade') {
           if (targetValueGrade) {
-            const kStr = String(v.khoi || '');
-            const gMatch = v.tenlop ? v.tenlop.match(/\d+/) : null;
-            const ext = gMatch ? gMatch[0] : '';
-            if (kStr !== String(targetValueGrade) && ext !== String(targetValueGrade)) return false;
+            const targetDigits = String(targetValueGrade).match(/\d+/) ? String(targetValueGrade).match(/\d+/)[0] : String(targetValueGrade);
+            const kDigits = String(v.khoi || '').match(/\d+/) ? String(v.khoi).match(/\d+/)[0] : '';
+            const ext = v.tenlop ? (v.tenlop.match(/\d+/) ? v.tenlop.match(/\d+/)[0] : '') : '';
+            if (kDigits !== targetDigits && ext !== targetDigits) return false;
           }
         } else if (targetFilterType === 'class') {
           if (targetValueClass && v.tenlop !== targetValueClass) return false;
@@ -354,10 +354,10 @@ export function Statistics() {
         } else {
            if (targetFilterType === 'grade') {
              if (targetValueGrade) {
-               const kStr = String(s.khoi || '');
-               const gMatch = s.tenlop ? s.tenlop.match(/\d+/) : null;
-               const ext = gMatch ? gMatch[0] : '';
-               if (kStr !== String(targetValueGrade) && ext !== String(targetValueGrade)) return false;
+               const targetDigits = String(targetValueGrade).match(/\d+/) ? String(targetValueGrade).match(/\d+/)[0] : String(targetValueGrade);
+               const kDigits = String(s.khoi || '').match(/\d+/) ? String(s.khoi).match(/\d+/)[0] : '';
+               const ext = s.tenlop ? (s.tenlop.match(/\d+/) ? s.tenlop.match(/\d+/)[0] : '') : '';
+               if (kDigits !== targetDigits && ext !== targetDigits) return false;
              }
            } else if (targetFilterType === 'class') {
              if (targetValueClass && s.tenlop !== targetValueClass) return false;
