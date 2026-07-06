@@ -703,7 +703,7 @@ export function Search() {
                     value={editData.loaivipham}
                     onChange={(e) => setEditData({...editData, loaivipham: e.target.value})}
                     style={{ flex: 1 }}
-                    options={violationTypes.map(t => ({ value: t.name, label: t.name }))}
+                    options={violationTypes}
                   />
                 ) : (
                   <span className="detail-value text-danger font-semibold">{selectedViolation.loaivipham}</span>
@@ -764,7 +764,7 @@ export function Search() {
                   })}
                   {isEditing && (
                     <div className="mt-3 w-full">
-                      <div className="file-upload-container" style={{ marginBottom: '8px' }}>
+                      <div className="upload-actions-grid" style={{ marginBottom: '8px' }}>
                         <button
                           type="button"
                           className="upload-btn"
