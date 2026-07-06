@@ -109,9 +109,11 @@ export function Statistics() {
          if (today >= s2Start) {
             const diffTime = today.getTime() - s2Start.getTime();
             currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1 + s1Weeks;
-         } else {
+         } else if (today >= s1Start) {
             const diffTime = today.getTime() - s1Start.getTime();
             currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1;
+         } else {
+            currentWeek = 1; // Before semester 1 starts, default to week 1
          }
          setTimeValueWeek(currentWeek.toString());
       }
@@ -440,14 +442,26 @@ export function Statistics() {
 
         const sId = v.mahs + '_' + v.hoten;
         if (!studentMap[sId]) {
-           studentMap[sId] = { mahs: v.mahs, hoten: v.hoten, className: v.tenlop, count: 0, points: 0 };
+           studentMap[sId] = { mahs: v.mahs, hoten: v.hoten, className: v.tenlop, count: 0, points: 0, violationsMap: {} };
         }
         studentMap[sId].count++;
         studentMap[sId].points += (v.diemtru || 0);
+        
+        if (!studentMap[sId].violationsMap[v.loaivipham]) {
+            studentMap[sId].violationsMap[v.loaivipham] = 0;
+        }
+        studentMap[sId].violationsMap[v.loaivipham]++;
      });
 
      const typeList = Object.values(typeMap).sort((a,b) => b.count - a.count);
-     const studentList = Object.values(studentMap).sort((a,b) => b.points - a.points);
+     const studentList = Object.values(studentMap).map(s => {
+         const errorDetails = s.violationsMap 
+             ? Object.entries(s.violationsMap)
+                 .map(([errorName, errorCount]) => `${errorName} (${errorCount} lần)`)
+                 .join(', ')
+             : '';
+         return { ...s, errorDetails };
+     }).sort((a,b) => b.points - a.points);
      
      const pieData = typeList.map(t => ({ name: t.name, value: t.count }));
      
