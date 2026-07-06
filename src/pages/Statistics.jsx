@@ -974,19 +974,19 @@ export function Statistics() {
                  </div>
                  
                  <div className="chart-card overflow-x-auto">
-                    <h3 className="chart-title">
+                    <h3 className="chart-title sticky left-0 z-10 pt-2">
                        <BarChart2 size={20} className="text-indigo-500" />
                        {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vắng nhiều nhất' : 'Lớp vắng nhiều nhất'}
                     </h3>
-                    <div style={{ width: Math.max(400, attendanceChartData.length * 50), height: 280 }}>
+                    <div style={{ width: Math.max(400, attendanceChartData.length * 50), height: 320 }}>
                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={attendanceChartData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
+                          <BarChart data={attendanceChartData} margin={{ top: 20, right: 30, left: -20, bottom: 60 }}>
                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 11, fill: '#64748b'}} interval={0} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
                              <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
-                             <Legend />
-                             <Bar dataKey="absent_p" name="Có phép" stackId="a" fill="#f59e0b" radius={[0,0,4,4]} barSize={40} />
+                             <Legend verticalAlign="top" height={36} />
+                             <Bar dataKey="absent_p" name="Có phép" stackId="a" fill="#f59e0b" radius={[0,0,4,4]} barSize={32} />
                              <Bar dataKey="absent_kp" name="Không phép" stackId="a" fill="#ef4444" radius={[4,4,0,0]} />
                           </BarChart>
                        </ResponsiveContainer>
@@ -1046,19 +1046,20 @@ export function Statistics() {
                     </div>
                  </div>
                  
-                 <div className="chart-card overflow-y-auto" style={{ maxHeight: '350px' }}>
-                    <h3 className="chart-title sticky top-0 bg-white z-10 pt-2">
+                 <div className="chart-card overflow-x-auto">
+                    <h3 className="chart-title sticky left-0 z-10 pt-2">
                        <BarChart2 size={20} className="text-indigo-500" />
                        {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vi phạm nhiều nhất' : 'Lớp vi phạm nhiều nhất'}
                     </h3>
-                    <div style={{ width: '100%', height: Math.max(280, violationChartData.length * 40) }}>
+                    <div style={{ width: Math.max(400, violationChartData.length * 50), height: 320 }}>
                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={violationChartData} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
-                             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                             <XAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                             <YAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} type="category" width={120} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                          <BarChart data={violationChartData} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
+                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 11, fill: '#64748b'}} interval={0} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                             <YAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
-                             <Bar dataKey={isGiaovienOnly ? "count" : "points"} name={isGiaovienOnly ? "Số lần vi phạm" : "Điểm trừ"} fill="#ef4444" radius={[0,4,4,0]} barSize={24} />
+                             <Legend verticalAlign="top" height={36} />
+                             <Bar dataKey={isGiaovienOnly ? "count" : "points"} name={isGiaovienOnly ? "Số lần vi phạm" : "Điểm trừ"} fill="#ef4444" radius={[4,4,0,0]} barSize={32} />
                           </BarChart>
                        </ResponsiveContainer>
                     </div>
