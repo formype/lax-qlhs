@@ -553,8 +553,13 @@ export function Statistics() {
             modalType === 'attendance_absent_benh' ? s.absentDetails_benh : s.absentDetails_viecrieng
        ]);
     } else {
-       tableColumn = ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"];
-       tableRows = listToRender.map((s, index) => [
+       tableColumn = isGiaovienOnly ? ["STT", "Họ và tên", "Lớp", "Lỗi vi phạm"] : ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"];
+       tableRows = listToRender.map((s, index) => isGiaovienOnly ? [
+         index + 1,
+         s.hoten || '',
+         s.className || '',
+         s.errorDetails || ''
+       ] : [
          index + 1,
          s.hoten || '',
          s.className || '',
@@ -624,7 +629,7 @@ export function Statistics() {
 
     const headers = modalType?.startsWith('attendance_') 
       ? ["STT", "Họ và tên", "Lớp", modalType === 'attendance_present' ? "Tổng số buổi đi học" : "Chi tiết vắng"]
-      : ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"];
+      : (isGiaovienOnly ? ["STT", "Họ và tên", "Lớp", "Lỗi vi phạm"] : ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"]);
 
     const headerRow = worksheet.getRow(6);
     headerRow.values = headers;
@@ -645,13 +650,18 @@ export function Statistics() {
             modalType === 'attendance_absent_p' ? s.absentDetails_p :
             modalType === 'attendance_absent_kp' ? s.absentDetails_kp :
             modalType === 'attendance_absent_benh' ? s.absentDetails_benh : s.absentDetails_viecrieng
+      ] : (isGiaovienOnly ? [
+        index + 1,
+        s.hoten || '',
+        s.className || '',
+        s.errorDetails || ''
       ] : [
         index + 1,
         s.hoten || '',
         s.className || '',
         s.count,
         `-${s.points}`
-      ];
+      ]);
 
       const row = worksheet.addRow(rowData);
       row.font = { name: 'Times New Roman', size: 13 };
@@ -868,7 +878,7 @@ export function Statistics() {
                </div>
              )}
 
-             {mode === 'violation' && (
+             {mode === 'violation' && !isGiaovienOnly && (
                <div className="filter-group-vertical pt-2 border-t border-gray-100">
                  <label>Loại vi phạm</label>
                  <Select
@@ -975,6 +985,7 @@ export function Statistics() {
         {!loading && mode === 'violation' && (
            <>
               <div className="stats-summary-grid">
+                 {!isGiaovienOnly && (
                  <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle('Chi tiết vi phạm'); setShowModal(true); }}>
                     <div className="stat-left-col">
                        <span className="stat-title">Tổng điểm trừ</span>
@@ -985,11 +996,12 @@ export function Statistics() {
                        <FileWarning size={24} />
                     </div>
                  </div>
-                 <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle('Danh sách lượt vi phạm'); setShowModal(true); }}>
+                 )}
+                 <div className="premium-stat-card" onClick={() => { setModalType('violation'); setModalTitle(isGiaovienOnly ? 'Danh sách học sinh vi phạm' : 'Danh sách lượt vi phạm'); setShowModal(true); }}>
                     <div className="stat-left-col">
-                       <span className="stat-title">Số lượt vi phạm</span>
-                       <span className="stat-value">{filteredViolations.length}</span>
-                       <span className="stat-subtitle">Học sinh vi phạm</span>
+                       <span className="stat-title">{isGiaovienOnly ? 'Số học sinh vi phạm' : 'Số lượt vi phạm'}</span>
+                       <span className="stat-value">{isGiaovienOnly ? violationStats.studentList.length : filteredViolations.length}</span>
+                       <span className="stat-subtitle">Trong thời gian chọn</span>
                     </div>
                     <div className="stat-right-col stat-absent-kp-icon">
                        <ClipboardList size={24} />
@@ -998,10 +1010,12 @@ export function Statistics() {
               </div>
 
               <div className="stats-charts-grid">
+                 {violationStats.studentList.length > 0 && (
+                 <>
                  <div className="chart-card">
                     <h3 className="chart-title">
                        <PieIcon size={20} className="text-indigo-500" />
-                       Phân bổ loại vi phạm
+                       Biểu đồ thống kê loại vi phạm
                     </h3>
                     <div style={{ width: '100%', height: 280 }}>
                        <ResponsiveContainer>
@@ -1035,6 +1049,8 @@ export function Statistics() {
                        </ResponsiveContainer>
                     </div>
                  </div>
+                 </>
+                 )}
               </div>
            </>
         )}
@@ -1102,8 +1118,14 @@ export function Statistics() {
                                  <th style={{width: '60px'}}>STT</th>
                                  <th>Họ và tên</th>
                                  <th style={{width: '100px'}}>Lớp</th>
-                                 <th>Số lần VP</th>
-                                 <th>Tổng điểm trừ</th>
+                                 {isGiaovienOnly ? (
+                                    <th>Lỗi vi phạm</th>
+                                 ) : (
+                                    <>
+                                       <th>Số lần VP</th>
+                                       <th>Tổng điểm trừ</th>
+                                    </>
+                                 )}
                               </tr>
                            </thead>
                            <tbody>
@@ -1112,12 +1134,19 @@ export function Statistics() {
                                     <td className="text-gray-500">{idx + 1}</td>
                                     <td className="font-semibold text-gray-900">{s.hoten}</td>
                                     <td><span className="badge-gray">{s.className}</span></td>
-                                    <td className="text-center"><span className="badge-gray">{s.count}</span></td>
-                                    <td className="text-center"><span className="badge-red">-{s.points}</span></td>
+                                    {isGiaovienOnly ? (
+                                       <td className="text-sm text-gray-700">{s.errorDetails}</td>
+                                    ) : (
+                                       <>
+                                          <td className="text-center"><span className="badge-gray">{s.count}</span></td>
+                                          <td className="text-center"><span className="badge-red">-{s.points}</span></td>
+                                       </>
+                                    )}
                                  </tr>
                               )) : (
                                  <tr>
-                                    <td colSpan="5" className="text-center py-10 text-gray-400">Không có dữ liệu</td>
+                                    <td colSpan={isGiaovienOnly ? "4" : "5"} className="text-center py-10 text-gray-400">Không có dữ liệu</td>
+
                                  </tr>
                               )}
                            </tbody>
