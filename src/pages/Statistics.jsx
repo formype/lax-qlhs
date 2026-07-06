@@ -978,8 +978,8 @@ export function Statistics() {
                        <BarChart2 size={20} className="text-indigo-500" />
                        {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vắng nhiều nhất' : 'Lớp vắng nhiều nhất'}
                     </h3>
-                    <div style={{ width: '100%', minWidth: `${Math.max(400, attendanceChartData.length * 50)}px`, height: 280 }}>
-                       <ResponsiveContainer>
+                    <div style={{ width: Math.max(400, attendanceChartData.length * 50), height: 280 }}>
+                       <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={attendanceChartData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                              <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
@@ -1051,8 +1051,8 @@ export function Statistics() {
                        <BarChart2 size={20} className="text-indigo-500" />
                        {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vi phạm nhiều nhất' : 'Lớp vi phạm nhiều nhất'}
                     </h3>
-                    <div style={{ width: '100%', minHeight: `${Math.max(280, violationChartData.length * 40)}px` }}>
-                       <ResponsiveContainer>
+                    <div style={{ width: '100%', height: Math.max(280, violationChartData.length * 40) }}>
+                       <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={violationChartData} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
                              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                              <XAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
