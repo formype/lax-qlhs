@@ -308,25 +308,23 @@ export function AttendanceSearch() {
     const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage, updaterName, updateReason);
     setIsUpdating(false);
     if (result.success) {
-      if (isGiaovienOnly) {
-        createNotification(
-          `Giáo viên ${user?.fullName || user?.username} đã duyệt phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}. Lý do: ${updateReason}`,
-          ['admin', 'vip-admin'],
-          [], // targetClasses
-          { 
-            type: 'attendance_approval', 
-            recordId: selectedRecord.id,
-            studentName: selectedRecord.hoten,
-            className: selectedRecord.className,
-            status: 'absent_p',
-            reason: updateReason,
-            date: selectedRecord.date,
-            session: selectedRecord.session,
-            proofImage: proofImage || selectedRecord.proofImage,
-            updatedBy: updaterName
-          }
-        );
-      }
+      createNotification(
+        `Tài khoản ${updaterName} đã điều chỉnh phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}. Lý do: ${updateReason}`,
+        ['admin', 'vip-admin'], // Gửi cho admin/vip-admin
+        [selectedRecord.className], // Gửi cho giáo viên chủ nhiệm
+        { 
+          type: 'attendance_approval', 
+          recordId: selectedRecord.id,
+          studentName: selectedRecord.hoten,
+          className: selectedRecord.className,
+          status: 'absent_p',
+          reason: updateReason,
+          date: selectedRecord.date,
+          session: selectedRecord.session,
+          proofImage: proofImage || selectedRecord.proofImage,
+          updatedBy: updaterName
+        }
+      );
       setAttendanceData(prev => prev.map(item => {
         if (item.id === selectedRecord.id) {
           return { ...item, status: 'absent_p', reason: updateReason, proofImage: proofImage, updatedBy: updaterName, updatedAt: { toMillis: () => Date.now() } };
