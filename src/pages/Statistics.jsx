@@ -453,6 +453,43 @@ export function Statistics() {
      
      return { totalPoints, typeList, studentList, pieData };
   }, [filteredViolations]);
+
+  const attendanceChartData = useMemo(() => {
+     if (isGiaovienOnly || targetFilterType === 'class') {
+         return attendanceStats.studentList.filter(s => s.total_absent > 0);
+     } else {
+         const classMap = {};
+         attendanceStats.studentList.forEach(s => {
+             if (s.total_absent === 0) return;
+             const cName = s.className || 'Chưa xếp lớp';
+             if (!classMap[cName]) {
+                 classMap[cName] = { name: cName, absent_p: 0, absent_kp: 0, total_absent: 0 };
+             }
+             classMap[cName].absent_p += s.absent_p;
+             classMap[cName].absent_kp += s.absent_kp;
+             classMap[cName].total_absent += s.total_absent;
+         });
+         return Object.values(classMap).sort((a, b) => b.total_absent - a.total_absent);
+     }
+  }, [attendanceStats.studentList, isGiaovienOnly, targetFilterType]);
+
+  const violationChartData = useMemo(() => {
+     if (isGiaovienOnly || targetFilterType === 'class') {
+         return violationStats.studentList;
+     } else {
+         const classMap = {};
+         violationStats.studentList.forEach(s => {
+             const cName = s.className || 'Chưa xếp lớp';
+             if (!classMap[cName]) {
+                 classMap[cName] = { name: cName, points: 0, count: 0 };
+             }
+             classMap[cName].points += s.points;
+             classMap[cName].count += s.count;
+         });
+         return Object.values(classMap).sort((a, b) => b.points - a.points);
+     }
+  }, [violationStats.studentList, isGiaovienOnly, targetFilterType]);
+
   const listToRender = useMemo(() => {
      if (!modalType) return [];
      if (modalType === 'violation') return violationStats.studentList;
@@ -915,13 +952,13 @@ export function Statistics() {
                  <div className="chart-card overflow-x-auto">
                     <h3 className="chart-title">
                        <BarChart2 size={20} className="text-indigo-500" />
-                       Học sinh vắng nhiều nhất
+                       {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vắng nhiều nhất' : 'Lớp vắng nhiều nhất'}
                     </h3>
-                    <div style={{ width: '100%', minWidth: `${Math.max(400, attendanceStats.studentList.length * 50)}px`, height: 280 }}>
+                    <div style={{ width: '100%', minWidth: `${Math.max(400, attendanceChartData.length * 50)}px`, height: 280 }}>
                        <ResponsiveContainer>
-                          <BarChart data={attendanceStats.studentList.filter(s => s.total_absent > 0)} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
+                          <BarChart data={attendanceChartData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                             <XAxis dataKey="hoten" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
                              <Legend />
@@ -984,14 +1021,14 @@ export function Statistics() {
                  <div className="chart-card overflow-y-auto" style={{ maxHeight: '350px' }}>
                     <h3 className="chart-title sticky top-0 bg-white z-10 pt-2">
                        <BarChart2 size={20} className="text-indigo-500" />
-                       Học sinh vi phạm nhiều nhất
+                       {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vi phạm nhiều nhất' : 'Lớp vi phạm nhiều nhất'}
                     </h3>
-                    <div style={{ width: '100%', minHeight: `${Math.max(280, violationStats.studentList.length * 40)}px` }}>
+                    <div style={{ width: '100%', minHeight: `${Math.max(280, violationChartData.length * 40)}px` }}>
                        <ResponsiveContainer>
-                          <BarChart data={violationStats.studentList} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+                          <BarChart data={violationChartData} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
                              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                              <XAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                             <YAxis dataKey="hoten" type="category" width={120} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                             <YAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} type="category" width={120} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
                              <Bar dataKey="points" name="Điểm trừ" fill="#ef4444" radius={[0,4,4,0]} barSize={24} />
                           </BarChart>
