@@ -35,7 +35,7 @@ export function Statistics() {
   const [violationTypes, setViolationTypes] = useState([]);
   const [settings, setSettings] = useState(null);
 
-  const [timeFilterType, setTimeFilterType] = useState('all');
+  const [timeFilterType, setTimeFilterType] = useState('week');
   const [timeValueDay, setTimeValueDay] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [timeValueWeek, setTimeValueWeek] = useState('1');
   const [timeValueMonth, setTimeValueMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -99,6 +99,22 @@ export function Statistics() {
       setClasses(classesData);
       setViolationTypes(tData);
       setSettings(sData);
+
+      if (sData) {
+         const today = new Date();
+         const s1Start = parse(sData.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+         const s2Start = parse(sData.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
+         const s1Weeks = sData.semester1Weeks || 18;
+         let currentWeek = 1;
+         if (today >= s2Start) {
+            const diffTime = today.getTime() - s2Start.getTime();
+            currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1 + s1Weeks;
+         } else {
+            const diffTime = today.getTime() - s1Start.getTime();
+            currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1;
+         }
+         setTimeValueWeek(currentWeek.toString());
+      }
 
       if (isGiaovienOnly) {
          const myClass = classesData.find(c => c.homeroomTeacherId === user?.id);
@@ -319,8 +335,28 @@ export function Statistics() {
     return finalResults.join(', ');
   };
 
+  const filteredStudentsForStats = useMemo(() => {
+     return students.filter(s => {
+        if (isGiaovienOnly) {
+           if (s.tenlop !== teacherClass) return false;
+        } else {
+           if (targetFilterType === 'grade') {
+             if (targetValueGrade && s.khoi !== targetValueGrade && !s.tenlop?.startsWith(targetValueGrade)) return false;
+           } else if (targetFilterType === 'class') {
+             if (targetValueClass && s.tenlop !== targetValueClass) return false;
+           }
+        }
+        if (targetValueStudentId) {
+           const searchStr = targetValueStudentId.toLowerCase();
+           const matchId = (s.mahs || '').toLowerCase().includes(searchStr);
+           const matchName = (s.hoten || '').toLowerCase().includes(searchStr);
+           if (!matchId && !matchName) return false;
+        }
+        return true;
+     });
+  }, [students, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, isGiaovienOnly, teacherClass]);
+
   const attendanceStats = useMemo(() => {
-     let present = 0;
      let absent_p = 0;
      let absent_kp = 0;
      let absent_benh = 0;
@@ -328,55 +364,64 @@ export function Statistics() {
      
      const studentMap = {};
 
-     filteredAttendance.forEach(a => {
-        if (a.status === 'present') present++;
-        else if (a.status === 'absent_p') {
-           absent_p++;
-           if (a.reason === 'Bệnh') absent_benh++;
-           else if (a.reason === 'Việc riêng') absent_viecrieng++;
-        }
-        else if (a.status === 'absent_kp') absent_kp++;
+     filteredStudentsForStats.forEach(s => {
+        studentMap[s.id] = {
+           mahs: s.mahs, hoten: s.hoten, className: s.tenlop,
+           present: 0, absent_p: 0, absent_kp: 0, absent_benh: 0, absent_viecrieng: 0, total_absent: 0,
+           absences: []
+        };
+     });
 
-        if (!studentMap[a.studentId]) {
-           studentMap[a.studentId] = { 
-              mahs: a.mahs, hoten: a.hoten, className: a.className, 
-              present: 0, absent_p: 0, absent_kp: 0, absent_benh: 0, absent_viecrieng: 0, total_absent: 0,
-              absences: []
-           };
-        }
+     filteredAttendance.forEach(a => {
+        if (!studentMap[a.studentId]) return;
         const s = studentMap[a.studentId];
         
-        if (a.status === 'present') s.present++;
+        if (a.status === 'present') {
+           s.present++;
+        }
         else {
            if (a.status === 'absent_p') {
+              absent_p++;
               s.absent_p++;
-              if (a.reason === 'Bệnh') s.absent_benh++;
-              else if (a.reason === 'Việc riêng') s.absent_viecrieng++;
+              if (a.reason === 'Bệnh') { absent_benh++; s.absent_benh++; }
+              else if (a.reason === 'Việc riêng') { absent_viecrieng++; s.absent_viecrieng++; }
            } else if (a.status === 'absent_kp') {
+              absent_kp++;
               s.absent_kp++;
            }
-           s.total_absent++;
-           s.absences.push({ date: a.date, session: a.session, status: a.status, reason: a.reason });
+           if (a.status === 'absent_p' || a.status === 'absent_kp') {
+              s.total_absent++;
+              s.absences.push({ date: a.date, session: a.session, status: a.status, reason: a.reason });
+           }
         }
      });
 
+     let perfect_attendance_count = 0;
      const studentList = Object.values(studentMap)
-       .sort((a, b) => b.total_absent - a.total_absent)
-       .map(s => ({
-         ...s,
-         absentDetails_p: formatAbsenceDetails(s.absences.filter(x => x.status === 'absent_p')),
-         absentDetails_kp: formatAbsenceDetails(s.absences.filter(x => x.status === 'absent_kp')),
-         absentDetails_benh: formatAbsenceDetails(s.absences.filter(x => x.reason === 'Bệnh')),
-         absentDetails_viecrieng: formatAbsenceDetails(s.absences.filter(x => x.reason === 'Việc riêng'))
-       }));
+       .map(s => {
+          if (s.total_absent === 0) perfect_attendance_count++;
+          return {
+             ...s,
+             absentDetails_p: formatAbsenceDetails(s.absences.filter(x => x.status === 'absent_p')),
+             absentDetails_kp: formatAbsenceDetails(s.absences.filter(x => x.status === 'absent_kp')),
+             absentDetails_benh: formatAbsenceDetails(s.absences.filter(x => x.reason === 'Bệnh')),
+             absentDetails_viecrieng: formatAbsenceDetails(s.absences.filter(x => x.reason === 'Việc riêng'))
+          };
+       })
+       .sort((a, b) => b.total_absent - a.total_absent);
      
      const pieData = [
-        { name: 'Có mặt', value: present },
+        { name: 'Đi học đầy đủ', value: perfect_attendance_count },
         { name: 'Vắng có phép', value: absent_p },
         { name: 'Vắng không phép', value: absent_kp }
      ];
-     return { present, absent_p, absent_kp, absent_benh, absent_viecrieng, studentList, pieData };
-  }, [filteredAttendance]);
+     
+     return { 
+        present: perfect_attendance_count, 
+        absent_p, absent_kp, absent_benh, absent_viecrieng, 
+        studentList, pieData 
+     };
+  }, [filteredAttendance, filteredStudentsForStats]);
 
   const violationStats = useMemo(() => {
      let totalPoints = 0;
@@ -408,7 +453,7 @@ export function Statistics() {
   const listToRender = useMemo(() => {
      if (!modalType) return [];
      if (modalType === 'violation') return violationStats.studentList;
-     if (modalType === 'attendance_present') return attendanceStats.studentList.filter(s => s.present > 0);
+     if (modalType === 'attendance_present') return attendanceStats.studentList.filter(s => s.total_absent === 0);
      if (modalType === 'attendance_absent_p') return attendanceStats.studentList.filter(s => s.absent_p > 0);
      if (modalType === 'attendance_absent_kp') return attendanceStats.studentList.filter(s => s.absent_kp > 0);
      if (modalType === 'attendance_absent_benh') return attendanceStats.studentList.filter(s => s.absent_benh > 0);
