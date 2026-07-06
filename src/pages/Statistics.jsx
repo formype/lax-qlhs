@@ -206,7 +206,12 @@ export function Statistics() {
         if (a.className !== teacherClass) return false;
       } else {
         if (targetFilterType === 'grade') {
-          if (targetValueGrade && String(a.khoi) !== String(targetValueGrade) && !a.className?.startsWith(String(targetValueGrade))) return false;
+          if (targetValueGrade) {
+            const kStr = String(a.khoi || '');
+            const gMatch = a.className ? a.className.match(/\d+/) : null;
+            const ext = gMatch ? gMatch[0] : '';
+            if (kStr !== String(targetValueGrade) && ext !== String(targetValueGrade)) return false;
+          }
         } else if (targetFilterType === 'class') {
           if (targetValueClass && a.className !== targetValueClass) return false;
         }
@@ -255,7 +260,12 @@ export function Statistics() {
         if (v.tenlop !== teacherClass) return false;
       } else {
         if (targetFilterType === 'grade') {
-          if (targetValueGrade && String(v.khoi) !== String(targetValueGrade) && !v.tenlop?.startsWith(String(targetValueGrade))) return false;
+          if (targetValueGrade) {
+            const kStr = String(v.khoi || '');
+            const gMatch = v.tenlop ? v.tenlop.match(/\d+/) : null;
+            const ext = gMatch ? gMatch[0] : '';
+            if (kStr !== String(targetValueGrade) && ext !== String(targetValueGrade)) return false;
+          }
         } else if (targetFilterType === 'class') {
           if (targetValueClass && v.tenlop !== targetValueClass) return false;
         }
@@ -343,7 +353,12 @@ export function Statistics() {
            if (s.tenlop !== teacherClass) return false;
         } else {
            if (targetFilterType === 'grade') {
-             if (targetValueGrade && String(s.khoi) !== String(targetValueGrade) && !s.tenlop?.startsWith(String(targetValueGrade))) return false;
+             if (targetValueGrade) {
+               const kStr = String(s.khoi || '');
+               const gMatch = s.tenlop ? s.tenlop.match(/\d+/) : null;
+               const ext = gMatch ? gMatch[0] : '';
+               if (kStr !== String(targetValueGrade) && ext !== String(targetValueGrade)) return false;
+             }
            } else if (targetFilterType === 'class') {
              if (targetValueClass && s.tenlop !== targetValueClass) return false;
            }
@@ -448,20 +463,16 @@ export function Statistics() {
         studentMap[sId].points += (v.diemtru || 0);
         
         if (!studentMap[sId].violationsMap[v.loaivipham]) {
-            studentMap[sId].violationsMap[v.loaivipham] = 0;
+            studentMap[sId].violationsMap[v.loaivipham] = { name: v.loaivipham, count: 0 };
         }
-        studentMap[sId].violationsMap[v.loaivipham]++;
+        studentMap[sId].violationsMap[v.loaivipham].count++;
      });
 
      const typeList = Object.values(typeMap).sort((a,b) => b.count - a.count);
      const studentList = Object.values(studentMap).map(s => {
-         const errorDetails = s.violationsMap 
-             ? Object.entries(s.violationsMap)
-                 .map(([errorName, errorCount]) => `${errorName} (${errorCount} lần)`)
-                 .join(', ')
-             : '';
+         const errorDetails = Object.values(s.violationsMap).map(v => `${v.name} (${v.count} lần)`).join(', ');
          return { ...s, errorDetails };
-     }).sort((a,b) => isGiaovienOnly ? (b.count - a.count) : (b.points - a.points));
+     }).sort((a,b) => b.count - a.count);
      
      const pieData = typeList.map(t => ({ name: t.name, value: t.count }));
      
