@@ -578,18 +578,12 @@ export function Statistics() {
             modalType === 'attendance_absent_benh' ? s.absentDetails_benh : s.absentDetails_viecrieng
        ]);
     } else {
-       tableColumn = isGiaovienOnly ? ["STT", "Họ và tên", "Lớp", "Lỗi vi phạm"] : ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"];
-       tableRows = listToRender.map((s, index) => isGiaovienOnly ? [
+       tableColumn = ["STT", "Họ và tên", "Lớp", "Lỗi vi phạm"];
+       tableRows = listToRender.map((s, index) => [
          index + 1,
          s.hoten || '',
          s.className || '',
          s.errorDetails || ''
-       ] : [
-         index + 1,
-         s.hoten || '',
-         s.className || '',
-         s.count,
-         `-${s.points}`
        ]);
     }
 
@@ -613,10 +607,8 @@ export function Statistics() {
     worksheet.pageSetup.orientation = 'landscape';
     worksheet.pageSetup.paperSize = 9;
 
-    worksheet.columns = modalType?.startsWith('attendance_') ? [
+    worksheet.columns = [
       { width: 10 }, { width: 30 }, { width: 15 }, { width: 40 }
-    ] : [
-      { width: 10 }, { width: 30 }, { width: 15 }, { width: 15 }, { width: 15 }
     ];
 
     worksheet.mergeCells('A1:B1');
@@ -625,8 +617,8 @@ export function Statistics() {
     cellA1.font = { name: 'Times New Roman', size: 13, bold: false };
     cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    const lastColIndex = modalType?.startsWith('attendance_') ? 4 : 5;
-    const lastColLetter = modalType?.startsWith('attendance_') ? 'D' : 'E';
+    const lastColIndex = 4;
+    const lastColLetter = 'D';
 
     worksheet.mergeCells(`C1:${lastColLetter}1`);
     const cellRight1 = worksheet.getCell('C1');
@@ -654,7 +646,7 @@ export function Statistics() {
 
     const headers = modalType?.startsWith('attendance_') 
       ? ["STT", "Họ và tên", "Lớp", modalType === 'attendance_present' ? "Tổng số buổi đi học" : "Chi tiết vắng"]
-      : (isGiaovienOnly ? ["STT", "Họ và tên", "Lớp", "Lỗi vi phạm"] : ["STT", "Họ và tên", "Lớp", "Số lần VP", "Tổng điểm trừ"]);
+      : ["STT", "Họ và tên", "Lớp", "Lỗi vi phạm"];
 
     const headerRow = worksheet.getRow(6);
     headerRow.values = headers;
@@ -675,18 +667,12 @@ export function Statistics() {
             modalType === 'attendance_absent_p' ? s.absentDetails_p :
             modalType === 'attendance_absent_kp' ? s.absentDetails_kp :
             modalType === 'attendance_absent_benh' ? s.absentDetails_benh : s.absentDetails_viecrieng
-      ] : (isGiaovienOnly ? [
-        index + 1,
-        s.hoten || '',
-        s.className || '',
-        s.errorDetails || ''
       ] : [
         index + 1,
         s.hoten || '',
         s.className || '',
-        s.count,
-        `-${s.points}`
-      ]);
+        s.errorDetails || ''
+      ];
 
       const row = worksheet.addRow(rowData);
       row.font = { name: 'Times New Roman', size: 13 };
