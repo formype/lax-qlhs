@@ -461,7 +461,7 @@ export function Statistics() {
                  .join(', ')
              : '';
          return { ...s, errorDetails };
-     }).sort((a,b) => b.points - a.points);
+     }).sort((a,b) => isGiaovienOnly ? (b.count - a.count) : (b.points - a.points));
      
      const pieData = typeList.map(t => ({ name: t.name, value: t.count }));
      
@@ -1058,7 +1058,7 @@ export function Statistics() {
                              <XAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <YAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} type="category" width={120} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
-                             <Bar dataKey="points" name="Điểm trừ" fill="#ef4444" radius={[0,4,4,0]} barSize={24} />
+                             <Bar dataKey={isGiaovienOnly ? "count" : "points"} name={isGiaovienOnly ? "Số lần vi phạm" : "Điểm trừ"} fill="#ef4444" radius={[0,4,4,0]} barSize={24} />
                           </BarChart>
                        </ResponsiveContainer>
                     </div>
