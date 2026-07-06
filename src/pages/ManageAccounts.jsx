@@ -4,7 +4,7 @@ import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { fetchUsers, addUser, updateUserAccount, deleteUser } from '../lib/firebase';
-import { UserPlus, Edit2, Trash2, Shield, Lock } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Shield, Lock, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const AVAILABLE_PAGES = [
