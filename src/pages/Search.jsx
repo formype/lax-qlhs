@@ -4,9 +4,9 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Select, Input } from '../components/ui/Input';
 import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
-import { getRecentViolations, fetchClasses, fetchViolationTypes, fetchSystemSettings, fetchStudents, deleteViolation } from '../lib/firebase';
+import { getRecentViolations, fetchClasses, fetchViolationTypes, fetchSystemSettings, fetchStudents, deleteViolation, updateViolationDetails, createNotification } from '../lib/firebase';
 import { parseISO, format, startOfDay, endOfDay, isWithinInterval, parse, getMonth, getYear } from 'date-fns';
-import { Search as SearchIcon, FileText, Download, ExternalLink, Eye, X, Trash2 } from 'lucide-react';
+import { Search as SearchIcon, FileText, Download, ExternalLink, Eye, X, Trash2, Edit3, Save } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -42,7 +42,12 @@ export function Search() {
   
   const [typeFilter, setTypeFilter] = useState('all');
 
-  const [selectedViolation, setSelectedViolation] = useState(null); // For modal
+  const [selectedViolation, setSelectedViolation] = useState(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({ loaivipham: '', trangthai: '', minhchung: '' });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+ // For modal
 
   useEffect(() => {
     const loadData = async () => {
@@ -74,6 +79,53 @@ export function Search() {
     };
     loadData();
   }, []);
+
+  
+  const handleSaveEdit = async () => {
+    if (!selectedViolation) return;
+    setIsSavingEdit(true);
+    const updaterName = user?.fullName || user?.username || 'Hệ thống';
+    const result = await updateViolationDetails(selectedViolation.id, {
+      loaivipham: editData.loaivipham,
+      trangthai: editData.trangthai,
+      minhchung: editData.minhchung,
+      updatedBy: updaterName
+    });
+    
+    if (result.success) {
+      // Update local state
+      const updatedViolation = {
+        ...selectedViolation,
+        loaivipham: editData.loaivipham,
+        trangthai: editData.trangthai,
+        minhchung: editData.minhchung,
+        updatedBy: updaterName,
+        updatedAt: { toMillis: () => Date.now() }
+      };
+      
+      setViolations(prev => prev.map(v => v.id === selectedViolation.id ? updatedViolation : v));
+      setFilteredViolations(prev => prev.map(v => v.id === selectedViolation.id ? updatedViolation : v));
+      setSelectedViolation(updatedViolation);
+      setIsEditing(false);
+      
+      // Notify Admin & Teacher
+      createNotification(
+        `Tài khoản ${updaterName} đã chỉnh sửa vi phạm của học sinh ${selectedViolation.hoten} lớp ${selectedViolation.tenlop}.`,
+        ['admin', 'vip-admin'],
+        [selectedViolation.tenlop],
+        {
+          type: 'violation_edit',
+          violationId: selectedViolation.id,
+          studentName: selectedViolation.hoten,
+          className: selectedViolation.tenlop,
+          updatedBy: updaterName
+        }
+      );
+    } else {
+      alert("Lỗi khi lưu chỉnh sửa: " + result.error);
+    }
+    setIsSavingEdit(false);
+  };
 
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa vi phạm này không? Dữ liệu không thể khôi phục.")) {
@@ -518,12 +570,38 @@ export function Search() {
             <div className="modal-header">
               <h3>Chi tiết vi phạm</h3>
               <div className="flex-row gap-2">
-                {(user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
-                  <button className="btn-icon-link text-danger" onClick={() => handleDelete(selectedViolation.id)} title="Xóa vi phạm">
+                {!isEditing && (user?.role?.includes('admin') || user?.role?.includes('vip-admin') || user?.role?.includes('giamthi')) && (
+                  <button className="btn-icon-link text-primary" onClick={() => {
+                    setIsEditing(true);
+                    setEditData({
+                      loaivipham: selectedViolation.loaivipham || '',
+                      trangthai: selectedViolation.trangthai || '',
+                      minhchung: selectedViolation.minhchung || ''
+                    });
+                  }} title="Sửa vi phạm">
+                    <Edit3 size={20} />
+                  </button>
+                )}
+                {!isEditing && (user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
+                  <button className="btn-icon-link text-danger" onClick={() => {
+                    setSelectedViolation(null);
+                    handleDelete(selectedViolation.id);
+                  }} title="Xóa vi phạm">
                     <Trash2 size={20} />
                   </button>
                 )}
-                <button className="btn-icon-link" onClick={() => setSelectedViolation(null)}><X size={20} /></button>
+                {isEditing && (
+                  <button className="btn-icon-link text-success" onClick={handleSaveEdit} disabled={isSavingEdit} title="Lưu">
+                    <Save size={20} />
+                  </button>
+                )}
+                <button className="btn-icon-link" onClick={() => {
+                  if (isEditing) {
+                    setIsEditing(false);
+                  } else {
+                    setSelectedViolation(null);
+                  }
+                }}><X size={20} /></button>
               </div>
             </div>
             <div className="modal-body">
@@ -537,7 +615,19 @@ export function Search() {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Lỗi vi phạm:</span>
-                <span className="detail-value text-danger font-semibold">{selectedViolation.loaivipham}</span>
+                {isEditing ? (
+                  <Select
+                    value={editData.loaivipham}
+                    onChange={(e) => setEditData({...editData, loaivipham: e.target.value})}
+                    style={{ flex: 1 }}
+                  >
+                    {violationTypes.map(t => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
+                    ))}
+                  </Select>
+                ) : (
+                  <span className="detail-value text-danger font-semibold">{selectedViolation.loaivipham}</span>
+                )}
               </div>
               <div className="detail-row">
                 <span className="detail-label">Ngày vi phạm:</span>
@@ -545,9 +635,20 @@ export function Search() {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Trạng thái:</span>
-                <span className={`badge ${selectedViolation.trangthai === 'Đã xử lý' ? 'badge-success' : 'badge-warning'}`}>
-                  {selectedViolation.trangthai}
-                </span>
+                {isEditing ? (
+                  <Select
+                    value={editData.trangthai}
+                    onChange={(e) => setEditData({...editData, trangthai: e.target.value})}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="Chưa xử lý">Chưa xử lý</option>
+                    <option value="Đã xử lý">Đã xử lý</option>
+                  </Select>
+                ) : (
+                  <span className={`badge ${selectedViolation.trangthai === 'Đã xử lý' ? 'badge-success' : 'badge-warning'}`}>
+                    {selectedViolation.trangthai}
+                  </span>
+                )}
               </div>
               {selectedViolation.noidung && (
                 <div className="detail-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
@@ -555,31 +656,76 @@ export function Search() {
                   <div className="detail-text-box">{selectedViolation.noidung}</div>
                 </div>
               )}
-              {selectedViolation.minhchung && (
-                <div className="detail-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
-                  <span className="detail-label mb-1">Minh chứng:</span>
-                  <div className="flex-row gap-2" style={{flexWrap: 'wrap'}}>
-                    {selectedViolation.minhchung.split(',').map((url, idx) => {
-                      const tUrl = url.trim();
-                      if (!tUrl) return null;
-                      return (
-                        <a key={idx} href={tUrl} target="_blank" rel="noopener noreferrer" className="drive-link">
+              
+              <div className="detail-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+                <span className="detail-label mb-1">Minh chứng:</span>
+                <div className="flex-col gap-2 w-full">
+                  {(isEditing ? editData.minhchung : selectedViolation.minhchung)?.split(',').map((url, idx) => {
+                    const tUrl = url.trim();
+                    if (!tUrl) return null;
+                    return (
+                      <div key={idx} className="flex-row items-center gap-2" style={{marginBottom: '4px'}}>
+                        <a href={tUrl} target="_blank" rel="noopener noreferrer" className="drive-link">
                           <ExternalLink size={14} style={{ marginRight: '4px' }} />
                           Xem file {idx + 1}
                         </a>
-                      );
-                    })}
-                  </div>
+                        {isEditing && (user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
+                          <button 
+                            className="btn-icon-link text-danger" 
+                            style={{ padding: '0 4px' }}
+                            onClick={() => {
+                              const newLinks = editData.minhchung.split(',').map(s => s.trim()).filter((_, i) => i !== idx).join(', ');
+                              setEditData({...editData, minhchung: newLinks});
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {isEditing && (
+                    <div className="mt-2 w-full flex-row gap-2">
+                      <Input
+                        placeholder="Dán link minh chứng mới vào đây..."
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val) {
+                            const newLinks = editData.minhchung ? `${editData.minhchung}, ${val}` : val;
+                            setEditData({...editData, minhchung: newLinks});
+                            e.target.value = ''; // clear input
+                          }
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
               
               <div className="modal-footer-info mt-4 pt-3 border-t">
-                <div className="text-xs text-muted">
+                <div className="text-xs text-muted mb-1">
                   Tài khoản ghi nhận: <span className="font-semibold">{selectedViolation.createdBy || 'Hệ thống'}</span>
                 </div>
-                <div className="text-xs text-muted">
+                <div className="text-xs text-muted mb-1">
                   Thời gian ghi nhận: <span className="font-semibold">{selectedViolation.createdTimeFormatted || 'Không xác định'}</span>
                 </div>
+                {selectedViolation.updatedBy && (
+                  <>
+                    <div className="text-xs text-muted mb-1">
+                      Chỉnh sửa lần cuối bởi: <span className="font-semibold" style={{color: 'var(--primary)'}}>{selectedViolation.updatedBy}</span>
+                    </div>
+                    {selectedViolation.updatedAt && (
+                      <div className="text-xs text-muted">
+                        Lúc: <span className="font-semibold">{
+                          selectedViolation.updatedAt?.toMillis 
+                            ? format(selectedViolation.updatedAt.toMillis(), 'dd/MM/yyyy HH:mm:ss')
+                            : 'Không xác định'
+                        }</span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>

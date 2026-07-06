@@ -340,6 +340,20 @@ export const updateViolationStatus = async (violationId, newStatus) => {
   }
 };
 
+export const updateViolationDetails = async (violationId, updates) => {
+  try {
+    const violationRef = doc(db, COLLECTIONS.VIOLATIONS, violationId);
+    await updateDoc(violationRef, {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating violation details: ", error);
+    return { success: false, error: error.message };
+  }
+};
+
 // --- ATTENDANCE ---
 export const saveAttendance = async (date, session, className, attendanceData, createdBy = 'Hệ thống', reasonsData = {}) => {
   try {
