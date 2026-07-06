@@ -357,11 +357,6 @@ export function Statistics() {
   }, [students, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, isGiaovienOnly, teacherClass]);
 
   const attendanceStats = useMemo(() => {
-     let absent_p = 0;
-     let absent_kp = 0;
-     let absent_benh = 0;
-     let absent_viecrieng = 0;
-     
      const studentMap = {};
 
      filteredStudentsForStats.forEach(s => {
@@ -381,12 +376,10 @@ export function Statistics() {
         }
         else {
            if (a.status === 'absent_p') {
-              absent_p++;
               s.absent_p++;
-              if (a.reason === 'Bệnh') { absent_benh++; s.absent_benh++; }
-              else if (a.reason === 'Việc riêng') { absent_viecrieng++; s.absent_viecrieng++; }
+              if (a.reason === 'Bệnh') { s.absent_benh++; }
+              else if (a.reason === 'Việc riêng') { s.absent_viecrieng++; }
            } else if (a.status === 'absent_kp') {
-              absent_kp++;
               s.absent_kp++;
            }
            if (a.status === 'absent_p' || a.status === 'absent_kp') {
@@ -397,9 +390,19 @@ export function Statistics() {
      });
 
      let perfect_attendance_count = 0;
+     let absent_p = 0;
+     let absent_kp = 0;
+     let absent_benh = 0;
+     let absent_viecrieng = 0;
+
      const studentList = Object.values(studentMap)
        .map(s => {
           if (s.total_absent === 0) perfect_attendance_count++;
+          if (s.absent_p > 0) absent_p++;
+          if (s.absent_kp > 0) absent_kp++;
+          if (s.absent_benh > 0) absent_benh++;
+          if (s.absent_viecrieng > 0) absent_viecrieng++;
+
           return {
              ...s,
              absentDetails_p: formatAbsenceDetails(s.absences.filter(x => x.status === 'absent_p')),
