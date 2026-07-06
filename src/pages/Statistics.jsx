@@ -206,7 +206,7 @@ export function Statistics() {
         if (a.className !== teacherClass) return false;
       } else {
         if (targetFilterType === 'grade') {
-          if (targetValueGrade && a.khoi !== targetValueGrade && !a.className?.startsWith(targetValueGrade)) return false;
+          if (targetValueGrade && String(a.khoi) !== String(targetValueGrade) && !a.className?.startsWith(String(targetValueGrade))) return false;
         } else if (targetFilterType === 'class') {
           if (targetValueClass && a.className !== targetValueClass) return false;
         }
@@ -255,7 +255,7 @@ export function Statistics() {
         if (v.tenlop !== teacherClass) return false;
       } else {
         if (targetFilterType === 'grade') {
-          if (targetValueGrade && v.khoi !== targetValueGrade && !v.tenlop?.startsWith(targetValueGrade)) return false;
+          if (targetValueGrade && String(v.khoi) !== String(targetValueGrade) && !v.tenlop?.startsWith(String(targetValueGrade))) return false;
         } else if (targetFilterType === 'class') {
           if (targetValueClass && v.tenlop !== targetValueClass) return false;
         }
@@ -343,7 +343,7 @@ export function Statistics() {
            if (s.tenlop !== teacherClass) return false;
         } else {
            if (targetFilterType === 'grade') {
-             if (targetValueGrade && s.khoi !== targetValueGrade && !s.tenlop?.startsWith(targetValueGrade)) return false;
+             if (targetValueGrade && String(s.khoi) !== String(targetValueGrade) && !s.tenlop?.startsWith(String(targetValueGrade))) return false;
            } else if (targetFilterType === 'class') {
              if (targetValueClass && s.tenlop !== targetValueClass) return false;
            }
@@ -828,15 +828,6 @@ export function Statistics() {
                          className="w-full flex-1"
                        />
                      )}
-                     <div className="search-input-wrapper flex-1 min-w-[200px]">
-                       <SearchIcon className="search-icon" size={18} />
-                       <Input
-                         placeholder="Tìm mã hoặc tên HS..."
-                         value={targetValueStudentId}
-                         onChange={(e) => setTargetValueStudentId(e.target.value)}
-                         hideLabel
-                       />
-                     </div>
                    </>
                  )}
                </div>
@@ -886,21 +877,6 @@ export function Statistics() {
                      { value: 'all', label: 'Tất cả buổi' },
                      { value: 'Sáng', label: 'Buổi Sáng' },
                      { value: 'Chiều', label: 'Buổi Chiều' }
-                   ]}
-                   className="w-full"
-                 />
-               </div>
-             )}
-
-             {mode === 'violation' && !isGiaovienOnly && (
-               <div className="filter-group-vertical pt-2 border-t border-gray-100">
-                 <label>Loại vi phạm</label>
-                 <Select
-                   value={typeFilter}
-                   onChange={(e) => setTypeFilter(e.target.value)}
-                   options={[
-                     { value: 'all', label: 'Tất cả các lỗi' },
-                     ...violationTypes.map(t => ({ value: t.tenloai, label: t.tenloai }))
                    ]}
                    className="w-full"
                  />
