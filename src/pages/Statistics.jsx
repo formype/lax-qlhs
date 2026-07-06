@@ -958,36 +958,36 @@ export function Statistics() {
                        <PieIcon size={20} className="text-indigo-500" />
                        Tỷ lệ chuyên cần
                     </h3>
-                    <div style={{ width: '100%', height: 280 }}>
+                    <div style={{ width: '100%', height: 350 }}>
                        <ResponsiveContainer>
                           <PieChart>
-                             <Pie data={attendanceStats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" label>
+                             <Pie data={attendanceStats.pieData} cx="50%" cy="45%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value" label>
                                 {attendanceStats.pieData.map((entry, index) => (
                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                              </Pie>
                              <RechartsTooltip />
-                             <Legend verticalAlign="bottom" height={36}/>
+                             <Legend verticalAlign="bottom" height={80} wrapperStyle={{ paddingTop: '20px' }} />
                           </PieChart>
                        </ResponsiveContainer>
                     </div>
                  </div>
                  
-                 <div className="chart-card overflow-x-auto">
+                 <div className="chart-card">
                     <h3 className="chart-title sticky left-0 z-10 pt-2">
                        <BarChart2 size={20} className="text-indigo-500" />
                        {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vắng nhiều nhất' : 'Lớp vắng nhiều nhất'}
                     </h3>
-                    <div style={{ width: Math.max(400, attendanceChartData.length * 50), height: 320 }}>
+                    <div style={{ width: '100%', height: 320 }}>
                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={attendanceChartData} margin={{ top: 20, right: 30, left: -20, bottom: 60 }}>
+                          <BarChart data={attendanceChartData} margin={{ top: 20, right: 10, left: -20, bottom: 60 }}>
                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 11, fill: '#64748b'}} interval={0} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 10, fill: '#64748b'}} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
                              <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
                              <Legend verticalAlign="top" height={36} />
-                             <Bar dataKey="absent_p" name="Có phép" stackId="a" fill="#f59e0b" radius={[0,0,4,4]} barSize={32} />
-                             <Bar dataKey="absent_kp" name="Không phép" stackId="a" fill="#ef4444" radius={[4,4,0,0]} />
+                             <Bar dataKey="absent_p" name="Có phép" stackId="a" fill="#f59e0b" radius={[0,0,4,4]} barSize={20} />
+                             <Bar dataKey="absent_kp" name="Không phép" stackId="a" fill="#ef4444" radius={[4,4,0,0]} barSize={20} />
                           </BarChart>
                        </ResponsiveContainer>
                     </div>
@@ -1031,35 +1031,35 @@ export function Statistics() {
                        <PieIcon size={20} className="text-indigo-500" />
                        Biểu đồ thống kê loại vi phạm
                     </h3>
-                    <div style={{ width: '100%', height: 280 }}>
+                    <div style={{ width: '100%', height: 350 }}>
                        <ResponsiveContainer>
                           <PieChart>
-                             <Pie data={violationStats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} fill="#8884d8" dataKey="value" label>
+                             <Pie data={violationStats.pieData} cx="50%" cy="45%" innerRadius={50} outerRadius={80} paddingAngle={5} fill="#8884d8" dataKey="value" label>
                                 {violationStats.pieData.map((entry, index) => (
                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                              </Pie>
                              <RechartsTooltip />
-                             <Legend verticalAlign="bottom" height={36}/>
+                             <Legend verticalAlign="bottom" height={80} wrapperStyle={{ paddingTop: '20px' }} />
                           </PieChart>
                        </ResponsiveContainer>
                     </div>
                  </div>
                  
-                 <div className="chart-card overflow-x-auto">
+                 <div className="chart-card">
                     <h3 className="chart-title sticky left-0 z-10 pt-2">
                        <BarChart2 size={20} className="text-indigo-500" />
                        {isGiaovienOnly || targetFilterType === 'class' ? 'Học sinh vi phạm nhiều nhất' : 'Lớp vi phạm nhiều nhất'}
                     </h3>
-                    <div style={{ width: Math.max(400, violationChartData.length * 50), height: 320 }}>
+                    <div style={{ width: '100%', height: 320 }}>
                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={violationChartData} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
+                          <BarChart data={violationChartData} margin={{ top: 20, right: 10, left: 0, bottom: 60 }}>
                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 11, fill: '#64748b'}} interval={0} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                             <XAxis dataKey={isGiaovienOnly || targetFilterType === 'class' ? "hoten" : "name"} tick={{fontSize: 10, fill: '#64748b'}} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
                              <YAxis type="number" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
                              <RechartsTooltip cursor={{fill: '#f1f5f9'}} />
                              <Legend verticalAlign="top" height={36} />
-                             <Bar dataKey={isGiaovienOnly ? "count" : "points"} name={isGiaovienOnly ? "Số lần vi phạm" : "Điểm trừ"} fill="#ef4444" radius={[4,4,0,0]} barSize={32} />
+                             <Bar dataKey={isGiaovienOnly ? "count" : "points"} name={isGiaovienOnly ? "Số lần vi phạm" : "Điểm trừ"} fill="#ef4444" radius={[4,4,0,0]} barSize={20} />
                           </BarChart>
                        </ResponsiveContainer>
                     </div>
