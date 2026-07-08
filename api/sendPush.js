@@ -66,6 +66,18 @@ export default async function handler(req, res) {
       title: title || 'Thông báo mới',
       body: body || 'Bạn có thông báo mới',
     },
+    android: {
+      notification: {
+        sound: 'default'
+      }
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: 'default'
+        }
+      }
+    },
     data: safeData,
     tokens: tokens,
   };
