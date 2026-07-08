@@ -62,11 +62,9 @@ export const loginUser = async (username, password) => {
       return { 
         success: true, 
         user: {
+          ...userData,
           id: userId,
-          username: userData.username,
-          fullName: userData.fullName,
           role: roles, 
-          password: userData.password,
           blockedPages: userData.blockedPages || [],
           teacherClass: teacherClass
         }  
