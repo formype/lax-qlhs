@@ -842,19 +842,31 @@ export const createNotification = async (message, targetRoles, targetClasses = [
     
     // Trigger push notification
     try {
-      const q = query(collection(db, COLLECTIONS.USERS), where('role', 'in', targetRoles));
-      const userSnap = await getDocs(q);
       const tokens = [];
-      userSnap.forEach(doc => {
-        const u = doc.data();
-        if (targetClasses.length > 0 && u.role === 'giaovien') {
-           // Skip if teacher is not in target classes (we can't easily check homeroom from user doc, but we can send anyway or filter if needed, to be safe we just collect tokens)
-           // Actually, since targetClasses is passed, let's collect all tokens of targetRoles and send.
-        }
-        if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
-          tokens.push(...u.fcmTokens);
-        }
-      });
+      
+      // If targetRoles is provided, get users by role
+      if (targetRoles && targetRoles.length > 0) {
+        const qRole = query(collection(db, COLLECTIONS.USERS), where('role', 'in', targetRoles));
+        const roleSnap = await getDocs(qRole);
+        roleSnap.forEach(doc => {
+          const u = doc.data();
+          if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
+            tokens.push(...u.fcmTokens);
+          }
+        });
+      }
+
+      // If targetClasses is provided, we need to find teachers for those classes
+      if (targetClasses && targetClasses.length > 0) {
+        const qClass = query(collection(db, COLLECTIONS.USERS), where('teacherClass', 'in', targetClasses));
+        const classSnap = await getDocs(qClass);
+        classSnap.forEach(doc => {
+          const u = doc.data();
+          if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
+            tokens.push(...u.fcmTokens);
+          }
+        });
+      }
       
       const uniqueTokens = [...new Set(tokens)];
       if (uniqueTokens.length > 0) {
