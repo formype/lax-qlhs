@@ -88,7 +88,7 @@ export function ManageAccounts() {
       return;
     }
     if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản ${u.username} về mặc định "123" không?`)) {
-      const res = await updateUserAccount(u.id, { password: '123' });
+      const res = await updateUserAccount(u.id, { password: '123', credentialsUpdatedAt: Date.now() });
       if (res.success) {
         alert(`Đã reset mật khẩu của tài khoản ${u.username} thành công. Mật khẩu mới là: 123`);
       } else {
@@ -124,7 +124,8 @@ export function ManageAccounts() {
       const updates = {
         fullName: formData.fullName,
         role: formData.roles,
-        blockedPages: formData.blockedPages
+        blockedPages: formData.blockedPages,
+        credentialsUpdatedAt: Date.now()
       };
       if (formData.password) {
         updates.password = formData.password;

@@ -62,7 +62,7 @@ export function AccountSettings() {
       return;
     }
 
-    const updates = { fullName };
+    const updates = { fullName, credentialsUpdatedAt: Date.now() };
     if (newPassword) {
       updates.password = newPassword;
     }
