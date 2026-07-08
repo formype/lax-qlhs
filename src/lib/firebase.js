@@ -756,15 +756,47 @@ export const requestNotificationPermission = async (userId) => {
         permStatus = await PushNotifications.requestPermissions();
       }
       if (permStatus.receive === 'granted') {
+        
+        try {
+          await PushNotifications.createChannel({
+            id: 'qlhs_alerts',
+            name: 'Cảnh báo Vi phạm',
+            description: 'Thông báo có vi phạm mới',
+            importance: 5,
+            visibility: 1,
+            vibration: true,
+          });
+        } catch (e) {
+          console.warn('Could not create channel', e);
+        }
+
         // Add listeners only once
         if (!window.pushListenersRegistered) {
           window.pushListenersRegistered = true;
           PushNotifications.addListener('registration', async (token) => {
             console.log('Push registration success, token: ' + token.value);
-            const userRef = doc(db, COLLECTIONS.USERS, userId);
-            await updateDoc(userRef, {
-              fcmTokens: arrayUnion(token.value)
-            });
+            try {
+              const userRef = doc(db, COLLECTIONS.USERS, userId);
+              await updateDoc(userRef, {
+                fcmTokens: arrayUnion(token.value)
+              });
+              // Show toast to confirm registration
+              const toast = document.createElement('div');
+              toast.style.position = 'fixed';
+              toast.style.bottom = '20px';
+              toast.style.left = '50%';
+              toast.style.transform = 'translateX(-50%)';
+              toast.style.background = '#4CAF50';
+              toast.style.color = 'white';
+              toast.style.padding = '10px 20px';
+              toast.style.borderRadius = '5px';
+              toast.style.zIndex = '9999';
+              toast.innerHTML = 'Đã kết nối Thông báo Đẩy thành công!';
+              document.body.appendChild(toast);
+              setTimeout(() => toast.remove(), 3000);
+            } catch (e) {
+              console.error('Lỗi khi lưu token:', e);
+            }
           });
           PushNotifications.addListener('registrationError', (error) => {
             console.error('Error on push registration: ' + JSON.stringify(error));
