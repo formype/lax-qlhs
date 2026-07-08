@@ -756,7 +756,6 @@ export const requestNotificationPermission = async (userId) => {
         permStatus = await PushNotifications.requestPermissions();
       }
       if (permStatus.receive === 'granted') {
-        await PushNotifications.register();
         // Add listeners only once
         if (!window.pushListenersRegistered) {
           window.pushListenersRegistered = true;
@@ -770,7 +769,13 @@ export const requestNotificationPermission = async (userId) => {
           PushNotifications.addListener('registrationError', (error) => {
             console.error('Error on push registration: ' + JSON.stringify(error));
           });
+          
+          // Also listen for foreground push notifications to show a local notification
+          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            console.log('Push received in foreground', notification);
+          });
         }
+        await PushNotifications.register();
       }
     } else {
       // Web Push
