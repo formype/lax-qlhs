@@ -1,17 +1,5 @@
 import admin from 'firebase-admin';
 
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  } catch (error) {
-    console.error('Firebase admin initialization error', error.stack);
-  }
-}
-
 export default async function handler(req, res) {
   // CORS configuration
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -32,10 +20,44 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
+  try {
+    if (!admin.apps.length) {
+      if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+        throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is missing from Environment Variables');
+      }
+      const saString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      let serviceAccount;
+      try {
+        serviceAccount = JSON.parse(saString);
+      } catch (parseError) {
+        throw new Error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY JSON. Please ensure it is valid JSON.');
+      }
+      
+      // Fix private key if newlines are messed up
+      if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      }
+
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
+  } catch (initError) {
+    console.error('Admin Init Error:', initError);
+    return res.status(500).json({ success: false, error: 'Firebase Admin Init Error: ' + initError.message });
+  }
+
   const { tokens, title, body, data } = req.body;
 
   if (!tokens || !tokens.length) {
     return res.status(400).json({ message: 'No tokens provided' });
+  }
+
+  let safeData = {};
+  if (data && typeof data === 'object') {
+    for (const key in data) {
+      safeData[key] = String(data[key]);
+    }
   }
 
   const message = {
@@ -43,7 +65,7 @@ export default async function handler(req, res) {
       title: title || 'Thông báo mới',
       body: body || 'Bạn có thông báo mới',
     },
-    data: data || {},
+    data: safeData,
     tokens: tokens,
   };
 
