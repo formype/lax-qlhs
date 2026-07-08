@@ -856,16 +856,24 @@ export const createNotification = async (message, targetRoles, targetClasses = [
         });
       }
 
-      // If targetClasses is provided, we need to find teachers for those classes
+      // If targetClasses is provided, we need to find homeroom teachers for those classes
       if (targetClasses && targetClasses.length > 0) {
-        const qClass = query(collection(db, COLLECTIONS.USERS), where('teacherClass', 'in', targetClasses));
+        const qClass = query(collection(db, COLLECTIONS.CLASSES), where('tenlop', 'in', targetClasses));
         const classSnap = await getDocs(qClass);
-        classSnap.forEach(doc => {
-          const u = doc.data();
-          if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
-            tokens.push(...u.fcmTokens);
+        
+        for (const classDoc of classSnap.docs) {
+          const classData = classDoc.data();
+          if (classData.homeroomTeacherId) {
+            const userRef = doc(db, COLLECTIONS.USERS, classData.homeroomTeacherId);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              const u = userSnap.data();
+              if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
+                tokens.push(...u.fcmTokens);
+              }
+            }
           }
-        });
+        }
       }
       
       const uniqueTokens = [...new Set(tokens)];
