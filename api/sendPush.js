@@ -87,10 +87,12 @@ export default async function handler(req, res) {
     
     // Cleanup invalid tokens if needed (optional)
     const failedTokens = [];
+    const failedErrors = [];
     if (response.failureCount > 0) {
       response.responses.forEach((resp, idx) => {
         if (!resp.success) {
           failedTokens.push(tokens[idx]);
+          failedErrors.push(resp.error.code || resp.error.message);
         }
       });
     }
@@ -99,7 +101,8 @@ export default async function handler(req, res) {
       success: true, 
       successCount: response.successCount, 
       failureCount: response.failureCount,
-      failedTokens 
+      failedTokens,
+      failedErrors
     });
   } catch (error) {
     console.error('Error sending message:', error);
