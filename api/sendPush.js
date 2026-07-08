@@ -1,4 +1,5 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 
 export default async function handler(req, res) {
   // CORS configuration
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (!admin.apps.length) {
+    if (getApps().length === 0) {
       if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
         throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is missing from Environment Variables');
       }
@@ -38,8 +39,8 @@ export default async function handler(req, res) {
         serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
       }
 
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+      initializeApp({
+        credential: cert(serviceAccount)
       });
     }
   } catch (initError) {
@@ -70,7 +71,7 @@ export default async function handler(req, res) {
   };
 
   try {
-    const response = await admin.messaging().sendEachForMulticast(message);
+    const response = await getMessaging().sendEachForMulticast(message);
     
     // Cleanup invalid tokens if needed (optional)
     const failedTokens = [];
