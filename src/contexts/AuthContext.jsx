@@ -1,7 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { loginUser, requestNotificationPermission } from '../lib/firebase';
+import { loginUser, requestNotificationPermission, setupForegroundPush } from '../lib/firebase';
 
 const AuthContext = createContext(null);
+
+// Khởi tạo nhận thông báo khi app đang mở
+if (typeof window !== 'undefined') {
+  setupForegroundPush();
+}
+
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

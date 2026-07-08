@@ -729,6 +729,24 @@ export const importDatabase = async (backupData) => {
 
 // --- NOTIFICATIONS ---
 
+export const setupForegroundPush = () => {
+  if (typeof window !== 'undefined' && messaging && !Capacitor.isNativePlatform()) {
+    onMessage(messaging, (payload) => {
+      console.log('Message received in foreground: ', payload);
+      const notificationTitle = payload.notification?.title || 'Thông báo mới';
+      const notificationOptions = {
+        body: payload.notification?.body || '',
+        icon: '/vite.svg'
+      };
+      
+      if (Notification.permission === 'granted') {
+        new Notification(notificationTitle, notificationOptions);
+      }
+    });
+  }
+};
+
+
 export const requestNotificationPermission = async (userId) => {
   try {
     if (Capacitor.isNativePlatform()) {
