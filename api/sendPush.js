@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     },
     android: {
       notification: {
-        channel_id: 'qlhs_alerts',
+        channelId: 'qlhs_alerts',
         sound: 'default'
       }
     },

@@ -858,7 +858,11 @@ export const createNotification = async (message, targetRoles, targetClasses = [
       
       const uniqueTokens = [...new Set(tokens)];
       if (uniqueTokens.length > 0) {
-        await fetch('/api/sendPush', {
+        const apiUrl = window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.')
+          ? 'https://lax-qlhs.vercel.app/api/sendPush' 
+          : '/api/sendPush';
+          
+        await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
