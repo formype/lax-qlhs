@@ -739,6 +739,22 @@ export const setupForegroundPush = () => {
         icon: '/vite.svg'
       };
       
+      // Show a toast when the website is open in the foreground
+      const toast = document.createElement('div');
+      toast.style.position = 'fixed';
+      toast.style.top = '20px';
+      toast.style.right = '20px';
+      toast.style.background = 'var(--primary-color, #4361ee)';
+      toast.style.color = 'white';
+      toast.style.padding = '15px 20px';
+      toast.style.borderRadius = '8px';
+      toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      toast.style.zIndex = '9999';
+      toast.style.maxWidth = '300px';
+      toast.innerHTML = `<strong>${notificationTitle}</strong><br/>${notificationOptions.body}`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+
       if (Notification.permission === 'granted') {
         new Notification(notificationTitle, notificationOptions);
       }
@@ -805,6 +821,21 @@ export const requestNotificationPermission = async (userId) => {
           // Also listen for foreground push notifications to show a local notification
           PushNotifications.addListener('pushNotificationReceived', (notification) => {
             console.log('Push received in foreground', notification);
+            // Show toast for foreground notification
+            const toast = document.createElement('div');
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.right = '20px';
+            toast.style.background = 'var(--primary-color, #4361ee)';
+            toast.style.color = 'white';
+            toast.style.padding = '15px 20px';
+            toast.style.borderRadius = '8px';
+            toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            toast.style.zIndex = '9999';
+            toast.style.maxWidth = '300px';
+            toast.innerHTML = `<strong>${notification.title || 'Thông báo mới'}</strong><br/>${notification.body || ''}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
           });
         }
         await PushNotifications.register();
