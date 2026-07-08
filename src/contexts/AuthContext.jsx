@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { loginUser } from '../lib/firebase';
+import { loginUser, requestNotificationPermission } from '../lib/firebase';
 
 const AuthContext = createContext(null);
 
@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
         parsedUser.role = [];
       }
       setUser(parsedUser);
+      requestNotificationPermission(parsedUser.id);
     }
     setLoading(false);
   }, []);
@@ -26,6 +27,7 @@ export const AuthProvider = ({ children }) => {
     const res = await loginUser(username, password);
     if (res.success) {
       setUser(res.user);
+      requestNotificationPermission(res.user.id);
       localStorage.setItem('qlhs_user', JSON.stringify(res.user));
     }
     return res;

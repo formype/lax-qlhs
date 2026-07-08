@@ -261,7 +261,7 @@ export function AddViolation() {
       
       createNotification(
         `Tài khoản ${createdBy} đã ghi nhận học sinh ${formData.hoten} lớp ${formData.tenlop} vi phạm: ${finalViolationType}.`,
-        ['admin', 'vip-admin'],
+        [], // Giám thị ghi nhận thì chỉ gửi GVCN (qua targetClasses), không gửi Admin
         targetClasses,
         {
           type: 'violation',

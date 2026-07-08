@@ -1,4 +1,7 @@
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { initializeApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot, limit, arrayUnion, startAfter } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -13,6 +16,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+
+export let messaging = null;
+if (typeof window !== 'undefined') {
+  try {
+    messaging = getMessaging(app);
+  } catch(e) {
+    console.error('Firebase messaging not supported', e);
+  }
+}
 
 const COLLECTIONS = {
   STUDENTS: 'students',
@@ -716,6 +728,51 @@ export const importDatabase = async (backupData) => {
 };
 
 // --- NOTIFICATIONS ---
+
+export const requestNotificationPermission = async (userId) => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      // Android / iOS Capacitor Push
+      let permStatus = await PushNotifications.checkPermissions();
+      if (permStatus.receive === 'prompt') {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+      if (permStatus.receive === 'granted') {
+        await PushNotifications.register();
+        // Add listeners only once
+        if (!window.pushListenersRegistered) {
+          window.pushListenersRegistered = true;
+          PushNotifications.addListener('registration', async (token) => {
+            console.log('Push registration success, token: ' + token.value);
+            const userRef = doc(db, COLLECTIONS.USERS, userId);
+            await updateDoc(userRef, {
+              fcmTokens: arrayUnion(token.value)
+            });
+          });
+          PushNotifications.addListener('registrationError', (error) => {
+            console.error('Error on push registration: ' + JSON.stringify(error));
+          });
+        }
+      }
+    } else {
+      // Web Push
+      if (!messaging) return;
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const token = await getToken(messaging, { vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY });
+        if (token) {
+          const userRef = doc(db, COLLECTIONS.USERS, userId);
+          await updateDoc(userRef, {
+            fcmTokens: arrayUnion(token)
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to get push token:', error);
+  }
+};
+
 export const createNotification = async (message, targetRoles, targetClasses = [], data = {}) => {
   try {
     const notifData = {
@@ -727,6 +784,40 @@ export const createNotification = async (message, targetRoles, targetClasses = [
       createdAt: Date.now()
     };
     const docRef = await addDoc(collection(db, COLLECTIONS.NOTIFICATIONS), notifData);
+    
+    // Trigger push notification
+    try {
+      const q = query(collection(db, COLLECTIONS.USERS), where('role', 'in', targetRoles));
+      const userSnap = await getDocs(q);
+      const tokens = [];
+      userSnap.forEach(doc => {
+        const u = doc.data();
+        if (targetClasses.length > 0 && u.role === 'giaovien') {
+           // Skip if teacher is not in target classes (we can't easily check homeroom from user doc, but we can send anyway or filter if needed, to be safe we just collect tokens)
+           // Actually, since targetClasses is passed, let's collect all tokens of targetRoles and send.
+        }
+        if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
+          tokens.push(...u.fcmTokens);
+        }
+      });
+      
+      const uniqueTokens = [...new Set(tokens)];
+      if (uniqueTokens.length > 0) {
+        await fetch('/api/sendPush', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tokens: uniqueTokens,
+            title: 'Hệ thống Quản lý học sinh',
+            body: message,
+            data: data
+          })
+        }).catch(err => console.error("Error calling sendPush API:", err));
+      }
+    } catch(err) {
+      console.error("Error triggering push:", err);
+    }
+
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error("Lỗi khi tạo thông báo:", error);
