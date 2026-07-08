@@ -127,6 +127,20 @@ export const updateUserAccount = async (userId, updates) => {
   try {
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     await updateDoc(userRef, updates);
+    
+    // Check if fullName is updated
+    if (updates.fullName !== undefined) {
+      const qClass = query(collection(db, COLLECTIONS.CLASSES), where("homeroomTeacherId", "==", userId));
+      const snap = await getDocs(qClass);
+      if (!snap.empty) {
+        const batchOp = writeBatch(db);
+        snap.forEach(d => {
+          batchOp.update(d.ref, { homeroomTeacherName: updates.fullName || updates.username || 'Giáo viên' });
+        });
+        await batchOp.commit();
+      }
+    }
+    
     return { success: true };
   } catch (error) {
     console.error("Update User Error:", error);
@@ -174,6 +188,13 @@ export const fetchClasses = async (grade) => {
 export const addClass = async (classData) => {
   try {
     const docRef = await addDoc(collection(db, COLLECTIONS.CLASSES), classData);
+    
+    if (classData.homeroomTeacherId) {
+      await updateDoc(doc(db, COLLECTIONS.USERS, classData.homeroomTeacherId), {
+        teacherClass: classData.tenlop
+      });
+    }
+
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error("Error adding class:", error);
@@ -183,7 +204,17 @@ export const addClass = async (classData) => {
 
 export const deleteClass = async (classId) => {
   try {
-    await deleteDoc(doc(db, COLLECTIONS.CLASSES, classId));
+    const classRef = doc(db, COLLECTIONS.CLASSES, classId);
+    const oldClassSnap = await getDoc(classRef);
+    if (oldClassSnap.exists()) {
+      const oldClass = oldClassSnap.data();
+      if (oldClass.homeroomTeacherId) {
+        await updateDoc(doc(db, COLLECTIONS.USERS, oldClass.homeroomTeacherId), {
+          teacherClass: null
+        });
+      }
+    }
+    await deleteDoc(classRef);
     return { success: true };
   } catch (error) {
     return { success: false, error };
@@ -192,7 +223,24 @@ export const deleteClass = async (classId) => {
 
 export const updateClass = async (classId, updates) => {
   try {
-    await updateDoc(doc(db, COLLECTIONS.CLASSES, classId), updates);
+    const classRef = doc(db, COLLECTIONS.CLASSES, classId);
+    const oldClassSnap = await getDoc(classRef);
+    const oldClass = oldClassSnap.exists() ? oldClassSnap.data() : null;
+
+    await updateDoc(classRef, updates);
+
+    const oldTeacherId = oldClass?.homeroomTeacherId;
+    const newTeacherId = updates.homeroomTeacherId !== undefined ? updates.homeroomTeacherId : oldTeacherId;
+    const newTenlop = updates.tenlop !== undefined ? updates.tenlop : (oldClass?.tenlop || '');
+
+    if (oldTeacherId && oldTeacherId !== newTeacherId) {
+      await updateDoc(doc(db, COLLECTIONS.USERS, oldTeacherId), { teacherClass: null });
+    }
+    
+    if (newTeacherId) {
+      await updateDoc(doc(db, COLLECTIONS.USERS, newTeacherId), { teacherClass: newTenlop });
+    }
+
     return { success: true };
   } catch (error) {
     return { success: false, error };
