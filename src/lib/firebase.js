@@ -891,9 +891,15 @@ export const requestNotificationPermission = async (userId) => {
     } else {
       // Web Push
       if (!messaging) return;
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      if (!vapidKey) {
+        console.error("VITE_FIREBASE_VAPID_KEY is missing! Web Push will not work.");
+        return;
+      }
+      
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        const token = await getToken(messaging, { vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY });
+        const token = await getToken(messaging, { vapidKey });
         if (token) {
           const userRef = doc(db, COLLECTIONS.USERS, userId);
           await updateDoc(userRef, {
