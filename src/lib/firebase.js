@@ -50,67 +50,128 @@ export const COLLECTIONS = {
 // --- USERS / AUTH ---
 export const loginUser = async (rawUsername, rawPassword) => {
   try {
-    const username = sanitizeUsername(rawUsername);
+    const cleanRaw = String(rawUsername || '').trim();
+    const username = sanitizeUsername(cleanRaw);
     const password = typeof rawPassword === 'string' ? rawPassword.trim().substring(0, 100) : '';
 
-    if (!username || !password) {
+    if (!cleanRaw || !password) {
       return { success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu hợp lệ.' };
     }
 
-    const q = query(
-      collection(db, COLLECTIONS.USERS),
-      where("username", "==", username)
-    );
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
-      const userId = userDoc.id;
+    let userDoc = null;
+    let userData = null;
+    let userId = null;
 
-      // Cryptographically verify password (supports modern salt-hash & legacy plain)
-      const { isValid, needsUpgrade } = await verifyPassword(password, userData.password);
-      if (!isValid) {
-        return { success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng.' };
+    // 1. Try querying by sanitized lowercase username
+    if (username) {
+      const q = query(
+        collection(db, COLLECTIONS.USERS),
+        where("username", "==", username)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        userDoc = querySnapshot.docs[0];
+        userData = userDoc.data();
+        userId = userDoc.id;
       }
+    }
 
-      // Silent upgrade legacy plaintext passwords to salted hash
-      if (needsUpgrade) {
-        try {
-          const newHashedPassword = await hashPassword(password);
-          await updateDoc(doc(db, COLLECTIONS.USERS, userId), { password: newHashedPassword });
-        } catch (upgradeErr) {
-          console.warn("Silent password upgrade failed:", upgradeErr);
+    // 2. If not found, try querying by raw username (case-sensitive)
+    if (!userDoc && cleanRaw) {
+      const qRaw = query(
+        collection(db, COLLECTIONS.USERS),
+        where("username", "==", cleanRaw)
+      );
+      const rawSnapshot = await getDocs(qRaw);
+      if (!rawSnapshot.empty) {
+        userDoc = rawSnapshot.docs[0];
+        userData = userDoc.data();
+        userId = userDoc.id;
+      }
+    }
+
+    // 3. If still not found, try fetching doc directly by ID
+    if (!userDoc) {
+      try {
+        const docRef = doc(db, COLLECTIONS.USERS, cleanRaw);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          userDoc = snap;
+          userData = snap.data();
+          userId = snap.id;
         }
+      } catch (err) {
+        // ignore
       }
+    }
 
-      let roles = Array.isArray(userData.role) ? userData.role : (userData.role ? [userData.role] : []);
-      
-      let teacherClass = null;
-      if (roles.includes('giaovien')) {
-        const classQ = query(collection(db, COLLECTIONS.CLASSES), where("homeroomTeacherId", "==", userId));
-        const classSnap = await getDocs(classQ);
-        if (!classSnap.empty) {
-          teacherClass = classSnap.docs[0].data().tenlop;
-        }
+    // 4. Fallback: search all users (handles legacy accounts or case-insensitive matches)
+    if (!userDoc) {
+      const allUsersSnap = await getDocs(collection(db, COLLECTIONS.USERS));
+      const targetClean = cleanRaw.toLowerCase();
+      const matched = allUsersSnap.docs.find(d => {
+        const u = d.data();
+        const uName = String(u.username || u.userName || u.taiKhoan || d.id || '').toLowerCase().trim();
+        return uName === targetClean || (username && uName === username);
+      });
+      if (matched) {
+        userDoc = matched;
+        userData = matched.data();
+        userId = matched.id;
       }
+    }
 
-      // Strip password from returned user object for zero-leakage security
-      const { password: _pwd, ...safeUserData } = userData;
-
-      return { 
-        success: true, 
-        user: {
-          ...safeUserData,
-          id: userId,
-          role: roles, 
-          blockedPages: userData.blockedPages || [],
-          teacherClass: teacherClass
-        }  
-      };
-    } else {
+    if (!userDoc || !userData) {
       return { success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng.' };
     }
+
+    // Cryptographically verify password (supports modern salt-hash & legacy plain)
+    const { isValid, needsUpgrade } = await verifyPassword(password, userData.password);
+    if (!isValid) {
+      return { success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng.' };
+    }
+
+    // Silent upgrade legacy plaintext passwords to salted hash and ensure username field is present
+    try {
+      const updates = {};
+      if (needsUpgrade) {
+        updates.password = await hashPassword(password);
+      }
+      if (!userData.username && username) {
+        updates.username = username;
+      }
+      if (Object.keys(updates).length > 0) {
+        await updateDoc(doc(db, COLLECTIONS.USERS, userId), updates);
+      }
+    } catch (upgradeErr) {
+      console.warn("Silent user upgrade failed:", upgradeErr);
+    }
+
+    let roles = Array.isArray(userData.role) ? userData.role : (userData.role ? [userData.role] : []);
+    
+    let teacherClass = null;
+    if (roles.includes('giaovien')) {
+      const classQ = query(collection(db, COLLECTIONS.CLASSES), where("homeroomTeacherId", "==", userId));
+      const classSnap = await getDocs(classQ);
+      if (!classSnap.empty) {
+        teacherClass = classSnap.docs[0].data().tenlop;
+      }
+    }
+
+    // Strip password from returned user object for zero-leakage security
+    const { password: _pwd, ...safeUserData } = userData;
+
+    return { 
+      success: true, 
+      user: {
+        ...safeUserData,
+        id: userId,
+        username: userData.username || username || cleanRaw,
+        role: roles, 
+        blockedPages: userData.blockedPages || [],
+        teacherClass: teacherClass
+      }  
+    };
   } catch (error) {
     console.error("Login Error:", error);
     return { success: false, message: 'Lỗi kết nối khi đăng nhập.' };
@@ -127,7 +188,15 @@ export const fetchUsers = async () => {
       const roles = Array.isArray(d.role) ? d.role : (d.role ? [d.role] : []);
       // Strip password from returned list
       const { password: _pwd, ...safeUserData } = d;
-      users.push({ id: doc.id, ...safeUserData, role: roles });
+      const resolvedUsername = d.username || d.userName || d.taiKhoan || doc.id;
+      const resolvedFullName = d.fullName || d.name || d.hoten || resolvedUsername;
+      users.push({ 
+        id: doc.id, 
+        ...safeUserData, 
+        username: resolvedUsername,
+        fullName: resolvedFullName,
+        role: roles 
+      });
     });
     return users;
   } catch (error) {

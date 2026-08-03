@@ -78,9 +78,9 @@ export function ManageAccounts() {
     if (u) {
       setEditingUser(u);
       setFormData({
-        username: u.username,
+        username: u.username || u.name || u.id || '',
         password: '',
-        fullName: u.fullName,
+        fullName: u.fullName || u.name || u.hoten || '',
         roles: Array.isArray(u.role) ? u.role : (u.role ? [u.role] : []),
         blockedPages: u.blockedPages || []
       });
@@ -106,10 +106,15 @@ export function ManageAccounts() {
       alert("Bạn không có quyền reset mật khẩu cho tài khoản quản trị ngang hoặc cao hơn cấp của mình!");
       return;
     }
-    if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản "${u.username}" về mặc định "123" không?`)) {
-      const res = await updateUserAccount(u.id, { password: '123', credentialsUpdatedAt: Date.now() });
+    const targetUsername = u.username || u.name || u.id;
+    if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản "${targetUsername}" về mặc định "123" không?`)) {
+      const res = await updateUserAccount(u.id, { 
+        password: '123', 
+        username: String(targetUsername).toLowerCase().trim(),
+        credentialsUpdatedAt: Date.now() 
+      });
       if (res.success) {
-        alert(`Đã reset mật khẩu của tài khoản ${u.username} thành công. Mật khẩu mới là: 123`);
+        alert(`Đã reset mật khẩu của tài khoản "${targetUsername}" thành công! Mật khẩu đăng nhập mới là: 123`);
         loadUsers();
       } else {
         alert("Reset mật khẩu thất bại: " + res.error);
@@ -134,56 +139,96 @@ export function ManageAccounts() {
   };
 
   const handleSave = async () => {
-    const cleanUsername = (formData.username || '').trim().toLowerCase();
-    const cleanFullName = (formData.fullName || '').trim();
-
-    if (!cleanUsername || !cleanFullName) {
-      alert("Vui lòng nhập đầy đủ Tên đăng nhập và Họ tên.");
-      return;
-    }
-
-    // Username format check
-    const usernameRegex = /^[a-z0-9_.-]{3,50}$/;
-    if (!usernameRegex.test(cleanUsername)) {
-      alert("Tên đăng nhập không hợp lệ (từ 3-50 ký tự, chỉ chứa chữ cái không dấu, số, dấu gạch dưới, gạch nối hoặc dấu chấm).");
-      return;
-    }
-
     setSaving(true);
-    if (editingUser) {
-      const updates = {
-        fullName: cleanFullName,
-        role: formData.roles,
-        blockedPages: formData.blockedPages,
-        credentialsUpdatedAt: Date.now()
-      };
-      if (formData.password) {
-        updates.password = formData.password.trim();
-      }
-      const res = await updateUserAccount(editingUser.id, updates);
-      if (res.success) {
-        alert("Cập nhật tài khoản thành công!");
-        handleCloseModal();
-        loadUsers();
+    try {
+      if (editingUser) {
+        // Chỉnh sửa tài khoản đã có (cho phép đổi riêng lẻ mật khẩu, họ tên, vai trò)
+        const cleanFullName = (formData.fullName || '').trim();
+        const cleanPassword = (formData.password || '').trim();
+        const cleanUsername = (formData.username || editingUser.username || editingUser.name || editingUser.id || '').trim().toLowerCase();
+
+        if (cleanPassword && cleanPassword.length < 3) {
+          alert("Mật khẩu mới phải có ít nhất 3 ký tự!");
+          setSaving(false);
+          return;
+        }
+
+        const updates = {
+          role: formData.roles,
+          blockedPages: formData.blockedPages,
+          credentialsUpdatedAt: Date.now()
+        };
+
+        if (cleanFullName) {
+          updates.fullName = cleanFullName;
+        }
+        if (cleanPassword) {
+          updates.password = cleanPassword;
+        }
+        if (cleanUsername) {
+          updates.username = cleanUsername;
+        }
+
+        const res = await updateUserAccount(editingUser.id, updates);
+        if (res.success) {
+          alert("Cập nhật tài khoản thành công!");
+          handleCloseModal();
+          loadUsers();
+        } else {
+          alert("Có lỗi xảy ra: " + res.error);
+        }
       } else {
-        alert("Có lỗi xảy ra: " + res.error);
+        // Thêm tài khoản mới
+        const cleanUsername = (formData.username || '').trim().toLowerCase();
+        const cleanFullName = (formData.fullName || '').trim();
+
+        if (!cleanUsername) {
+          alert("Vui lòng nhập tên đăng nhập cho tài khoản mới.");
+          setSaving(false);
+          return;
+        }
+        if (!cleanFullName) {
+          alert("Vui lòng nhập họ tên cho tài khoản mới.");
+          setSaving(false);
+          return;
+        }
+
+        const usernameRegex = /^[a-z0-9_.-]{3,50}$/;
+        if (!usernameRegex.test(cleanUsername)) {
+          alert("Tên đăng nhập không hợp lệ (từ 3-50 ký tự, chỉ chứa chữ cái không dấu, số, dấu gạch dưới, gạch nối hoặc dấu chấm).");
+          setSaving(false);
+          return;
+        }
+
+        const rawPwd = (formData.password || '123').trim();
+        if (!rawPwd) {
+          alert("Vui lòng nhập mật khẩu cho tài khoản mới.");
+          setSaving(false);
+          return;
+        }
+
+        const res = await addUser({
+          username: cleanUsername,
+          fullName: cleanFullName,
+          password: rawPwd,
+          role: formData.roles,
+          blockedPages: formData.blockedPages
+        });
+
+        if (res.success) {
+          alert("Thêm tài khoản thành công!");
+          handleCloseModal();
+          loadUsers();
+        } else {
+          alert("Thêm thất bại: " + res.error);
+        }
       }
-    } else {
-      if (!formData.password) {
-        alert("Vui lòng nhập mật khẩu cho tài khoản mới.");
-        setSaving(false);
-        return;
-      }
-      const res = await addUser(formData);
-      if (res.success) {
-        alert("Thêm tài khoản thành công!");
-        handleCloseModal();
-        loadUsers();
-      } else {
-        alert("Thêm thất bại: " + res.error);
-      }
+    } catch (err) {
+      console.error("Lỗi khi lưu tài khoản:", err);
+      alert("Lỗi khi lưu tài khoản: " + (err.message || err.toString()));
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const handleDelete = async (u) => {
@@ -288,15 +333,19 @@ export function ManageAccounts() {
                 <input 
                   type="text" 
                   className="input-field" 
-                  value={formData.username}
+                  value={formData.username || (editingUser ? (editingUser.username || editingUser.name || editingUser.id || '') : '')}
                   onChange={e => setFormData({...formData, username: e.target.value})}
                   disabled={!!editingUser}
                   placeholder="Ví dụ: gv_nguyenvana"
+                  style={editingUser ? { opacity: 0.8, cursor: 'not-allowed' } : {}}
                 />
+                {editingUser && (
+                  <p className="text-xs text-muted mt-1">Tên đăng nhập cố định không thay đổi.</p>
+                )}
               </div>
 
               <div className="form-group mb-3">
-                <label className="input-label">Họ và tên</label>
+                <label className="input-label">Họ và tên {editingUser && '(Để nguyên nếu không đổi)'}</label>
                 <input 
                   type="text" 
                   className="input-field" 
@@ -308,23 +357,24 @@ export function ManageAccounts() {
 
               {editingUser ? (
                 <div className="form-group mb-3">
-                  <label className="input-label">Mật khẩu mới (Để trống nếu không đổi)</label>
+                  <label className="input-label">Mật khẩu mới (Để trống nếu không muốn đổi)</label>
                   <input 
                     type="password" 
                     className="input-field" 
                     value={formData.password}
                     onChange={e => setFormData({...formData, password: e.target.value})}
-                    placeholder="Nhập mật khẩu mới..."
+                    placeholder="Nhập mật khẩu mới nếu muốn đổi..."
                   />
                 </div>
               ) : (
                 <div className="form-group mb-3">
-                  <label className="input-label">Mật khẩu</label>
+                  <label className="input-label">Mật khẩu ban đầu</label>
                   <input 
                     type="text" 
                     className="input-field" 
-                    value="123 (Mặc định)"
-                    disabled
+                    value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})}
+                    placeholder="Mặc định là 123"
                   />
                   <p className="text-xs text-muted mt-1">Mật khẩu mặc định cho tài khoản mới là 123.</p>
                 </div>

@@ -212,20 +212,16 @@ export function validateUserAccountPayload(data, isNew = false) {
     }
   } else {
     // Partial updates (reset password, edit account, edit profile)
-    if (data.username !== undefined) {
+    if (data.username !== undefined && data.username !== null && String(data.username).trim() !== '') {
       const username = sanitizeUsername(data.username);
-      if (username && username.length < 3) {
-        return { isValid: false, error: 'Tên đăng nhập phải có từ 3-50 ký tự.' };
-      }
       if (username) sanitized.username = username;
     }
 
-    if (data.fullName !== undefined) {
+    if (data.fullName !== undefined && data.fullName !== null && String(data.fullName).trim() !== '') {
       const fullName = sanitizeText(data.fullName, 100);
-      if (!fullName) {
-        return { isValid: false, error: 'Họ tên không được để trống.' };
+      if (fullName) {
+        sanitized.fullName = fullName;
       }
-      sanitized.fullName = fullName;
     }
 
     if (data.role !== undefined) {
