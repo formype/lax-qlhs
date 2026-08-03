@@ -265,9 +265,9 @@ body.dark .login-container {
 
 body.dark .login-card {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  background: 
-    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
-    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055) border-box;
+  background-image: 
+    linear-gradient(var(--bg-card), var(--bg-card)),
+    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055);
 }
 
 body.dark .login-title {
@@ -285,15 +285,16 @@ body.dark .input-label-upper {
 
 body.dark .login-form .input-field {
   color: var(--text-primary);
-  background: 
-    linear-gradient(var(--bg-app), var(--bg-app)) padding-box,
-    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055) border-box;
+  background-image: 
+    linear-gradient(var(--bg-app), var(--bg-app)),
+    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055);
 }
 
 body.dark .login-form .input-field:focus {
-  background: 
-    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
-    linear-gradient(90deg, #00ffcc, #0077ff, #ff00cc, #ffcc00, #00ffcc) border-box;
+  background-image: 
+    linear-gradient(var(--bg-card), var(--bg-card)),
+    linear-gradient(90deg, #00ffcc, #0077ff, #ff00cc, #ffcc00, #00ffcc);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
 }
 
 body.dark .login-form .input-icon {

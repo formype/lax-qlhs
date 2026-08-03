@@ -3,7 +3,7 @@
  * Prevents XSS, buffer overflows, and invalid data formats before database writes.
  */
 
-const VALID_ROLES = ['admin', 'bgh', 'giamthi', 'tongphutrach', 'giaovien'];
+const VALID_ROLES = ['admin', 'vip-admin', 'bgh', 'giamthi', 'tongphutrach', 'giaovien', 'canbo'];
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 /**
@@ -176,39 +176,93 @@ export function validateUserAccountPayload(data, isNew = false) {
     return { isValid: false, error: 'Dữ liệu tài khoản không hợp lệ.' };
   }
 
-  const username = sanitizeUsername(data.username);
-  const fullName = sanitizeText(data.fullName, 100);
-  const role = String(data.role || '').trim().toLowerCase();
+  const sanitized = {};
 
-  if (isNew && !username) {
-    return { isValid: false, error: 'Tên đăng nhập không được để trống và chỉ chứa chữ, số, dấu chấm, gạch dưới.' };
-  }
-  if (isNew && username.length < 3) {
-    return { isValid: false, error: 'Tên đăng nhập phải có ít nhất 3 ký tự.' };
-  }
-  if (!fullName) {
-    return { isValid: false, error: 'Họ tên không được để trống.' };
-  }
-  if (role && !VALID_ROLES.includes(role)) {
-    return { isValid: false, error: `Vai trò không hợp lệ (${role}).` };
-  }
+  if (isNew) {
+    const username = sanitizeUsername(data.username);
+    const fullName = sanitizeText(data.fullName, 100);
+    if (!username || username.length < 3) {
+      return { isValid: false, error: 'Tên đăng nhập phải có từ 3-50 ký tự (chữ, số, dấu chấm, gạch dưới).' };
+    }
+    if (!fullName) {
+      return { isValid: false, error: 'Họ tên không được để trống.' };
+    }
+    sanitized.username = username;
+    sanitized.fullName = fullName;
 
-  if (data.password !== undefined) {
-    const pwd = String(data.password).trim();
-    if (isNew && pwd.length < 3) {
-      return { isValid: false, error: 'Mật khẩu phải có ít nhất 3 ký tự.' };
+    // Process roles
+    if (Array.isArray(data.role)) {
+      const filtered = data.role.map(r => String(r).trim().toLowerCase()).filter(r => VALID_ROLES.includes(r));
+      sanitized.role = filtered.length > 0 ? filtered : ['giaovien'];
+    } else if (typeof data.role === 'string') {
+      const r = data.role.trim().toLowerCase();
+      sanitized.role = VALID_ROLES.includes(r) ? [r] : ['giaovien'];
+    } else {
+      sanitized.role = ['giaovien'];
+    }
+
+    if (data.password) {
+      const pwd = String(data.password).trim();
+      if (pwd.length < 3) {
+        return { isValid: false, error: 'Mật khẩu phải có ít nhất 3 ký tự.' };
+      }
+      sanitized.password = pwd.substring(0, 100);
+    } else {
+      sanitized.password = '123';
+    }
+  } else {
+    // Partial updates (reset password, edit account, edit profile)
+    if (data.username !== undefined) {
+      const username = sanitizeUsername(data.username);
+      if (username && username.length < 3) {
+        return { isValid: false, error: 'Tên đăng nhập phải có từ 3-50 ký tự.' };
+      }
+      if (username) sanitized.username = username;
+    }
+
+    if (data.fullName !== undefined) {
+      const fullName = sanitizeText(data.fullName, 100);
+      if (!fullName) {
+        return { isValid: false, error: 'Họ tên không được để trống.' };
+      }
+      sanitized.fullName = fullName;
+    }
+
+    if (data.role !== undefined) {
+      if (Array.isArray(data.role)) {
+        const filtered = data.role.map(r => String(r).trim().toLowerCase()).filter(r => VALID_ROLES.includes(r));
+        sanitized.role = filtered.length > 0 ? filtered : ['giaovien'];
+      } else if (typeof data.role === 'string') {
+        const r = data.role.trim().toLowerCase();
+        if (VALID_ROLES.includes(r)) {
+          sanitized.role = [r];
+        }
+      }
+    }
+
+    if (data.password !== undefined) {
+      const pwd = String(data.password).trim();
+      if (pwd && pwd.length < 3) {
+        return { isValid: false, error: 'Mật khẩu phải có ít nhất 3 ký tự.' };
+      }
+      if (pwd) {
+        sanitized.password = pwd.substring(0, 100);
+      }
+    }
+
+    if (data.blockedPages !== undefined && Array.isArray(data.blockedPages)) {
+      sanitized.blockedPages = data.blockedPages;
     }
   }
+
+  if (data.homeroomClass !== undefined) {
+    sanitized.homeroomClass = sanitizeText(data.homeroomClass, 50);
+  }
+
+  sanitized.credentialsUpdatedAt = data.credentialsUpdatedAt || Date.now();
 
   return {
     isValid: true,
-    sanitized: {
-      username,
-      fullName,
-      role: role || 'giaovien',
-      ...(data.homeroomClass ? { homeroomClass: sanitizeText(data.homeroomClass, 50) } : {}),
-      ...(data.password ? { password: String(data.password).trim().substring(0, 100) } : {}),
-      credentialsUpdatedAt: data.credentialsUpdatedAt || Date.now()
-    }
+    sanitized
   };
 }

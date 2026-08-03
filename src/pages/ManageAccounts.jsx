@@ -18,6 +18,25 @@ const AVAILABLE_PAGES = [
   { path: '/settings', label: 'Cài đặt chung' }
 ];
 
+const hasRole = (userObj, roleName) => {
+  if (!userObj || !userObj.role) return false;
+  if (Array.isArray(userObj.role)) return userObj.role.includes(roleName);
+  return userObj.role === roleName;
+};
+
+const isVipAdmin = (userObj) => hasRole(userObj, 'vip-admin');
+const isAdmin = (userObj) => isVipAdmin(userObj) || hasRole(userObj, 'admin');
+
+const canManageTargetUser = (currentUser, targetUser) => {
+  if (!currentUser) return false;
+  if (isVipAdmin(currentUser)) return true;
+  if (isAdmin(currentUser)) {
+    if (isAdmin(targetUser) || isVipAdmin(targetUser)) return false;
+    return true;
+  }
+  return false;
+};
+
 export function ManageAccounts() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -36,7 +55,7 @@ export function ManageAccounts() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user?.role?.includes('admin') && !user?.role?.includes('vip-admin')) {
+    if (!isAdmin(user)) {
       alert('Bạn không có quyền truy cập trang này.');
       navigate('/');
       return;
@@ -52,7 +71,7 @@ export function ManageAccounts() {
   };
 
   const handleOpenModal = (u = null) => {
-    if (u && user?.role?.includes('admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
+    if (u && !canManageTargetUser(user, u)) {
       alert("Bạn không có quyền chỉnh sửa tài khoản ngang hoặc cao hơn cấp của mình!");
       return;
     }
@@ -79,18 +98,19 @@ export function ManageAccounts() {
   };
 
   const handleResetPassword = async (u) => {
-    if (u.id === user.id) {
-      alert("Bạn không thể reset mật khẩu của chính mình qua tính năng này.");
+    if (u.id === user?.id) {
+      alert("Bạn không thể reset mật khẩu của chính mình qua tính năng này. Hãy đổi trong Cài đặt tài khoản.");
       return;
     }
-    if (user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
+    if (!canManageTargetUser(user, u)) {
       alert("Bạn không có quyền reset mật khẩu cho tài khoản quản trị ngang hoặc cao hơn cấp của mình!");
       return;
     }
-    if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản ${u.username} về mặc định "123" không?`)) {
+    if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản "${u.username}" về mặc định "123" không?`)) {
       const res = await updateUserAccount(u.id, { password: '123', credentialsUpdatedAt: Date.now() });
       if (res.success) {
         alert(`Đã reset mật khẩu của tài khoản ${u.username} thành công. Mật khẩu mới là: 123`);
+        loadUsers();
       } else {
         alert("Reset mật khẩu thất bại: " + res.error);
       }
@@ -167,11 +187,11 @@ export function ManageAccounts() {
   };
 
   const handleDelete = async (u) => {
-    if (u.id === user.id) {
-      alert("Bạn không thể xóa chính mình!");
+    if (u.id === user?.id) {
+      alert("Bạn không thể xóa tài khoản của chính mình!");
       return;
     }
-    if (user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) {
+    if (!canManageTargetUser(user, u)) {
       alert("Bạn không có quyền xóa tài khoản ngang hoặc cao hơn cấp của mình!");
       return;
     }
@@ -226,17 +246,17 @@ export function ManageAccounts() {
                   </div>
 
                   <div className="flex-row gap-2" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', justifyContent: 'flex-end' }}>
-                    {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
+                    {canManageTargetUser(user, u) && (
                       <button className="action-btn edit-btn" onClick={() => handleOpenModal(u)} title="Sửa thông tin" style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-app)' }}>
                         <Edit2 size={18} />
                       </button>
                     )}
-                    {!(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && u.id !== user?.id && (
+                    {canManageTargetUser(user, u) && u.id !== user?.id && (
                       <button className="action-btn" onClick={() => handleResetPassword(u)} title="Khôi phục mật khẩu mặc định (123)" style={{ color: '#eab308', padding: '8px', borderRadius: '8px', background: 'var(--bg-app)' }}>
                         <RefreshCw size={18} />
                       </button>
                     )}
-                    {u.id !== user?.id && !(user?.role?.includes('admin') && !user?.role?.includes('vip-admin') && (u.role?.includes('admin') || u.role?.includes('vip-admin'))) && (
+                    {canManageTargetUser(user, u) && u.id !== user?.id && (
                       <button className="action-btn delete-btn" onClick={() => handleDelete(u)} title="Xóa tài khoản" style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-app)' }}>
                         <Trash2 size={18} />
                       </button>
