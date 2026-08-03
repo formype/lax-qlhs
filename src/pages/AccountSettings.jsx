@@ -5,7 +5,7 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { User as UserIcon, Lock, Save, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { updateUserAccount, getUserByUsername } from '../lib/firebase';
+import { updateUserAccount, getUserByUsername, changeUserPassword } from '../lib/firebase';
 
 export function AccountSettings() {
   const { user, updateContextUser, logout } = useAuth();
@@ -25,33 +25,14 @@ export function AccountSettings() {
 
     setSaving(true);
     let currentUserId = user.id;
-    let currentUserData = user;
 
     if (!currentUserId) {
       const fetchResult = await getUserByUsername(user.username);
       if (fetchResult.success) {
         currentUserId = fetchResult.id;
-        currentUserData = { ...user, ...fetchResult };
       } else {
         setSaving(false);
         alert('Phiên đăng nhập đã cũ, vui lòng đăng xuất và đăng nhập lại!');
-        return;
-      }
-    }
-
-    // Password validation
-    if (newPassword || currentPassword) {
-      if (currentPassword !== currentUserData.password) {
-        setSaving(false);
-        alert('Mật khẩu hiện tại không đúng!');
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        alert('Mật khẩu mới và xác nhận mật khẩu không khớp!');
-        return;
-      }
-      if (newPassword.length < 6) {
-        alert('Mật khẩu mới phải từ 6 ký tự trở lên!');
         return;
       }
     }
@@ -62,22 +43,45 @@ export function AccountSettings() {
       return;
     }
 
-    const updates = { fullName, credentialsUpdatedAt: Date.now() };
-    if (newPassword) {
-      updates.password = newPassword;
+    // Password change flow
+    if (newPassword || currentPassword) {
+      if (!currentPassword) {
+        setSaving(false);
+        alert('Vui lòng nhập mật khẩu hiện tại để xác nhận đổi mật khẩu!');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setSaving(false);
+        alert('Mật khẩu mới và xác nhận mật khẩu không khớp!');
+        return;
+      }
+      if (newPassword.length < 6) {
+        setSaving(false);
+        alert('Mật khẩu mới phải từ 6 ký tự trở lên!');
+        return;
+      }
+
+      const pwdResult = await changeUserPassword(currentUserId, currentPassword, newPassword);
+      if (!pwdResult.success) {
+        setSaving(false);
+        alert(pwdResult.error || 'Đổi mật khẩu thất bại!');
+        return;
+      }
     }
 
+    // Update profile info (fullName)
+    const updates = { fullName: fullName.trim(), credentialsUpdatedAt: Date.now() };
     const result = await updateUserAccount(currentUserId, updates);
     setSaving(false);
 
     if (result.success) {
       if (newPassword) {
-        alert('Cập nhật tài khoản thành công! Vui lòng đăng nhập lại với mật khẩu mới.');
+        alert('Cập nhật thông tin và mật khẩu thành công! Vui lòng đăng nhập lại.');
         logout();
         navigate('/login');
       } else {
-        updateContextUser({ ...updates, id: currentUserId, password: currentUserData.password });
-        alert('Cập nhật tài khoản thành công!');
+        updateContextUser({ ...updates, id: currentUserId });
+        alert('Cập nhật thông tin thành công!');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');

@@ -1,5 +1,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
+import { checkRateLimit } from './utils/rateLimiter.js';
+import { validatePayloadSize, validateJsonBody, validatePushPayload } from './utils/requestValidator.js';
 
 export default async function handler(req, res) {
   // CORS configuration
@@ -8,7 +10,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-app-secret, Authorization'
   );
 
   // Handle OPTIONS request for CORS preflight
@@ -20,6 +22,37 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
+
+  // 1. Enforce secret token authorization
+  const expectedSecret = process.env.APP_PUSH_SECRET || process.env.VITE_APP_PUSH_SECRET;
+  if (expectedSecret) {
+    const providedSecret = req.headers['x-app-secret'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '');
+    if (!providedSecret || providedSecret !== expectedSecret) {
+      return res.status(401).json({ success: false, error: 'Truy cập bị từ chối: Mã bảo mật không hợp lệ hoặc bị thiếu.' });
+    }
+  }
+
+  // 2. Enforce payload size limit (max 250KB)
+  if (!validatePayloadSize(req, res, 250 * 1024)) return;
+
+  // 3. Validate JSON body structure and Content-Type
+  if (!validateJsonBody(req, res)) return;
+
+  // 4. Validate & sanitize push notification payload
+  const validation = validatePushPayload(req.body);
+  if (!validation.isValid) {
+    return res.status(400).json({ success: false, error: validation.error });
+  }
+  const { tokens, title, body, data: safeData } = validation.sanitized;
+
+  // 4. Rate Limiting: Max 60 push requests per minute per IP
+  const allowed = checkRateLimit(req, res, {
+    windowMs: 60 * 1000,
+    max: 60,
+    keyPrefix: 'sendPush',
+    message: 'Tần suất gửi thông báo quá nhanh. Vui lòng thử lại sau 1 phút.'
+  });
+  if (!allowed) return;
 
   try {
     if (getApps().length === 0) {
@@ -46,19 +79,6 @@ export default async function handler(req, res) {
   } catch (initError) {
     console.error('Admin Init Error:', initError);
     return res.status(500).json({ success: false, error: 'Firebase Admin Init Error: ' + initError.message });
-  }
-
-  const { tokens, title, body, data } = req.body;
-
-  if (!tokens || !tokens.length) {
-    return res.status(400).json({ message: 'No tokens provided' });
-  }
-
-  let safeData = {};
-  if (data && typeof data === 'object') {
-    for (const key in data) {
-      safeData[key] = String(data[key]);
-    }
   }
 
   const message = {

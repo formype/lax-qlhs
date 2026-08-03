@@ -3,14 +3,39 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies & Build
 node_modules
 dist
 dist-ssr
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
 *.local
+*.pem
+*.key
+serviceAccount*.json
+google-services.json
+android/app/google-services.json
+
+# Test & Debug Scratch Scripts
+check_*.mjs
+check-db.js
+test_*.js
+test_*.mjs
+test_*.cjs
+read_template.*
+
+# Archive & Binary files
+*.rar
+*.zip
+*.7z
+*.tar.gz
+public/app.apk
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +47,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+

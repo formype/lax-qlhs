@@ -3,6 +3,15 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot, limit, arrayUnion, startAfter } from 'firebase/firestore';
+import { 
+  sanitizeText, 
+  sanitizeUsername, 
+  sanitizeDate, 
+  validateViolationPayload, 
+  validateUserAccountPayload, 
+  validateImageBase64 
+} from './sanitizer.js';
+import { hashPassword, verifyPassword } from './crypto.js';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,28 +35,55 @@ if (typeof window !== 'undefined') {
   }
 }
 
-const COLLECTIONS = {
+export const COLLECTIONS = {
+  USERS: 'users',
   STUDENTS: 'students',
   CLASSES: 'classes',
   VIOLATIONS: 'violations',
-  USERS: 'users',
+  CONFIG: 'config',
+  VIOLATION_RULES: 'violationRules',
+  DISCIPLINARY_ACTIONS: 'disciplinaryActions',
   ATTENDANCE: 'attendance',
   NOTIFICATIONS: 'notifications'
 };
 
 // --- USERS / AUTH ---
-export const loginUser = async (username, password) => {
+export const loginUser = async (rawUsername, rawPassword) => {
   try {
+    const username = sanitizeUsername(rawUsername);
+    const password = typeof rawPassword === 'string' ? rawPassword.trim().substring(0, 100) : '';
+
+    if (!username || !password) {
+      return { success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu hợp lệ.' };
+    }
+
     const q = query(
       collection(db, COLLECTIONS.USERS),
-      where("username", "==", username),
-      where("password", "==", password)
+      where("username", "==", username)
     );
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-      const userData = querySnapshot.docs[0].data();
-      const userId = querySnapshot.docs[0].id;
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+
+      // Cryptographically verify password (supports modern salt-hash & legacy plain)
+      const { isValid, needsUpgrade } = await verifyPassword(password, userData.password);
+      if (!isValid) {
+        return { success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng.' };
+      }
+
+      // Silent upgrade legacy plaintext passwords to salted hash
+      if (needsUpgrade) {
+        try {
+          const newHashedPassword = await hashPassword(password);
+          await updateDoc(doc(db, COLLECTIONS.USERS, userId), { password: newHashedPassword });
+        } catch (upgradeErr) {
+          console.warn("Silent password upgrade failed:", upgradeErr);
+        }
+      }
+
       let roles = Array.isArray(userData.role) ? userData.role : (userData.role ? [userData.role] : []);
       
       let teacherClass = null;
@@ -59,10 +95,13 @@ export const loginUser = async (username, password) => {
         }
       }
 
+      // Strip password from returned user object for zero-leakage security
+      const { password: _pwd, ...safeUserData } = userData;
+
       return { 
         success: true, 
         user: {
-          ...userData,
+          ...safeUserData,
           id: userId,
           role: roles, 
           blockedPages: userData.blockedPages || [],
@@ -86,7 +125,9 @@ export const fetchUsers = async () => {
     querySnapshot.forEach((doc) => {
       const d = doc.data();
       const roles = Array.isArray(d.role) ? d.role : (d.role ? [d.role] : []);
-      users.push({ id: doc.id, ...d, role: roles });
+      // Strip password from returned list
+      const { password: _pwd, ...safeUserData } = d;
+      users.push({ id: doc.id, ...safeUserData, role: roles });
     });
     return users;
   } catch (error) {
@@ -97,17 +138,32 @@ export const fetchUsers = async () => {
 
 export const addUser = async (userData) => {
   try {
+    // Validate & sanitize account data
+    const validation = validateUserAccountPayload(userData, true);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error };
+    }
+    const cleanUserData = {
+      ...userData,
+      ...validation.sanitized
+    };
+
+    // Hash password if provided
+    if (cleanUserData.password) {
+      cleanUserData.password = await hashPassword(cleanUserData.password);
+    }
+
     // Check if username already exists
-    const q = query(collection(db, COLLECTIONS.USERS), where("username", "==", userData.username));
+    const q = query(collection(db, COLLECTIONS.USERS), where("username", "==", cleanUserData.username));
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       return { success: false, error: 'Tên đăng nhập đã tồn tại.' };
     }
-    const docRef = await addDoc(collection(db, COLLECTIONS.USERS), userData);
+    const docRef = await addDoc(collection(db, COLLECTIONS.USERS), cleanUserData);
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error("Add User Error:", error);
-    return { success: false, error };
+    return { success: false, error: error.message || error.toString() };
   }
 };
 
@@ -123,17 +179,31 @@ export const deleteUser = async (userId) => {
 
 export const updateUserAccount = async (userId, updates) => {
   try {
+    const validation = validateUserAccountPayload(updates, false);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error };
+    }
+    const cleanUpdates = {
+      ...updates,
+      ...validation.sanitized
+    };
+
+    // If password is being updated, hash it before writing to Firestore
+    if (cleanUpdates.password) {
+      cleanUpdates.password = await hashPassword(cleanUpdates.password);
+    }
+
     const userRef = doc(db, COLLECTIONS.USERS, userId);
-    await updateDoc(userRef, updates);
+    await updateDoc(userRef, cleanUpdates);
     
     // Check if fullName is updated
-    if (updates.fullName !== undefined) {
+    if (cleanUpdates.fullName !== undefined) {
       const qClass = query(collection(db, COLLECTIONS.CLASSES), where("homeroomTeacherId", "==", userId));
       const snap = await getDocs(qClass);
       if (!snap.empty) {
         const batchOp = writeBatch(db);
         snap.forEach(d => {
-          batchOp.update(d.ref, { homeroomTeacherName: updates.fullName || updates.username || 'Giáo viên' });
+          batchOp.update(d.ref, { homeroomTeacherName: cleanUpdates.fullName || cleanUpdates.username || 'Giáo viên' });
         });
         await batchOp.commit();
       }
@@ -142,7 +212,39 @@ export const updateUserAccount = async (userId, updates) => {
     return { success: true };
   } catch (error) {
     console.error("Update User Error:", error);
-    return { success: false, error };
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const changeUserPassword = async (userId, currentPassword, newPassword) => {
+  try {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      return { success: false, error: 'Không tìm thấy thông tin tài khoản.' };
+    }
+    const userData = userSnap.data();
+
+    // Verify current password
+    const { isValid } = await verifyPassword(currentPassword, userData.password);
+    if (!isValid) {
+      return { success: false, error: 'Mật khẩu hiện tại không đúng!' };
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'Mật khẩu mới phải từ 6 ký tự trở lên!' };
+    }
+
+    const newHashedPassword = await hashPassword(newPassword);
+    await updateDoc(userRef, {
+      password: newHashedPassword,
+      credentialsUpdatedAt: Date.now()
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    return { success: false, error: error.message || error.toString() };
   }
 };
 
@@ -156,7 +258,9 @@ export const getUserByUsername = async (username) => {
     if (!querySnapshot.empty) {
       const d = querySnapshot.docs[0].data();
       const roles = Array.isArray(d.role) ? d.role : (d.role ? [d.role] : []);
-      return { success: true, id: querySnapshot.docs[0].id, ...d, role: roles };
+      // Strip password from returned user
+      const { password: _pwd, ...safeUserData } = d;
+      return { success: true, id: querySnapshot.docs[0].id, ...safeUserData, role: roles };
     }
     return { success: false };
   } catch (error) {
@@ -328,14 +432,30 @@ export const updateStudent = async (studentId, updateData) => {
 // --- VIOLATIONS ---
 export const addViolation = async (data) => {
   try {
-    const docRef = await addDoc(collection(db, COLLECTIONS.VIOLATIONS), {
+    // Validate violation payload and image size
+    if (data.imageUrl) {
+      const imgCheck = validateImageBase64(data.imageUrl);
+      if (!imgCheck.isValid) {
+        return { success: false, error: imgCheck.error };
+      }
+    }
+
+    const cleanData = {
       ...data,
+      hoten: sanitizeText(data.hoten || data.studentName, 100),
+      tenlop: sanitizeText(data.tenlop || data.className, 50),
+      noidung: sanitizeText(data.noidung || data.violationType || data.description, 500),
+      mota: sanitizeText(data.mota || data.description, 500),
+      nguoinhap: sanitizeText(data.nguoinhap || data.reporter, 100),
+      diemtru: typeof data.diemtru === 'number' ? Math.max(0, data.diemtru) : (Number(data.diemtru) || 0),
       createdAt: Timestamp.now()
-    });
+    };
+
+    const docRef = await addDoc(collection(db, COLLECTIONS.VIOLATIONS), cleanData);
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error("Error adding violation: ", error);
-    return { success: false, error };
+    return { success: false, error: error.message || error.toString() };
   }
 };
 
@@ -359,7 +479,7 @@ export const searchViolations = async (searchTerm) => {
     const q = query(collection(db, COLLECTIONS.VIOLATIONS), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const data = [];
-    const term = searchTerm.toLowerCase();
+    const term = sanitizeText(searchTerm, 100).toLowerCase();
     
     querySnapshot.forEach((doc) => {
       const d = doc.data();
@@ -390,7 +510,7 @@ export const deleteViolation = async (violationId) => {
 export const updateViolationStatus = async (violationId, newStatus) => {
   try {
     await updateDoc(doc(db, COLLECTIONS.VIOLATIONS, violationId), {
-      trangthai: newStatus
+      trangthai: sanitizeText(newStatus, 50)
     });
     return { success: true };
   } catch (error) {
@@ -400,36 +520,61 @@ export const updateViolationStatus = async (violationId, newStatus) => {
 
 export const updateViolationDetails = async (violationId, updates) => {
   try {
+    if (updates.imageUrl) {
+      const imgCheck = validateImageBase64(updates.imageUrl);
+      if (!imgCheck.isValid) {
+        return { success: false, error: imgCheck.error };
+      }
+    }
+
+    const cleanUpdates = { ...updates };
+    if (cleanUpdates.hoten !== undefined) cleanUpdates.hoten = sanitizeText(cleanUpdates.hoten, 100);
+    if (cleanUpdates.tenlop !== undefined) cleanUpdates.tenlop = sanitizeText(cleanUpdates.tenlop, 50);
+    if (cleanUpdates.noidung !== undefined) cleanUpdates.noidung = sanitizeText(cleanUpdates.noidung, 500);
+    if (cleanUpdates.mota !== undefined) cleanUpdates.mota = sanitizeText(cleanUpdates.mota, 500);
+    if (cleanUpdates.nguoinhap !== undefined) cleanUpdates.nguoinhap = sanitizeText(cleanUpdates.nguoinhap, 100);
+
     const violationRef = doc(db, COLLECTIONS.VIOLATIONS, violationId);
     await updateDoc(violationRef, {
-      ...updates,
+      ...cleanUpdates,
       updatedAt: serverTimestamp()
     });
     return { success: true };
   } catch (error) {
     console.error("Error updating violation details: ", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || error.toString() };
   }
 };
 
 // --- ATTENDANCE ---
 export const saveAttendance = async (date, session, className, attendanceData, createdBy = 'Hệ thống', reasonsData = {}) => {
   try {
-    const safeClassName = className.replace(/\//g, '-');
-    const docId = `${safeClassName}_${date}_${session}`; // e.g. 10A1_2026-09-07_Sáng
+    const cleanDate = sanitizeDate(date) || date;
+    const cleanSession = (session === 'Chiều' || session === 'afternoon') ? 'Chiều' : 'Sáng';
+    const cleanClassName = sanitizeText(className, 50);
+    const safeClassName = cleanClassName.replace(/\//g, '-');
+    const docId = `${safeClassName}_${cleanDate}_${cleanSession}`;
     const docRef = doc(db, COLLECTIONS.ATTENDANCE, docId);
     
+    // Sanitize reasons
+    const cleanReasons = {};
+    if (reasonsData && typeof reasonsData === 'object') {
+      for (const stId in reasonsData) {
+        cleanReasons[stId] = sanitizeText(reasonsData[stId], 255);
+      }
+    }
+
     const docData = {
-      date,
-      session,
-      className,
-      records: attendanceData, // Object mapping studentId -> status (present, absent)
-      createdBy,
+      date: cleanDate,
+      session: cleanSession,
+      className: cleanClassName,
+      records: attendanceData, // Object mapping studentId -> status
+      createdBy: sanitizeText(createdBy, 100),
       updatedAt: serverTimestamp()
     };
     
-    if (Object.keys(reasonsData).length > 0) {
-      docData.reasons = reasonsData;
+    if (Object.keys(cleanReasons).length > 0) {
+      docData.reasons = cleanReasons;
     }
 
     await setDoc(docRef, docData, { merge: true });
@@ -442,22 +587,31 @@ export const saveAttendance = async (date, session, className, attendanceData, c
 
 export const updateAttendanceStudent = async (date, session, className, studentId, newStatus, proofBase64, updatedBy = null, reason = null) => {
   try {
-    const safeClassName = className.replace(/\//g, '-');
-    const docId = `${safeClassName}_${date}_${session}`;
+    if (proofBase64) {
+      const imgCheck = validateImageBase64(proofBase64);
+      if (!imgCheck.isValid) {
+        return { success: false, error: imgCheck.error };
+      }
+    }
+
+    const cleanDate = sanitizeDate(date) || date;
+    const cleanSession = (session === 'Chiều' || session === 'afternoon') ? 'Chiều' : 'Sáng';
+    const safeClassName = sanitizeText(className, 50).replace(/\//g, '-');
+    const docId = `${safeClassName}_${cleanDate}_${cleanSession}`;
     const docRef = doc(db, COLLECTIONS.ATTENDANCE, docId);
     
     const updates = {
-      [`records.${studentId}`]: newStatus,
+      [`records.${studentId}`]: sanitizeText(newStatus, 50),
       updatedAt: serverTimestamp()
     };
     if (proofBase64) {
       updates[`proofs.${studentId}`] = proofBase64;
     }
     if (updatedBy) {
-      updates[`updatedBy.${studentId}`] = updatedBy;
+      updates[`updatedBy.${studentId}`] = sanitizeText(updatedBy, 100);
     }
     if (reason) {
-      updates[`reasons.${studentId}`] = reason;
+      updates[`reasons.${studentId}`] = sanitizeText(reason, 255);
     }
     
     await updateDoc(docRef, updates);
@@ -785,7 +939,7 @@ export const setupForegroundPush = () => {
         icon: '/vite.svg'
       };
       
-      // Show a toast when the website is open in the foreground
+      // Show a safe toast when the website is open in the foreground
       const toast = document.createElement('div');
       toast.style.position = 'fixed';
       toast.style.top = '20px';
@@ -797,7 +951,18 @@ export const setupForegroundPush = () => {
       toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
       toast.style.zIndex = '9999';
       toast.style.maxWidth = '300px';
-      toast.innerHTML = `<strong>${notificationTitle}</strong><br/>${notificationOptions.body}`;
+
+      const strongTitle = document.createElement('strong');
+      strongTitle.textContent = notificationTitle;
+      toast.appendChild(strongTitle);
+
+      if (notificationOptions.body) {
+        toast.appendChild(document.createElement('br'));
+        const bodySpan = document.createElement('span');
+        bodySpan.textContent = notificationOptions.body;
+        toast.appendChild(bodySpan);
+      }
+
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 5000);
 
@@ -842,7 +1007,7 @@ export const requestNotificationPermission = async (userId) => {
               await updateDoc(userRef, {
                 fcmTokens: arrayUnion(token.value)
               });
-              // Show toast to confirm registration
+              // Show safe toast to confirm registration
               const toast = document.createElement('div');
               toast.style.position = 'fixed';
               toast.style.bottom = '20px';
@@ -853,7 +1018,7 @@ export const requestNotificationPermission = async (userId) => {
               toast.style.padding = '10px 20px';
               toast.style.borderRadius = '5px';
               toast.style.zIndex = '9999';
-              toast.innerHTML = 'Đã kết nối Thông báo Đẩy thành công!';
+              toast.textContent = 'Đã kết nối Thông báo Đẩy thành công!';
               document.body.appendChild(toast);
               setTimeout(() => toast.remove(), 3000);
             } catch (e) {
@@ -867,7 +1032,7 @@ export const requestNotificationPermission = async (userId) => {
           // Also listen for foreground push notifications to show a local notification
           PushNotifications.addListener('pushNotificationReceived', (notification) => {
             console.log('Push received in foreground', notification);
-            // Show toast for foreground notification
+            // Show safe toast for foreground notification
             const toast = document.createElement('div');
             toast.style.position = 'fixed';
             toast.style.top = '20px';
@@ -879,7 +1044,18 @@ export const requestNotificationPermission = async (userId) => {
             toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
             toast.style.zIndex = '9999';
             toast.style.maxWidth = '300px';
-            toast.innerHTML = `<strong>${notification.title || 'Thông báo mới'}</strong><br/>${notification.body || ''}`;
+
+            const notifTitle = document.createElement('strong');
+            notifTitle.textContent = notification.title || 'Thông báo mới';
+            toast.appendChild(notifTitle);
+
+            if (notification.body) {
+              toast.appendChild(document.createElement('br'));
+              const notifBody = document.createElement('span');
+              notifBody.textContent = notification.body;
+              toast.appendChild(notifBody);
+            }
+
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 5000);
           });
@@ -897,7 +1073,30 @@ export const requestNotificationPermission = async (userId) => {
       
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        const token = await getToken(messaging, { vapidKey });
+        let swRegistration;
+        if ('serviceWorker' in navigator) {
+          try {
+            const swParams = new URLSearchParams({
+              apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+              authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+              projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+              storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+              messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+              appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+              measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+            });
+            swRegistration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?${swParams.toString()}`);
+          } catch (swErr) {
+            console.warn('Service worker registration error:', swErr);
+          }
+        }
+
+        const tokenOptions = { vapidKey };
+        if (swRegistration) {
+          tokenOptions.serviceWorkerRegistration = swRegistration;
+        }
+
+        const token = await getToken(messaging, tokenOptions);
         if (token) {
           const userRef = doc(db, COLLECTIONS.USERS, userId);
           await updateDoc(userRef, {
@@ -913,11 +1112,16 @@ export const requestNotificationPermission = async (userId) => {
 
 export const createNotification = async (message, targetRoles, targetClasses = [], data = {}) => {
   try {
+    const cleanMessage = sanitizeText(message, 500);
+    if (!cleanMessage) {
+      return { success: false, error: 'Nội dung thông báo không được để trống.' };
+    }
+
     const notifData = {
-      message,
-      targetRoles,
-      targetClasses,
-      data,
+      message: cleanMessage,
+      targetRoles: Array.isArray(targetRoles) ? targetRoles : (targetRoles ? [targetRoles] : []),
+      targetClasses: Array.isArray(targetClasses) ? targetClasses : (targetClasses ? [targetClasses] : []),
+      data: data && typeof data === 'object' ? data : {},
       readBy: [],
       createdAt: Date.now()
     };
@@ -965,9 +1169,13 @@ export const createNotification = async (message, targetRoles, targetClasses = [
           ? 'https://lax-qlhs.vercel.app/api/sendPush' 
           : '/api/sendPush';
           
+        const appSecret = import.meta.env.VITE_APP_PUSH_SECRET || '';
         await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-app-secret': appSecret
+          },
           body: JSON.stringify({
             tokens: uniqueTokens,
             title: 'Hệ thống Quản lý học sinh',

@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for data sanitization & payload integrity verification
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptionalString(val, maxLen) {
+      return val == null || (val is string && val.size() <= maxLen);
+    }
+
+    function isValidList(val, maxItems) {
+      return val is list && val.size() <= maxItems;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.resource.data.username is string
+                    && request.resource.data.username.size() >= 2
+                    && request.resource.data.username.size() <= 50;
+      allow update: if (request.resource.data.username == null || (request.resource.data.username is string && request.resource.data.username.size() <= 50))
+                    && isOptionalString(request.resource.data.fullName, 100);
+      allow delete: if true;
+    }
+
+    // 2. Classes Collection
+    match /classes/{classId} {
+      allow read: if true;
+      allow create, update: if (request.resource.data.tenlop is string && request.resource.data.tenlop.size() <= 50)
+                            || request.resource.data.tenlop == null;
+      allow delete: if true;
+    }
+
+    // 3. Students Collection
+    match /students/{studentId} {
+      allow read: if true;
+      allow create, update: if (request.resource.data.hoten is string && request.resource.data.hoten.size() <= 100)
+                            || request.resource.data.hoten == null;
+      allow delete: if true;
+    }
+
+    // 4. Violations Collection
+    match /violations/{violationId} {
+      allow read: if true;
+      allow create, update: if (request.resource.data.studentName == null || (request.resource.data.studentName is string && request.resource.data.studentName.size() <= 100))
+                            && isOptionalString(request.resource.data.description, 1000);
+      allow delete: if true;
+    }
+
+    // 5. Attendance Collection
+    match /attendance/{attendanceId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // 6. Notifications Collection
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create, update: if isOptionalString(request.resource.data.title, 200)
+                            && isOptionalString(request.resource.data.body, 1000);
+      allow delete: if true;
+    }
+
+    // 7. System Config Collection
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Default catch-all denies any access to unmapped collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

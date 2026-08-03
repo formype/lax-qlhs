@@ -114,21 +114,31 @@ export function ManageAccounts() {
   };
 
   const handleSave = async () => {
-    if (!formData.username || !formData.fullName) {
+    const cleanUsername = (formData.username || '').trim().toLowerCase();
+    const cleanFullName = (formData.fullName || '').trim();
+
+    if (!cleanUsername || !cleanFullName) {
       alert("Vui lòng nhập đầy đủ Tên đăng nhập và Họ tên.");
+      return;
+    }
+
+    // Username format check
+    const usernameRegex = /^[a-z0-9_.-]{3,50}$/;
+    if (!usernameRegex.test(cleanUsername)) {
+      alert("Tên đăng nhập không hợp lệ (từ 3-50 ký tự, chỉ chứa chữ cái không dấu, số, dấu gạch dưới, gạch nối hoặc dấu chấm).");
       return;
     }
 
     setSaving(true);
     if (editingUser) {
       const updates = {
-        fullName: formData.fullName,
+        fullName: cleanFullName,
         role: formData.roles,
         blockedPages: formData.blockedPages,
         credentialsUpdatedAt: Date.now()
       };
       if (formData.password) {
-        updates.password = formData.password;
+        updates.password = formData.password.trim();
       }
       const res = await updateUserAccount(editingUser.id, updates);
       if (res.success) {

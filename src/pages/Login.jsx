@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { User as UserIcon, Lock, ArrowRight } from 'lucide-react';
+import { User as UserIcon, Lock, ArrowRight, AlertTriangle } from 'lucide-react';
+import { 
+  checkAuthRateLimit, 
+  recordFailedAuthAttempt, 
+  recordSuccessfulAuth,
+  formatRemainingTime 
+} from '../lib/rateLimiter';
 import './Login.css';
 
 export function Login() {
@@ -12,8 +18,27 @@ export function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rateLimitState, setRateLimitState] = useState({
+    isLocked: false,
+    remainingMs: 0,
+    formattedTime: '',
+    remainingAttempts: 5
+  });
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Check rate limit status on mount and tick countdown
+  useEffect(() => {
+    const status = checkAuthRateLimit();
+    setRateLimitState(status);
+
+    const timer = setInterval(() => {
+      const currentStatus = checkAuthRateLimit();
+      setRateLimitState(currentStatus);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -29,20 +54,47 @@ export function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanUsername || !cleanPassword) {
+      setError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+      return;
+    }
+
+    // Pre-check rate limit
+    const currentRateLimit = checkAuthRateLimit();
+    if (currentRateLimit.isLocked) {
+      setError(`Tài khoản tạm khóa do đăng nhập sai nhiều lần. Vui lòng thử lại sau ${currentRateLimit.formattedTime}.`);
+      return;
+    }
+
     setLoading(true);
 
-    const res = await login(username, password);
+    const res = await login(cleanUsername, cleanPassword);
     if (res.success) {
+      recordSuccessfulAuth();
       if (rememberMe) {
-        localStorage.setItem('qlhs_saved_username', username);
-        localStorage.setItem('qlhs_saved_password', password);
+        localStorage.setItem('qlhs_saved_username', cleanUsername);
+        localStorage.setItem('qlhs_saved_password', cleanPassword);
       } else {
         localStorage.removeItem('qlhs_saved_username');
         localStorage.removeItem('qlhs_saved_password');
       }
       navigate('/');
     } else {
-      setError(res.message || 'Đăng nhập thất bại.');
+      const updatedLimit = recordFailedAuthAttempt();
+      setRateLimitState(updatedLimit);
+
+      if (updatedLimit.isLocked) {
+        setError(`Bạn đã thử đăng nhập sai quá 5 lần. Hệ thống tạm khóa trong ${updatedLimit.formattedTime}.`);
+      } else {
+        const remainingText = updatedLimit.remainingAttempts > 0 
+          ? ` Bạn còn ${updatedLimit.remainingAttempts} lần thử.` 
+          : '';
+        setError((res.message || 'Đăng nhập thất bại.') + remainingText);
+      }
     }
     setLoading(false);
   };
@@ -61,7 +113,17 @@ export function Login() {
 
       <div className="login-card">
         <form onSubmit={handleLogin} className="login-form">
-          {error && <div className="login-error">{error}</div>}
+          {rateLimitState.isLocked ? (
+            <div className="login-error" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fef2f2', color: '#991b1b', border: '1px solid #f87171' }}>
+              <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+              <div>
+                <strong>Tài khoản tạm khóa</strong>
+                <div>Vui lòng thử lại sau: <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{rateLimitState.formattedTime}</span></div>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="login-error">{error}</div>
+          ) : null}
           
           <div className="form-group">
             <label className="input-label-upper">TÀI KHOẢN</label>
@@ -72,6 +134,7 @@ export function Login() {
                 placeholder="Nhập tên đăng nhập" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={rateLimitState.isLocked || loading}
                 required
               />
             </div>
@@ -87,6 +150,7 @@ export function Login() {
                 placeholder="Nhập mật khẩu" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={rateLimitState.isLocked || loading}
                 required
               />
             </div>
@@ -98,13 +162,21 @@ export function Login() {
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
               className="remember-checkbox"
+              disabled={rateLimitState.isLocked || loading}
             />
             <span>Ghi nhớ tên đăng nhập và mật khẩu</span>
           </label>
 
-          <button type="submit" disabled={loading} className="login-submit-btn">
+          <button 
+            type="submit" 
+            disabled={rateLimitState.isLocked || loading} 
+            className="login-submit-btn"
+            style={rateLimitState.isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+          >
             {loading ? 'Đang xử lý...' : (
-              <>Đăng Nhập <ArrowRight size={18} /></>
+              rateLimitState.isLocked ? `Tạm khóa (${rateLimitState.formattedTime})` : (
+                <>Đăng Nhập <ArrowRight size={18} /></>
+              )
             )}
           </button>
         </form>

@@ -110,6 +110,17 @@ export function AddViolation() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Validate file sizes and types (Max 5MB per file)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].size > MAX_FILE_SIZE) {
+        const sizeMB = (files[i].size / (1024 * 1024)).toFixed(1);
+        alert(`Tệp "${files[i].name}" quá lớn (${sizeMB}MB). Vui lòng chọn tệp nhỏ hơn 5MB.`);
+        e.target.value = '';
+        return;
+      }
+    }
+
     setUploading(true);
     setUploadProgress(10);
 
@@ -148,7 +159,7 @@ export function AddViolation() {
               filename: file.name || `Upload_${Date.now()}`,
               mimeType: fileType,
               base64: base64Data,
-              folderId: '1Et-Jz9EiFoFpGHp139dmf504ZDFe9yhD'
+              folderId: import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || ''
             })
           });
           
