@@ -20,7 +20,7 @@ import { Notifications } from './pages/Notifications';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { App as CapacitorApp } from '@capacitor/app';
 import { getSystemConfig } from './lib/firebase';
-import { APP_VERSION } from './config';
+import { APP_VERSION, isUpdateRequired } from './config';
 import { Button } from './components/ui/Button';
 import { X } from 'lucide-react';
 import './App.css';
@@ -80,7 +80,7 @@ const UpdateChecker = () => {
     const checkUpdate = async () => {
       try {
         const config = await getSystemConfig();
-        if (config && config.latestVersion && config.latestVersion !== APP_VERSION) {
+        if (config && config.latestVersion && isUpdateRequired(APP_VERSION, config.latestVersion)) {
           setDownloadLink(config.downloadLink);
           setShowUpdate(true);
         }

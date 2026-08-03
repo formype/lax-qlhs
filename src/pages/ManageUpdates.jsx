@@ -100,7 +100,7 @@ export function ManageUpdates() {
                       style={{ paddingLeft: '36px' }}
                     />
                   </div>
-                  <p className="text-xs text-muted mt-2">Nhập số phiên bản mới để kích hoạt yêu cầu cập nhật cho người dùng cũ.</p>
+                  <p className="text-xs text-muted mt-2">Ứng dụng sẽ chỉ yêu cầu cập nhật nếu phiên bản hiện tại của người dùng nhỏ hơn phiên bản mới nhất trên Server.</p>
                 </div>
               </div>
 
