@@ -257,6 +257,16 @@ export const updateUserAccount = async (userId, updates) => {
       ...validation.sanitized
     };
 
+    // Check username uniqueness if username is being changed
+    if (cleanUpdates.username) {
+      const q = query(collection(db, COLLECTIONS.USERS), where("username", "==", cleanUpdates.username));
+      const snap = await getDocs(q);
+      const conflict = snap.docs.find(d => d.id !== userId);
+      if (conflict) {
+        return { success: false, error: 'Tên đăng nhập này đã được sử dụng bởi tài khoản khác.' };
+      }
+    }
+
     // If password is being updated, hash it before writing to Firestore
     if (cleanUpdates.password) {
       cleanUpdates.password = await hashPassword(cleanUpdates.password);

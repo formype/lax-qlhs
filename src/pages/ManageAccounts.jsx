@@ -78,7 +78,7 @@ export function ManageAccounts() {
     if (u) {
       setEditingUser(u);
       setFormData({
-        username: u.username || u.name || u.id || '',
+        username: u.username || u.name || '',
         password: '',
         fullName: u.fullName || u.name || u.hoten || '',
         roles: Array.isArray(u.role) ? u.role : (u.role ? [u.role] : []),
@@ -106,15 +106,14 @@ export function ManageAccounts() {
       alert("Bạn không có quyền reset mật khẩu cho tài khoản quản trị ngang hoặc cao hơn cấp của mình!");
       return;
     }
-    const targetUsername = u.username || u.name || u.id;
-    if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản "${targetUsername}" về mặc định "123" không?`)) {
+    const displayName = u.fullName || u.username || u.name || u.id;
+    if (window.confirm(`Bạn có chắc muốn reset mật khẩu của tài khoản "${displayName}" về mặc định "123" không?`)) {
       const res = await updateUserAccount(u.id, { 
         password: '123', 
-        username: String(targetUsername).toLowerCase().trim(),
         credentialsUpdatedAt: Date.now() 
       });
       if (res.success) {
-        alert(`Đã reset mật khẩu của tài khoản "${targetUsername}" thành công! Mật khẩu đăng nhập mới là: 123`);
+        alert(`Đã reset mật khẩu của tài khoản "${displayName}" thành công! Mật khẩu đăng nhập mới là: 123`);
         loadUsers();
       } else {
         alert("Reset mật khẩu thất bại: " + res.error);
@@ -142,10 +141,19 @@ export function ManageAccounts() {
     setSaving(true);
     try {
       if (editingUser) {
-        // Chỉnh sửa tài khoản đã có (cho phép đổi riêng lẻ mật khẩu, họ tên, vai trò)
+        // Chỉnh sửa tài khoản đã có (cho phép đổi username, mật khẩu, họ tên, vai trò)
         const cleanFullName = (formData.fullName || '').trim();
         const cleanPassword = (formData.password || '').trim();
-        const cleanUsername = (formData.username || editingUser.username || editingUser.name || editingUser.id || '').trim().toLowerCase();
+        const cleanUsername = (formData.username || '').trim().toLowerCase();
+
+        if (cleanUsername) {
+          const usernameRegex = /^[a-z0-9_.-]{3,50}$/;
+          if (!usernameRegex.test(cleanUsername)) {
+            alert("Tên đăng nhập không hợp lệ (từ 3-50 ký tự, chỉ chứa chữ cái không dấu, số, dấu gạch dưới, gạch nối hoặc dấu chấm).");
+            setSaving(false);
+            return;
+          }
+        }
 
         if (cleanPassword && cleanPassword.length < 3) {
           alert("Mật khẩu mới phải có ít nhất 3 ký tự!");
@@ -329,19 +337,19 @@ export function ManageAccounts() {
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               <div className="form-group mb-3">
-                <label className="input-label">Tên đăng nhập</label>
+                <label className="input-label">Tên đăng nhập (Username)</label>
                 <input 
                   type="text" 
                   className="input-field" 
-                  value={formData.username || (editingUser ? (editingUser.username || editingUser.name || editingUser.id || '') : '')}
-                  onChange={e => setFormData({...formData, username: e.target.value})}
-                  disabled={!!editingUser}
-                  placeholder="Ví dụ: gv_nguyenvana"
-                  style={editingUser ? { opacity: 0.8, cursor: 'not-allowed' } : {}}
+                  value={formData.username}
+                  onChange={e => setFormData({...formData, username: e.target.value.toLowerCase().replace(/\s+/g, '')})}
+                  placeholder="Ví dụ: gv_nguyenvana hoặc admin_nhan"
                 />
-                {editingUser && (
-                  <p className="text-xs text-muted mt-1">Tên đăng nhập cố định không thay đổi.</p>
-                )}
+                <p className="text-xs text-muted mt-1">
+                  {editingUser 
+                    ? 'Bạn có thể chỉnh sửa/đặt lại tên đăng nhập tại đây (chữ thường không dấu, viết liền).' 
+                    : 'Tên tài khoản dùng để đăng nhập vào hệ thống (từ 3-50 ký tự).'}
+                </p>
               </div>
 
               <div className="form-group mb-3">
