@@ -77,8 +77,9 @@ export function ManageAccounts() {
     }
     if (u) {
       setEditingUser(u);
+      const isRandomId = u.username && (u.username === u.id || (u.username.length >= 20 && !u.username.includes('_') && !u.username.includes('.')));
       setFormData({
-        username: u.username || u.name || '',
+        username: isRandomId ? '' : (u.username || ''),
         password: '',
         fullName: u.fullName || u.name || u.hoten || '',
         roles: Array.isArray(u.role) ? u.role : (u.role ? [u.role] : []),
@@ -283,7 +284,13 @@ export function ManageAccounts() {
                       </div>
                       <div className="flex-col">
                         <span className="font-bold text-dark" style={{ fontSize: '1.1rem' }}>{u.fullName}</span>
-                        <span className="text-muted text-sm mt-1">@{u.username}</span>
+                        {u.username ? (
+                          <span className="text-muted text-sm mt-1">@{u.username}</span>
+                        ) : (
+                          <span className="text-sm mt-1" style={{ color: '#f59e0b', fontStyle: 'italic', fontSize: '0.8rem' }}>
+                            (Chưa đặt tên đăng nhập)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

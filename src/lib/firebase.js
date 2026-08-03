@@ -188,8 +188,10 @@ export const fetchUsers = async () => {
       const roles = Array.isArray(d.role) ? d.role : (d.role ? [d.role] : []);
       // Strip password from returned list
       const { password: _pwd, ...safeUserData } = d;
-      const resolvedUsername = d.username || d.userName || d.taiKhoan || doc.id;
-      const resolvedFullName = d.fullName || d.name || d.hoten || resolvedUsername;
+      // Plain text username only - never use doc.id hash
+      const rawUsername = d.username || d.userName || d.taiKhoan || '';
+      const resolvedUsername = (rawUsername && rawUsername !== doc.id) ? String(rawUsername).trim() : '';
+      const resolvedFullName = d.fullName || d.name || d.hoten || resolvedUsername || 'Người dùng';
       users.push({ 
         id: doc.id, 
         ...safeUserData, 
