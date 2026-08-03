@@ -167,20 +167,18 @@ export function Login() {
             <span>Ghi nhớ tên đăng nhập và mật khẩu</span>
           </label>
 
-          <div className="login-submit-wrapper">
-            <button 
-              type="submit" 
-              disabled={rateLimitState.isLocked || loading} 
-              className="login-submit-btn"
-              style={rateLimitState.isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
-            >
-              {loading ? 'Đang xử lý...' : (
-                rateLimitState.isLocked ? `Tạm khóa (${rateLimitState.formattedTime})` : (
-                  <>Đăng Nhập <ArrowRight size={18} /></>
-                )
-              )}
-            </button>
-          </div>
+          <button 
+            type="submit" 
+            disabled={rateLimitState.isLocked || loading} 
+            className="login-submit-btn"
+            style={rateLimitState.isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+          >
+            {loading ? 'Đang xử lý...' : (
+              rateLimitState.isLocked ? `Tạm khóa (${rateLimitState.formattedTime})` : (
+                <>Đăng Nhập <ArrowRight size={18} /></>
+              )
+            )}
+          </button>
         </form>
       </div>
       
