@@ -1,7 +1,20 @@
 /* ==========================================================================
-   LOGIN PAGE STYLES - CLEAN, MODERN & PREMIUM WITH 250PX LOGO
+   LOGIN PAGE STYLES - CRISP 1.5px/1.8px/3px LED RUNNING BORDERS & 180PX LOGO
    Scoped exclusively to .login-* elements (Login page only)
    ========================================================================== */
+
+/* Keyframes for flowing LED running border effect */
+@keyframes led-flow {
+  0% {
+    background-position: 0% 50%, 0% 50%;
+  }
+  50% {
+    background-position: 0% 50%, 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%, 0% 50%;
+  }
+}
 
 /* Login Container — full height, centered */
 .login-container {
@@ -22,30 +35,31 @@
   margin-bottom: 24px;
 }
 
-/* Logo size: 250px x 250px */
+/* Logo size: 180px x 180px */
 .login-logo-img {
-  width: 250px;
-  height: 250px;
+  width: 180px;
+  height: 180px;
   max-width: 80vw;
   max-height: 80vw;
   object-fit: contain;
   margin: 0 auto 16px;
   display: block;
   border-radius: 50%;
-  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s ease;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.12));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .login-logo-img:hover {
-  transform: scale(1.03);
+  transform: scale(1.04);
 }
 
 .login-title {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #1e293b;
   margin: 0 0 6px;
   line-height: 1.3;
+  letter-spacing: -0.02em;
 }
 
 .login-subtitle {
@@ -55,15 +69,23 @@
   font-weight: 500;
 }
 
-/* Card form */
+/* ==========================================================================
+   1. LOGIN CARD - 3PX CRISP LED RUNNING BORDER
+   ========================================================================== */
 .login-card {
   width: 100%;
   max-width: 400px;
-  background: #ffffff;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 28px 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  
+  /* 3px crisp LED running border with 100% solid inside background */
+  border: 3px solid transparent;
+  background: 
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: led-flow 4s linear infinite;
 }
 
 .login-form {
@@ -80,7 +102,7 @@
 }
 
 .input-label-upper {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #334155;
   text-transform: uppercase;
@@ -100,22 +122,32 @@
   color: #94a3b8;
   z-index: 1;
   pointer-events: none;
+  transition: color 0.2s;
 }
 
+/* ==========================================================================
+   2. TEXTBOX INPUTS - 1.5PX CRISP LED RUNNING BORDER
+   ========================================================================== */
 .login-form .input-field {
   width: 100%;
   padding: 13px 14px 13px 42px;
-  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  background: #f8fafc;
   font-size: 0.92rem;
   font-family: 'Inter', sans-serif;
   color: #1e293b;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
   min-height: 48px;
   -webkit-appearance: none;
   appearance: none;
+  transition: box-shadow 0.2s;
+
+  /* 1.5px crisp LED running border */
+  border: 1.5px solid transparent;
+  background: 
+    linear-gradient(#f8fafc, #f8fafc) padding-box,
+    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: led-flow 4s linear infinite;
 }
 
 .login-form .input-field::placeholder {
@@ -123,9 +155,16 @@
 }
 
 .login-form .input-field:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-  background: #ffffff;
+  background: 
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(90deg, #00ffcc, #0077ff, #ff00cc, #ffcc00, #00ffcc) border-box;
+  background-size: 100% 100%, 300% 300%;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.login-form .input-field:focus + .input-icon,
+.login-form .input-with-icon:focus-within .input-icon {
+  color: #6366f1;
 }
 
 /* Error message */
@@ -163,7 +202,9 @@
   margin: 0;
 }
 
-/* Submit button */
+/* ==========================================================================
+   3. LOGIN SUBMIT BUTTON - 1.8PX CRISP LED RUNNING BORDER
+   ========================================================================== */
 .login-submit-btn {
   display: flex;
   align-items: center;
@@ -171,22 +212,28 @@
   gap: 8px;
   width: 100%;
   padding: 14px 24px;
-  border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #ffffff;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   min-height: 50px;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+
+  /* 1.8px crisp LED running border with vibrant gradient button color inside */
+  border: 1.8px solid transparent;
+  background: 
+    linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) padding-box,
+    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: led-flow 3.5s linear infinite;
 }
 
 .login-submit-btn:hover:not(:disabled) {
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
   transform: translateY(-1px);
 }
 
@@ -217,9 +264,10 @@ body.dark .login-container {
 }
 
 body.dark .login-card {
-  background: var(--bg-card);
-  border-color: var(--border-color);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  background: 
+    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055) border-box;
 }
 
 body.dark .login-title {
@@ -236,14 +284,16 @@ body.dark .input-label-upper {
 }
 
 body.dark .login-form .input-field {
-  background: var(--bg-app);
-  border-color: var(--border-color);
   color: var(--text-primary);
+  background: 
+    linear-gradient(var(--bg-app), var(--bg-app)) padding-box,
+    linear-gradient(90deg, #ff0055, #ff7700, #ffea00, #00ff66, #00eeff, #0044ff, #9900ff, #ff0055) border-box;
 }
 
 body.dark .login-form .input-field:focus {
-  background: var(--bg-card);
-  border-color: #6366f1;
+  background: 
+    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    linear-gradient(90deg, #00ffcc, #0077ff, #ff00cc, #ffcc00, #00ffcc) border-box;
 }
 
 body.dark .login-form .input-icon {
