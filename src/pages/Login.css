@@ -1,10 +1,26 @@
 /* ==========================================================================
-   LOGIN PAGE STYLES - WITH RGB LED RUNNING BORDER EFFECTS & LARGER LOGO
+   LOGIN PAGE STYLES - CRISP ROTATING RGB LED BORDER EFFECT
    Scoped exclusively to .login-* elements (Login page only)
    ========================================================================== */
 
-/* Keyframes for flowing RGB LED light */
-@keyframes rgb-flow {
+/* Register custom property for smooth angle rotation */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rotate-border {
+  0% {
+    --angle: 0deg;
+  }
+  100% {
+    --angle: 360deg;
+  }
+}
+
+/* Fallback animation for legacy browsers */
+@keyframes rgb-linear-flow {
   0% {
     background-position: 0% 50%;
   }
@@ -13,15 +29,6 @@
   }
   100% {
     background-position: 0% 50%;
-  }
-}
-
-@keyframes rgb-subtle-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.45)) drop-shadow(0 0 20px rgba(236, 72, 153, 0.25));
-  }
-  50% {
-    filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.5)) drop-shadow(0 0 24px rgba(59, 130, 246, 0.35));
   }
 }
 
@@ -47,15 +54,15 @@
   z-index: 2;
 }
 
-/* Logo size enlarged from 88px to 125px with smooth glow */
+/* Logo enlarged and crisp */
 .login-logo-img {
-  width: 125px;
-  height: 125px;
+  width: 130px;
+  height: 130px;
   object-fit: contain;
   margin: 0 auto 16px;
   display: block;
   border-radius: 50%;
-  animation: rgb-subtle-glow 6s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -80,44 +87,39 @@
 }
 
 /* ==========================================================================
-   1. LOGIN CARD - RGB LED RUNNING BORDER
+   1. LOGIN CARD - CRISP ROTATING RGB LED BORDER
    ========================================================================== */
 .login-card {
   position: relative;
   width: 100%;
   max-width: 400px;
   background: #ffffff;
-  border-radius: 22px;
+  border-radius: 20px;
   padding: 32px 28px;
   z-index: 1;
   border: none;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
 }
 
-/* RGB LED Running Border Frame */
+/* 2px Crisp RGB LED Line running around the card border */
 .login-card::before {
   content: '';
   position: absolute;
-  inset: -3px;
-  border-radius: 25px;
-  background: linear-gradient(90deg, #ff0055, #ff5500, #ffcc00, #00ff66, #00ffff, #0066ff, #9900ff, #ff0055);
-  background-size: 400% 400%;
+  inset: -2px;
+  border-radius: 22px;
+  background: conic-gradient(
+    from var(--angle),
+    #ff0055,
+    #ff5500,
+    #ffea00,
+    #00ff66,
+    #00e5ff,
+    #0044ff,
+    #9900ff,
+    #ff0055
+  );
   z-index: -1;
-  animation: rgb-flow 5s linear infinite;
-}
-
-/* Ambient LED Aura Blur */
-.login-card::after {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  border-radius: 28px;
-  background: linear-gradient(90deg, #ff0055, #ff5500, #ffcc00, #00ff66, #00ffff, #0066ff, #9900ff, #ff0055);
-  background-size: 400% 400%;
-  z-index: -2;
-  filter: blur(16px);
-  opacity: 0.4;
-  animation: rgb-flow 5s linear infinite;
+  animation: rotate-border 4s linear infinite;
 }
 
 .login-form {
@@ -142,23 +144,31 @@
 }
 
 /* ==========================================================================
-   2. TEXTBOX INPUTS - RGB LED RUNNING BORDER
+   2. TEXTBOX INPUTS - CRISP ROTATING RGB LED BORDER
    ========================================================================== */
 .login-form .input-with-icon {
   position: relative;
   display: flex;
   align-items: center;
   border-radius: 14px;
-  padding: 2px; /* LED border thickness */
-  background: linear-gradient(90deg, #ff0055, #ff5500, #ffcc00, #00ff66, #00ffff, #0066ff, #9900ff, #ff0055);
-  background-size: 400% 400%;
-  animation: rgb-flow 4s linear infinite;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  padding: 1.5px; /* Exact 1.5px LED border line */
+  background: conic-gradient(
+    from var(--angle),
+    #ff0055,
+    #ff5500,
+    #ffea00,
+    #00ff66,
+    #00e5ff,
+    #0044ff,
+    #9900ff,
+    #ff0055
+  );
+  animation: rotate-border 4s linear infinite;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease;
 }
 
 .login-form .input-with-icon:focus-within {
-  box-shadow: 0 0 15px rgba(0, 255, 200, 0.4), 0 0 8px rgba(255, 0, 128, 0.3);
   transform: translateY(-1px);
 }
 
@@ -179,7 +189,7 @@
   width: 100%;
   padding: 13px 14px 13px 44px;
   border: none;
-  border-radius: 12px;
+  border-radius: 12.5px;
   background: #ffffff;
   font-size: 0.94rem;
   font-family: 'Inter', sans-serif;
@@ -232,22 +242,31 @@
 }
 
 /* ==========================================================================
-   3. LOGIN SUBMIT BUTTON - RGB LED RUNNING BORDER & GLOW
+   3. LOGIN SUBMIT BUTTON - CRISP ROTATING RGB LED BORDER
    ========================================================================== */
 .login-submit-wrapper {
   position: relative;
-  border-radius: 16px;
-  padding: 2.5px; /* RGB border thickness */
-  background: linear-gradient(90deg, #ff0055, #ff5500, #ffcc00, #00ff66, #00ffff, #0066ff, #9900ff, #ff0055);
-  background-size: 400% 400%;
-  animation: rgb-flow 3.5s linear infinite;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25), 0 2px 8px rgba(255, 0, 128, 0.15);
+  border-radius: 15px;
+  padding: 1.8px; /* Exact 1.8px LED border line */
+  background: conic-gradient(
+    from var(--angle),
+    #ff0055,
+    #ff5500,
+    #ffea00,
+    #00ff66,
+    #00e5ff,
+    #0044ff,
+    #9900ff,
+    #ff0055
+  );
+  animation: rotate-border 3.5s linear infinite;
+  box-shadow: 0 3px 12px rgba(99, 102, 241, 0.2);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .login-submit-wrapper:hover:not(:has(:disabled)) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 22px rgba(99, 102, 241, 0.4), 0 4px 14px rgba(255, 0, 128, 0.3);
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35);
 }
 
 .login-submit-wrapper:active:not(:has(:disabled)) {
@@ -262,7 +281,7 @@
   width: 100%;
   padding: 14px 24px;
   border: none;
-  border-radius: 13.5px;
+  border-radius: 13px;
   background: linear-gradient(135deg, #4f46e5 0%, #4338ca 50%, #3730a3 100%);
   color: #ffffff;
   font-size: 1.02rem;
@@ -301,12 +320,7 @@ body.dark .login-container {
 
 body.dark .login-card {
   background: #1e293b;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-}
-
-body.dark .login-card::after {
-  opacity: 0.55;
-  filter: blur(20px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
 
 body.dark .login-title {
