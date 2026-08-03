@@ -126,7 +126,7 @@ export function AddViolation() {
 
     const newEvidences = [];
     const totalFiles = files.length;
-    const appsScriptUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL;
+    const appsScriptUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwsJP68m0xVqnKZVjw-U8_EL_EQPZLfhrZxV4M-xicykesYD25wN1PcihVVLclxwtNLHw/exec";
 
     for (let i = 0; i < totalFiles; i++) {
       const file = files[i];

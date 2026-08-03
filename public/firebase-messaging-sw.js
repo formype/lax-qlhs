@@ -4,13 +4,13 @@ importScripts('https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging-comp
 const params = new URLSearchParams(self.location.search);
 
 const firebaseConfig = {
-  apiKey: params.get('apiKey') || '',
-  authDomain: params.get('authDomain') || '',
-  projectId: params.get('projectId') || '',
-  storageBucket: params.get('storageBucket') || '',
-  messagingSenderId: params.get('messagingSenderId') || '',
-  appId: params.get('appId') || '',
-  measurementId: params.get('measurementId') || ''
+  apiKey: params.get('apiKey') || "AIzaSyBwXa8K6417vl6aIF1vig3GVkfXgV5Ju6c",
+  authDomain: params.get('authDomain') || "viphamhs.firebaseapp.com",
+  projectId: params.get('projectId') || "viphamhs",
+  storageBucket: params.get('storageBucket') || "viphamhs.firebasestorage.app",
+  messagingSenderId: params.get('messagingSenderId') || "117208625100",
+  appId: params.get('appId') || "1:117208625100:web:517913f5db05985b72f769",
+  measurementId: params.get('measurementId') || "G-E5M207LRCD"
 };
 
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {

@@ -14,13 +14,13 @@ import {
 import { hashPassword, verifyPassword } from './crypto.js';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBwXa8K6417vl6aIF1vig3GVkfXgV5Ju6c",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "viphamhs.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "viphamhs",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "viphamhs.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "117208625100",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:117208625100:web:517913f5db05985b72f769",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-E5M207LRCD"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -1065,11 +1065,7 @@ export const requestNotificationPermission = async (userId) => {
     } else {
       // Web Push
       if (!messaging) return;
-      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-      if (!vapidKey) {
-        console.error("VITE_FIREBASE_VAPID_KEY is missing! Web Push will not work.");
-        return;
-      }
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || "BHo-r8JpDpkLDUWUy-mBxr1DYa6Dto4BdjwUruByZJRAXA63_5539Pb0dKlHbvgvI2LeChdLQf4Dzyfnxk3YVGI";
       
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
@@ -1077,13 +1073,13 @@ export const requestNotificationPermission = async (userId) => {
         if ('serviceWorker' in navigator) {
           try {
             const swParams = new URLSearchParams({
-              apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-              authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-              projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-              storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-              messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-              appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-              measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+              apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBwXa8K6417vl6aIF1vig3GVkfXgV5Ju6c",
+              authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "viphamhs.firebaseapp.com",
+              projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "viphamhs",
+              storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "viphamhs.firebasestorage.app",
+              messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "117208625100",
+              appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:117208625100:web:517913f5db05985b72f769",
+              measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-E5M207LRCD"
             });
             swRegistration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?${swParams.toString()}`);
           } catch (swErr) {
