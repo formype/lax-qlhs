@@ -82,6 +82,15 @@ const FEATURE_SECTIONS = [
         path: '/student-list'
       },
       {
+        label: 'Danh sách giáo viên',
+        icon: GraduationCap,
+        color: '#f43f5e',
+        bg: 'rgba(244, 63, 94, 0.08)',
+        border: 'rgba(244, 63, 94, 0.2)',
+        shadow: 'rgba(244, 63, 94, 0.15)',
+        path: '/teacher-list'
+      },
+      {
         label: 'Chuyên cần',
         icon: CalendarCheck,
         color: '#10b981',
@@ -153,28 +162,29 @@ export function Features() {
                 <h3 className="feature-section-title">{section.title}</h3>
               </div>
               <div className="feature-grid">
-              {section.items.map((item) => {
-                if (item.roles && !item.roles.some(r => user?.role?.includes(r))) {
-                  return null;
-                }
-                
-                if (!isAdmin && !isGiamthi && (
-                  item.path === '/add' || 
-                  item.path === '/attendance'
-                )) {
-                  return null;
-                }
-                if (!isAdmin && !isGiamthi && !isGiaovien && (
-                  item.path === '/student-list'
-                )) {
-                  return null;
-                }
-                if (!isAdmin && (
-                  item.path === '/classes' || 
-                  item.path === '/students'
-                )) {
-                  return null;
-                }
+                {section.items.map((item) => {
+                  if (item.roles && !item.roles.some(r => user?.role?.includes(r))) {
+                    return null;
+                  }
+                  
+                  if (!isAdmin && !isGiamthi && (
+                    item.path === '/add' || 
+                    item.path === '/attendance'
+                  )) {
+                    return null;
+                  }
+                  if (!isAdmin && !isGiamthi && !isGiaovien && (
+                    item.path === '/student-list' || item.path === '/teacher-list'
+                  )) {
+                    return null;
+                  }
+                  if (!isAdmin && (
+                    item.path === '/classes' || 
+                    item.path === '/students' ||
+                    item.path === '/teachers'
+                  )) {
+                    return null;
+                  }
                 const Icon = item.icon;
                 return (
                   <button

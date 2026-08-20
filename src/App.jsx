@@ -10,6 +10,7 @@ import { Login } from './pages/Login';
 import { ManageClasses } from './pages/ManageClasses';
 import { ManageStudents } from './pages/ManageStudents';
 import { ManageTeachers } from './pages/ManageTeachers';
+import { TeacherList } from './pages/TeacherList';
 import { Attendance } from './pages/Attendance';
 import { AttendanceSearch } from './pages/AttendanceSearch';
 import { StudentList } from './pages/StudentList';
@@ -208,6 +209,8 @@ function AppRoutes() {
         <Route path="/classes" element={<ProtectedRoute><MainLayout><ManageClasses /></MainLayout></ProtectedRoute>} />
         <Route path="/students" element={<ProtectedRoute><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
         <Route path="/teachers" element={<ProtectedRoute><MainLayout><ManageTeachers /></MainLayout></ProtectedRoute>} />
+        <Route path="/teacher-list" element={<ProtectedRoute><MainLayout><TeacherList /></MainLayout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLog /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLogList /></MainLayout></ProtectedRoute>} />
