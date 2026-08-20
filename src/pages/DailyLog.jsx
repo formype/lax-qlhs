@@ -78,14 +78,48 @@ export function DailyLog() {
       
       if (appsScriptUrl && appsScriptUrl.trim()) {
         try {
-          const reader = new FileReader();
-          const base64Promise = new Promise((resolve) => {
-            reader.onloadend = () => {
-              const pureBase64 = reader.result.split(',')[1];
-              resolve(pureBase64);
+          const base64Promise = new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              if (fileType.startsWith('image/')) {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  const MAX_WIDTH = 1200;
+                  const MAX_HEIGHT = 1200;
+                  let width = img.width;
+                  let height = img.height;
+                  
+                  if (width > height) {
+                    if (width > MAX_WIDTH) {
+                      height *= MAX_WIDTH / width;
+                      width = MAX_WIDTH;
+                    }
+                  } else {
+                    if (height > MAX_HEIGHT) {
+                      width *= MAX_HEIGHT / height;
+                      height = MAX_HEIGHT;
+                    }
+                  }
+                  
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext('2d');
+                  ctx.drawImage(img, 0, 0, width, height);
+                  
+                  const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                  resolve(dataUrl.split(',')[1]);
+                };
+                img.onerror = () => resolve(event.target.result.split(',')[1]);
+                img.src = event.target.result;
+              } else {
+                resolve(event.target.result.split(',')[1]);
+              }
             };
+            reader.onerror = () => reject(new Error("Lỗi đọc file"));
+            reader.readAsDataURL(file);
           });
-          reader.readAsDataURL(file);
+          
           const base64Data = await base64Promise;
 
           const response = await fetch(appsScriptUrl, {
