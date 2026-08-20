@@ -22,6 +22,7 @@ export function ManageStudents() {
   const [newClass, setNewClass] = useState('');
   const [newDiachi, setNewDiachi] = useState('');
   const [newLienhe, setNewLienhe] = useState('');
+  const [newBantru, setNewBantru] = useState(false);
   const [manualError, setManualError] = useState('');
   const [manualSuccess, setManualSuccess] = useState(false);
 
@@ -65,7 +66,8 @@ export function ManageStudents() {
       khoi: newKhoi,
       tenlop: newClass,
       diachi: newDiachi,
-      lienhe: newLienhe
+      lienhe: newLienhe,
+      bantru: newBantru
     });
 
     if (res.success) {
@@ -78,6 +80,7 @@ export function ManageStudents() {
       setNewClass('');
       setNewDiachi('');
       setNewLienhe('');
+      setNewBantru(false);
       setTimeout(() => setManualSuccess(false), 3000);
     } else {
       setManualError('Lỗi khi thêm học sinh: ' + (res.error?.message || res.error));
@@ -127,6 +130,8 @@ export function ManageStudents() {
           const gioitinh = row[5] ? String(row[5]).trim() : '';
           const diachi = row[6] ? String(row[6]).trim() : '';
           const lienhe = row[7] ? String(row[7]).trim() : '';
+          const bantruRaw = row[8] ? String(row[8]).toLowerCase().trim() : '';
+          const bantru = ['x', 'có', 'co', '1', 'yes'].includes(bantruRaw);
 
           if (!mahs || !hoten || !tenlop) {
             // Ignore incomplete rows
@@ -141,7 +146,8 @@ export function ManageStudents() {
             khoi,
             tenlop,
             diachi,
-            lienhe
+            lienhe,
+            bantru
           });
         }
 
@@ -305,6 +311,19 @@ export function ManageStudents() {
                     onChange={(e) => setNewLienhe(e.target.value)}
                     hideLabel
                   />
+                </div>
+
+                <div className="form-group mb-4" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="isBoarding"
+                    checked={newBantru}
+                    onChange={e => setNewBantru(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="isBoarding" style={{ cursor: 'pointer', margin: 0, fontWeight: 'bold' }}>
+                    Học sinh Bán trú
+                  </label>
                 </div>
 
                 <Button type="submit" className="submit-btn" disabled={manualSuccess}>

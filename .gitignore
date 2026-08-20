@@ -35,7 +35,10 @@ read_template.*
 *.zip
 *.7z
 *.tar.gz
-public/app.apk
+*.apk
+public/*.apk
+android/app/build/
+android/build/
 
 # Editor directories and files
 .vscode/*

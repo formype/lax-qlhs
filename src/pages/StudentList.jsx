@@ -102,7 +102,8 @@ export function StudentList() {
       khoi: student.khoi || '',
       tenlop: student.tenlop || '',
       diachi: student.diachi || '',
-      lienhe: student.lienhe || ''
+      lienhe: student.lienhe || '',
+      bantru: student.bantru || false
     });
     setEditingStudent(student);
   };
@@ -123,7 +124,8 @@ export function StudentList() {
       khoi: editForm.khoi,
       tenlop: editForm.tenlop,
       diachi: editForm.diachi,
-      lienhe: editForm.lienhe
+      lienhe: editForm.lienhe,
+      bantru: editForm.bantru
     };
 
     const res = await updateStudent(editingStudent.id, updateData);
@@ -187,6 +189,7 @@ export function StudentList() {
                     <div className="student-list-name">
                       {s.hoten}
                       <span className="class-badge">{s.tenlop}</span>
+                      {s.bantru && <span className="class-badge" style={{backgroundColor: '#e3f2fd', color: '#1976d2', marginLeft: '4px'}}>Bán trú</span>}
                     </div>
                     <div className="text-muted text-xs">{s.mahs}</div>
                   </div>
@@ -293,6 +296,19 @@ export function StudentList() {
                   hideLabel
                   disabled={isGiaoVienOnly}
                 />
+              </div>
+              <div className="form-group full-width mt-3" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input 
+                  type="checkbox" 
+                  id="editBantru"
+                  checked={editForm.bantru || false}
+                  onChange={e => setEditForm({...editForm, bantru: e.target.checked})}
+                  style={{ width: '18px', height: '18px', cursor: isGiaoVienOnly ? 'default' : 'pointer' }}
+                  disabled={isGiaoVienOnly}
+                />
+                <label htmlFor="editBantru" style={{ cursor: isGiaoVienOnly ? 'default' : 'pointer', margin: 0, fontWeight: 'bold' }}>
+                  Học sinh Bán trú
+                </label>
               </div>
               <div className="modal-footer">
                 <Button variant="outline" type="button" onClick={() => setEditingStudent(null)}>{isGiaoVienOnly ? 'Đóng' : 'Huỷ'}</Button>
