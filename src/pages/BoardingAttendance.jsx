@@ -184,7 +184,7 @@ export function BoardingAttendance() {
           id: `missing_${student.id}`,
           date: timeValueDay,
           session: 'Sáng',
-          className: student.lop || '',
+          className: student.tenlop || '',
           studentId: student.id,
           mahs: student.mahs || '',
           hoten: student.hoten || '',
@@ -747,7 +747,7 @@ export function BoardingAttendance() {
                       </td>
                       <td>
                         {v.status === 'unmarked' ? (
-                          <span className="attendance-status-label inline-flex" style={{ color: '#9ca3af', backgroundColor: '#f3f4f6' }}>
+                          <span className="attendance-status-label inline-flex" style={{ color: '#9ca3af' }}>
                             <AlertTriangle size={14} className="mr-1" /> Chưa điểm danh
                           </span>
                         ) : v.status.startsWith('absent') ? (
