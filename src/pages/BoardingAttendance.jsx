@@ -31,7 +31,7 @@ export function BoardingAttendance() {
 
   // Filters state
   const [boardingFilter, setBoardingFilter] = useState('yes'); // yes, no, all
-  const [timeFilterType, setTimeFilterType] = useState('all'); // all, day, week, month, semester
+  const [timeFilterType, setTimeFilterType] = useState('day'); // all, day, week, month, semester
   const [timeValueDay, setTimeValueDay] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [timeValueWeek, setTimeValueWeek] = useState('1');
   const [timeValueMonth, setTimeValueMonth] = useState(format(new Date(), 'yyyy-MM'));
