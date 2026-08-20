@@ -8,7 +8,7 @@ import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
 import { getAttendanceHistory, fetchStudents, fetchClasses, fetchSystemSettings, updateAttendanceStudent, createNotification } from '../lib/firebase';
 import { parseISO, format, addDays, parse, getMonth } from 'date-fns';
-import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X } from 'lucide-react';
+import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X, AlertTriangle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -21,6 +21,7 @@ export function BoardingAttendance() {
   const [classes, setClasses] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [totalBoardingCount, setTotalBoardingCount] = useState(0);
   
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -95,6 +96,9 @@ export function BoardingAttendance() {
       setAttendanceData(flatData);
       setClasses(classesData);
       setSettings(sData);
+      
+      const activeBoarding = studentsData.filter(s => s.bantru && s.trangthai !== 'Thôi học').length;
+      setTotalBoardingCount(activeBoarding);
 
       if (isGiaovienOnly) {
          const myClass = classesData.find(c => c.homeroomTeacherId === user?.id);
@@ -524,10 +528,28 @@ export function BoardingAttendance() {
     saveAs(blob, `TheoDoiBanTru_${format(new Date(), 'ddMMyyyy')}.xlsx`);
   };
 
+  const markedBoardingCount = useMemo(() => {
+    const markedIds = new Set();
+    attendanceData.forEach(item => {
+      if (item.date === timeValueDay && item.session === 'Sáng' && item.bantru) {
+        markedIds.add(item.studentId);
+      }
+    });
+    return markedIds.size;
+  }, [attendanceData, timeValueDay]);
+
+  const showMissingWarning = timeFilterType === 'day' && markedBoardingCount < totalBoardingCount;
+
   return (
     <>
       <Header title="Theo dõi bán trú" />
       <div className="search-content">
+        {showMissingWarning && (
+          <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '12px 16px', borderRadius: '6px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', border: '1px solid #fca5a5' }}>
+            <AlertTriangle size={20} />
+            <span>Chưa điểm danh đầy đủ học sinh bán trú (đã điểm danh {markedBoardingCount}/{totalBoardingCount})</span>
+          </div>
+        )}
         <Card className="filter-card">
           <CardBody>
             <div className="filter-grid">
