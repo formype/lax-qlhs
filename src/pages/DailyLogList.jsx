@@ -43,9 +43,9 @@ export function DailyLogList() {
 
   const logs = React.useMemo(() => {
     if (!settings) return [];
-    const s1Start = parse(settings.semester1_start, 'yyyy-MM-dd', new Date());
-    const s1Weeks = parseInt(settings.semester1_weeks);
-    const s2Start = parse(settings.semester2_start, 'yyyy-MM-dd', new Date());
+    const s1Start = parse(settings.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+    const s1Weeks = parseInt(settings.semester1Weeks || 18);
+    const s2Start = parse(settings.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
 
     return allLogs.filter(v => {
       let vDate;
@@ -90,7 +90,7 @@ export function DailyLogList() {
     fetchData();
   };
 
-  const weekOptions = settings ? Array.from({ length: parseInt(settings.semester1_weeks) + parseInt(settings.semester2_weeks) }, (_, i) => ({
+  const weekOptions = settings ? Array.from({ length: parseInt(settings.semester1Weeks || 18) + parseInt(settings.semester2Weeks || 17) }, (_, i) => ({
     value: (i + 1).toString(),
     label: `Tuần ${i + 1}`
   })) : [];
