@@ -1,48 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '../components/layout/Header';
-import { getDailyLogs, deleteDailyLog } from '../lib/firebase';
+import { getDailyLogs, deleteDailyLog, fetchSystemSettings } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, parse } from 'date-fns';
 import { Button } from '../components/ui/Button';
+import { Select } from '../components/ui/Input';
+import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { ExternalLink, Trash2, Calendar, Clock, User } from 'lucide-react';
 import './Search.css'; // Re-use search css
 
 export function DailyLogList() {
-  const [logs, setLogs] = useState([]);
+  const [allLogs, setAllLogs] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState('today'); // all, today, month
+  
+  const [timeFilterType, setTimeFilterType] = useState('all'); // all, day, week, month
+  const [timeValueDay, setTimeValueDay] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [timeValueWeek, setTimeValueWeek] = useState('1');
+  const [timeValueMonth, setTimeValueMonth] = useState(format(new Date(), 'yyyy-MM'));
+  
+  const [sessionFilter, setSessionFilter] = useState('all'); // all, Sáng, Chiều
+  
   const { user } = useAuth();
   
   const isAdmin = user?.role?.includes('admin') || user?.role?.includes('vip-admin');
   const isGiamthi = user?.role?.includes('giamthi');
 
-  const fetchLogs = async () => {
+  const fetchData = async () => {
     setLoading(true);
-    const d = new Date();
-    const allLogs = await getDailyLogs();
-    
-    let filtered = allLogs;
-    if (timeFilter === 'today') {
-       const today = format(d, 'yyyy-MM-dd');
-       filtered = allLogs.filter(l => l.ngay === today);
-    } else if (timeFilter === 'month') {
-       const month = format(d, 'yyyy-MM');
-       filtered = allLogs.filter(l => l.ngay?.startsWith(month));
-    }
-    
-    setLogs(filtered);
+    const [fetchedLogs, sData] = await Promise.all([
+      getDailyLogs(),
+      fetchSystemSettings()
+    ]);
+    setAllLogs(fetchedLogs);
+    setSettings(sData);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchLogs();
-  }, [timeFilter]);
+    fetchData();
+  }, []);
+
+  const logs = React.useMemo(() => {
+    if (!settings) return [];
+    const s1Start = parse(settings.semester1_start, 'yyyy-MM-dd', new Date());
+    const s1Weeks = parseInt(settings.semester1_weeks);
+    const s2Start = parse(settings.semester2_start, 'yyyy-MM-dd', new Date());
+
+    return allLogs.filter(v => {
+      let vDate;
+      if (v.ngay) {
+        vDate = parseISO(v.ngay);
+      } else {
+        return false;
+      }
+
+      let weekNum = 0;
+      if (vDate >= s2Start) {
+        const diffTime = vDate.getTime() - s2Start.getTime();
+        const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+        weekNum = diffWeeks + 1 + s1Weeks;
+      } else {
+        const diffTime = vDate.getTime() - s1Start.getTime();
+        const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+        weekNum = diffWeeks + 1;
+      }
+
+      // Time Filter
+      if (timeFilterType === 'day') {
+        if (v.ngay !== timeValueDay) return false;
+      } else if (timeFilterType === 'week') {
+        if (weekNum.toString() !== timeValueWeek) return false;
+      } else if (timeFilterType === 'month') {
+        if (format(vDate, 'yyyy-MM') !== timeValueMonth) return false;
+      }
+
+      // Session Filter
+      if (sessionFilter !== 'all') {
+        if (v.buoi !== sessionFilter) return false;
+      }
+
+      return true;
+    });
+  }, [allLogs, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, sessionFilter]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa ghi nhận này?')) return;
     await deleteDailyLog(id);
-    fetchLogs();
+    fetchData();
   };
+
+  const weekOptions = settings ? Array.from({ length: parseInt(settings.semester1_weeks) + parseInt(settings.semester2_weeks) }, (_, i) => ({
+    value: (i + 1).toString(),
+    label: `Tuần ${i + 1}`
+  })) : [];
 
   return (
     <div className="search-page pb-20">
@@ -50,16 +101,45 @@ export function DailyLogList() {
       
       <div className="search-filters">
         <div className="filter-group">
-          <label className="filter-label">Thời gian</label>
-          <select 
-            className="filter-select" 
-            value={timeFilter} 
-            onChange={e => setTimeFilter(e.target.value)}
-          >
-            <option value="today">Hôm nay</option>
-            <option value="month">Tháng này</option>
-            <option value="all">Tất cả</option>
-          </select>
+          <label className="text-sm font-semibold mb-1 block">Thời gian</label>
+          <div className="flex-row gap-2">
+            <Select 
+              value={timeFilterType} 
+              onChange={e => setTimeFilterType(e.target.value)}
+              options={[
+                {value: 'all', label: 'Tất cả'},
+                {value: 'day', label: 'Theo ngày'},
+                {value: 'week', label: 'Theo tuần'},
+                {value: 'month', label: 'Theo tháng'}
+              ]}
+            />
+            {timeFilterType === 'day' && (
+              <DayPicker 
+                value={timeValueDay} 
+                onChange={val => setTimeValueDay(val)}
+              />
+            )}
+            {timeFilterType === 'week' && <Select value={timeValueWeek} onChange={e => setTimeValueWeek(e.target.value)} options={weekOptions} style={{ maxWidth: '100%', flex: 1 }} />}
+            {timeFilterType === 'month' && (
+              <MonthPicker 
+                value={timeValueMonth} 
+                onChange={val => setTimeValueMonth(val)}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label className="text-sm font-semibold mb-1 block">Buổi học</label>
+          <Select 
+            value={sessionFilter}
+            onChange={e => setSessionFilter(e.target.value)}
+            options={[
+              {value: 'all', label: 'Tất cả buổi'},
+              {value: 'Sáng', label: 'Buổi sáng'},
+              {value: 'Chiều', label: 'Buổi chiều'}
+            ]}
+          />
         </div>
       </div>
 
