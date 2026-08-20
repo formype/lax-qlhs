@@ -4,7 +4,7 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { addDailyLog, createNotification } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Upload, Camera, FileText } from 'lucide-react';
+import { CheckCircle, Upload, Camera, FileText, Trash2, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './AddViolation.css';
 
@@ -285,17 +285,42 @@ export function DailyLog() {
                 {uploading && <div className="mt-2 text-sm text-muted">Đang xử lý ảnh...</div>}
                 
                 {evidenceList.length > 0 && (
-                  <div className="evidence-preview-container">
-                    {evidenceList.map((item, index) => (
-                      <div key={index} className="evidence-preview-item">
-                        <img src={item.localUrl} alt={item.name} />
-                        <button type="button" className="remove-evidence-btn" onClick={() => {
-                          setEvidenceList(prev => prev.filter((_, i) => i !== index));
-                        }}>
-                          X
-                        </button>
-                      </div>
-                    ))}
+                  <div className="evidence-list-container">
+                    {evidenceList.map((item, index) => {
+                      const isImage = item.type.startsWith('image/');
+                      return (
+                        <div key={index} className="evidence-item-card">
+                          <div className="evidence-preview-wrapper" onClick={() => window.open(item.localUrl, '_blank')}>
+                            {isImage ? (
+                              <img src={item.localUrl} alt="Evidence preview" className="evidence-preview-thumb" />
+                            ) : (
+                              <FileText size={22} color="var(--primary-color)" />
+                            )}
+                          </div>
+                          <div className="evidence-details">
+                            <span className="evidence-name">{item.name}</span>
+                            <a 
+                              href={item.driveUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="drive-link"
+                            >
+                              <ExternalLink size={12} style={{ marginRight: '4px' }} />
+                              Xem minh chứng
+                            </a>
+                          </div>
+                          <button
+                            type="button"
+                            className="delete-evidence-btn"
+                            onClick={() => {
+                              setEvidenceList(prev => prev.filter((_, i) => i !== index));
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
