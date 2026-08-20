@@ -38,6 +38,7 @@ if (typeof window !== 'undefined') {
 export const COLLECTIONS = {
   USERS: 'users',
   STUDENTS: 'students',
+  TEACHERS: 'teachers',
   CLASSES: 'classes',
   VIOLATIONS: 'violations',
   CONFIG: 'config',
@@ -504,6 +505,63 @@ export const deleteStudent = async (studentId) => {
 export const updateStudent = async (studentId, updateData) => {
   try {
     const docRef = doc(db, COLLECTIONS.STUDENTS, studentId);
+    await updateDoc(docRef, updateData);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error };
+  }
+};
+
+// --- TEACHERS ---
+export const fetchTeachers = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.TEACHERS));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Lỗi khi tải giáo viên:", error);
+    return [];
+  }
+};
+
+export const addTeacher = async (teacherData) => {
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.TEACHERS), teacherData);
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    return { success: false, error };
+  }
+};
+
+export const addMultipleTeachers = async (teachersArray) => {
+  try {
+    const batch = writeBatch(db);
+    const teachersCol = collection(db, COLLECTIONS.TEACHERS);
+    
+    teachersArray.forEach(teacher => {
+      const newDocRef = doc(teachersCol);
+      batch.set(newDocRef, teacher);
+    });
+    
+    await batch.commit();
+    return { success: true };
+  } catch (error) {
+    console.error("Batch add error:", error);
+    return { success: false, error };
+  }
+};
+
+export const deleteTeacher = async (teacherId) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.TEACHERS, teacherId));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error };
+  }
+};
+
+export const updateTeacher = async (teacherId, updateData) => {
+  try {
+    const docRef = doc(db, COLLECTIONS.TEACHERS, teacherId);
     await updateDoc(docRef, updateData);
     return { success: true };
   } catch (error) {

@@ -9,6 +9,7 @@ import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { ManageClasses } from './pages/ManageClasses';
 import { ManageStudents } from './pages/ManageStudents';
+import { ManageTeachers } from './pages/ManageTeachers';
 import { Attendance } from './pages/Attendance';
 import { AttendanceSearch } from './pages/AttendanceSearch';
 import { StudentList } from './pages/StudentList';
@@ -206,6 +207,7 @@ function AppRoutes() {
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute><MainLayout><ManageClasses /></MainLayout></ProtectedRoute>} />
         <Route path="/students" element={<ProtectedRoute><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
+        <Route path="/teachers" element={<ProtectedRoute><MainLayout><ManageTeachers /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLog /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLogList /></MainLayout></ProtectedRoute>} />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
-import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee, BookOpen } from 'lucide-react';
+import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee, BookOpen, GraduationCap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
 
@@ -27,6 +27,15 @@ const FEATURE_SECTIONS = [
         border: 'rgba(139, 92, 246, 0.2)',
         shadow: 'rgba(139, 92, 246, 0.15)',
         path: '/students'
+      },
+      {
+        label: 'Nhập thông tin giáo viên',
+        icon: GraduationCap,
+        color: '#ec4899',
+        bg: 'rgba(236, 72, 153, 0.08)',
+        border: 'rgba(236, 72, 153, 0.2)',
+        shadow: 'rgba(236, 72, 153, 0.15)',
+        path: '/teachers'
       },
 
       {
