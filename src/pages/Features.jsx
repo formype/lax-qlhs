@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
-import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee } from 'lucide-react';
+import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
 
@@ -49,7 +49,7 @@ const FEATURE_SECTIONS = [
       },
       {
         label: 'Ghi nhận trong ngày',
-        icon: ClipboardList,
+        icon: BookOpen,
         color: '#f43f5e',
         bg: 'rgba(244, 63, 94, 0.08)',
         border: 'rgba(244, 63, 94, 0.2)',

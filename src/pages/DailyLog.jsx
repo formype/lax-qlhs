@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
-import { Input, Select } from '../components/ui/Input';
+import { Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { addDailyLog, getStudentByCode, createNotification } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Upload, Camera, FileText } from 'lucide-react';
+import { CheckCircle, Upload, Camera, FileText, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './AddViolation.css';
 
@@ -144,7 +144,7 @@ export function DailyLog() {
       if (res.success) {
         await createNotification({
           title: 'Ghi nhận sự việc mới',
-          message: `Sự việc liên quan đến HS ${formData.hoten} (${formData.tenlop}) đã được ghi nhận.`,
+          message: "Sự việc liên quan đến HS " + formData.hoten + " (" + formData.tenlop + ") đã được ghi nhận.",
           type: 'daily_log',
           relatedId: res.id,
           targetRoles: ['admin', 'vip-admin', 'giamthi'],
@@ -179,133 +179,134 @@ export function DailyLog() {
   return (
     <>
       <Header title="Ghi nhận trong ngày" />
-      <div className="add-violation-content">
-        <div className="main-form">
-          <Card>
-            <CardBody>
-              <form onSubmit={handleSubmit} className="form-grid">
+      <div className="form-content">
+        <Card>
+          <CardBody>
+            <form onSubmit={handleSubmit} className="violation-form">
+              
+              <div className="input-group full-width">
+                <label className="input-label required-label">Mã học sinh</label>
+                <input 
+                  type="text" 
+                  name="mahs"
+                  className="input-field"
+                  placeholder="Nhập mã HS..." 
+                  value={formData.mahs}
+                  onChange={handleMahsChange}
+                  required
+                />
+                {searchingStudent && <span className="helper-text info-text">Đang tìm kiếm...</span>}
+                {studentWarning && (
+                  <span className="helper-text error-text">
+                    <AlertCircle size={14} style={{ marginRight: '4px' }} />
+                    {studentWarning}
+                  </span>
+                )}
+              </div>
+
+              <div className="input-group full-width blurred-group">
+                <label className="input-label">Họ và tên</label>
+                <input 
+                  type="text" 
+                  className="input-field disabled-field"
+                  value={formData.hoten}
+                  disabled
+                />
+              </div>
+
+              <div className="input-group full-width blurred-group">
+                <label className="input-label">Lớp</label>
+                <input 
+                  type="text" 
+                  className="input-field disabled-field"
+                  value={formData.tenlop}
+                  disabled
+                />
+              </div>
+
+              <div className="input-group full-width blurred-group">
+                <label className="input-label required-label">Ngày ghi nhận</label>
+                <input 
+                  type="date" 
+                  name="ngay"
+                  className="input-field disabled-field"
+                  value={formData.ngay}
+                  disabled
+                />
+              </div>
+
+              <div className="input-group full-width blurred-group">
+                <label className="input-label required-label">Buổi</label>
+                <input 
+                  type="text" 
+                  name="buoi"
+                  className="input-field disabled-field"
+                  value={formData.buoi}
+                  disabled
+                />
+              </div>
+
+              <div className="input-group full-width">
+                <label className="input-label required-label">Nội dung sự việc</label>
+                <textarea 
+                  name="noidung"
+                  className="input-field textarea-field"
+                  placeholder="Mô tả chi tiết sự việc..."
+                  value={formData.noidung}
+                  onChange={handleChange}
+                  rows={4}
+                  required
+                />
+              </div>
+              
+              <div className="input-group full-width">
+                <label className="input-label">Minh chứng (Hình ảnh)</label>
+                <div className="upload-actions-grid">
+                  <button type="button" className="upload-btn camera-upload" onClick={() => cameraInputRef.current?.click()}>
+                    <Camera size={18} /> Chụp ảnh
+                  </button>
+                  <button type="button" className="upload-btn primary-upload" onClick={() => fileInputRef.current?.click()}>
+                    <Upload size={18} /> Tải ảnh lên
+                  </button>
+                  
+                  <input type="file" accept="image/*" capture="environment" style={{display: 'none'}} ref={cameraInputRef} onChange={handleImageUpload} />
+                  <input type="file" accept="image/*" style={{display: 'none'}} ref={fileInputRef} onChange={handleImageUpload} />
+                </div>
                 
-                <div className="form-group row-span-2">
-                  <label>Mã học sinh <span className="required">*</span></label>
-                  <Input 
-                    type="text" 
-                    name="mahs"
-                    placeholder="Nhập mã HS..." 
-                    value={formData.mahs}
-                    onChange={handleMahsChange}
-                    required
-                  />
-                  {searchingStudent && <p className="help-text">Đang tìm kiếm...</p>}
-                  {studentWarning && <p className="error-text">{studentWarning}</p>}
-                </div>
-
-                <div className="form-group">
-                  <label>Họ và tên</label>
-                  <Input 
-                    type="text" 
-                    value={formData.hoten}
-                    disabled
-                    className="disabled-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Lớp</label>
-                  <Input 
-                    type="text" 
-                    value={formData.tenlop}
-                    disabled
-                    className="disabled-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Ngày ghi nhận <span className="required">*</span></label>
-                  <Input 
-                    type="date" 
-                    name="ngay"
-                    value={formData.ngay}
-                    disabled
-                    className="disabled-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Buổi <span className="required">*</span></label>
-                  <Select 
-                    name="buoi"
-                    value={formData.buoi}
-                    disabled
-                    className="disabled-input"
-                    options={[
-                      {value: 'Sáng', label: 'Sáng'},
-                      {value: 'Chiều', label: 'Chiều'}
-                    ]}
-                  />
-                </div>
-
-                <div className="form-group full-width">
-                  <label>Nội dung sự việc <span className="required">*</span></label>
-                  <textarea 
-                    name="noidung"
-                    className="input textarea"
-                    placeholder="Mô tả chi tiết sự việc..."
-                    value={formData.noidung}
-                    onChange={handleChange}
-                    rows={4}
-                    required
-                  />
-                </div>
+                {uploading && <div className="mt-2 text-sm text-muted">Đang xử lý ảnh...</div>}
                 
-                <div className="form-group full-width">
-                  <label>Minh chứng (Hình ảnh)</label>
-                  <div className="upload-options">
-                    <button type="button" className="btn btn-secondary flex-center" onClick={() => cameraInputRef.current?.click()}>
-                      <Camera size={18} className="mr-2" /> Chụp ảnh
-                    </button>
-                    <button type="button" className="btn btn-secondary flex-center" onClick={() => fileInputRef.current?.click()}>
-                      <Upload size={18} className="mr-2" /> Tải ảnh lên
-                    </button>
-                    
-                    <input type="file" accept="image/*" capture="environment" style={{display: 'none'}} ref={cameraInputRef} onChange={handleImageUpload} />
-                    <input type="file" accept="image/*" style={{display: 'none'}} ref={fileInputRef} onChange={handleImageUpload} />
+                {evidenceList.length > 0 && (
+                  <div className="evidence-preview-container">
+                    {evidenceList.map((item, index) => (
+                      <div key={index} className="evidence-preview-item">
+                        <img src={item.localUrl} alt={item.name} />
+                        <button type="button" className="remove-evidence-btn" onClick={() => {
+                          setEvidenceList(prev => prev.filter((_, i) => i !== index));
+                        }}>
+                          X
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  
-                  {uploading && <div className="mt-2 text-sm text-muted">Đang xử lý ảnh...</div>}
-                  
-                  {evidenceList.length > 0 && (
-                    <div className="evidence-preview-container">
-                      {evidenceList.map((item, index) => (
-                        <div key={index} className="evidence-preview-item">
-                          <img src={item.localUrl} alt={item.name} />
-                          <button type="button" className="remove-evidence-btn" onClick={() => {
-                            setEvidenceList(prev => prev.filter((_, i) => i !== index));
-                          }}>
-                            X
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                )}
+              </div>
+
+              <div className="form-actions full-width" style={{ marginTop: '16px' }}>
+                <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
+                  Hủy bỏ
+                </Button>
+                <Button type="submit" variant="primary" isLoading={loading} disabled={success}>
+                  {success ? (
+                    <span className="flex-center"><CheckCircle size={18} className="mr-2"/> Đã ghi nhận</span>
+                  ) : (
+                    <span className="flex-center"><FileText size={18} className="mr-2"/> Lưu ghi nhận</span>
                   )}
-                </div>
+                </Button>
+              </div>
 
-                <div className="form-actions full-width" style={{ marginTop: '16px' }}>
-                  <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
-                    Hủy bỏ
-                  </Button>
-                  <Button type="submit" variant="primary" isLoading={loading} disabled={success}>
-                    {success ? (
-                      <span className="flex-center"><CheckCircle size={18} className="mr-2"/> Đã ghi nhận</span>
-                    ) : (
-                      <span className="flex-center"><FileText size={18} className="mr-2"/> Lưu ghi nhận</span>
-                    )}
-                  </Button>
-                </div>
-
-              </form>
-            </CardBody>
-          </Card>
-        </div>
+            </form>
+          </CardBody>
+        </Card>
       </div>
     </>
   );

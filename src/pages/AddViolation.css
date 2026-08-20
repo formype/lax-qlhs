@@ -253,6 +253,7 @@
 .textarea-field {
   resize: vertical;
   min-height: 80px;
+  white-space: pre-wrap;
 }
 
 .anim-fade-in {
