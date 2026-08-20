@@ -159,7 +159,7 @@ export function AddViolation() {
               filename: file.name || `Upload_${Date.now()}`,
               mimeType: fileType,
               base64: base64Data,
-              folderId: import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || ''
+              folderId: import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '1Et-Jz9EiFoFpGHp139dmf504ZDFe9yhD'
             })
           });
           
