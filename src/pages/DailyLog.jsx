@@ -214,11 +214,8 @@ export function DailyLog() {
                 )}
               </div>
 
-              <div className="form-actions full-width" style={{ marginTop: '16px', display: 'flex', gap: '16px', justifyContent: 'center' }}>
-                <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')} style={{ flex: 1 }}>
-                  Hủy bỏ
-                </Button>
-                <Button type="submit" variant="primary" isLoading={loading} disabled={success} style={{ flex: 1 }}>
+              <div className="form-actions full-width" style={{ marginTop: '16px' }}>
+                <Button type="submit" variant="primary" isLoading={loading} disabled={success} fullWidth>
                   {success ? (
                     <span className="flex-center"><CheckCircle size={18} className="mr-2"/> Đã ghi nhận</span>
                   ) : (
