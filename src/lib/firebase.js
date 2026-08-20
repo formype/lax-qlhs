@@ -1418,3 +1418,46 @@ export const addDailyLog = async (logData) => {
     return { success: false, error: error.message };
   }
 };
+
+export const getDailyLogs = async (startDate, endDate) => {
+  try {
+    const dailyLogsRef = collection(db, COLLECTIONS.DAILY_LOGS);
+    let q = dailyLogsRef;
+    
+    // Nếu có startDate và endDate, ta filter theo thuộc tính `ngay` (ví dụ '2026-07-15')
+    if (startDate && endDate) {
+      q = query(dailyLogsRef, where('ngay', '>=', startDate), where('ngay', '<=', endDate), orderBy('ngay', 'desc'), orderBy('createdAt', 'desc'));
+    } else {
+      q = query(dailyLogsRef, orderBy('ngay', 'desc'), orderBy('createdAt', 'desc'));
+    }
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching daily logs: ", error);
+    
+    // Nếu thiếu index Firebase, gọi fallback:
+    if (error.message.includes('index')) {
+       const dailyLogsRef = collection(db, COLLECTIONS.DAILY_LOGS);
+       const q = query(dailyLogsRef, orderBy('createdAt', 'desc'));
+       const querySnapshot = await getDocs(q);
+       let data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+       if (startDate && endDate) {
+         data = data.filter(d => d.ngay >= startDate && d.ngay <= endDate);
+       }
+       return data;
+    }
+    return [];
+  }
+};
+
+export const deleteDailyLog = async (id) => {
+  try {
+    const logRef = doc(db, COLLECTIONS.DAILY_LOGS, id);
+    await deleteDoc(logRef);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting daily log: ", error);
+    return { success: false, error };
+  }
+};

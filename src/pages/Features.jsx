@@ -100,6 +100,16 @@ const FEATURE_SECTIONS = [
         path: '/search'
       },
       {
+        label: 'Danh sách ghi nhận',
+        icon: BookOpen,
+        color: '#f43f5e',
+        bg: 'rgba(244, 63, 94, 0.08)',
+        border: 'rgba(244, 63, 94, 0.2)',
+        shadow: 'rgba(244, 63, 94, 0.15)',
+        path: '/daily-log-list',
+        roles: ['admin', 'vip-admin', 'giamthi']
+      },
+      {
         label: 'Thống kê',
         icon: BarChart2,
         color: '#f97316',

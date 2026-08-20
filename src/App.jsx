@@ -14,6 +14,7 @@ import { AttendanceSearch } from './pages/AttendanceSearch';
 import { StudentList } from './pages/StudentList';
 import { BoardingAttendance } from './pages/BoardingAttendance';
 import { DailyLog } from './pages/DailyLog';
+import { DailyLogList } from './pages/DailyLogList';
 import { Statistics } from './pages/Statistics';
 import { AccountSettings } from './pages/AccountSettings';
 import { ManageAccounts } from './pages/ManageAccounts';
@@ -207,6 +208,7 @@ function AppRoutes() {
         <Route path="/students" element={<ProtectedRoute><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLog /></MainLayout></ProtectedRoute>} />
+        <Route path="/daily-log-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLogList /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance-search" element={<ProtectedRoute><MainLayout><AttendanceSearch /></MainLayout></ProtectedRoute>} />
         <Route path="/boarding-attendance" element={<ProtectedRoute><MainLayout><BoardingAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/student-list" element={<ProtectedRoute><MainLayout><StudentList /></MainLayout></ProtectedRoute>} />
