@@ -12,55 +12,51 @@ import './StudentList.css';
 export function StudentList() {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [filterGrade, setFilterGrade] = useState('');
-  const [filterClass, setFilterClass] = useState('');
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  const isAdmin = user?.role?.includes('admin') || user?.role?.includes('vip-admin');
-  const isGiaoVienOnly = user?.role?.includes('giaovien') && !isAdmin;
-  const teacherClass = user?.teacherClass;
   // Edit Modal State
   const [editingStudent, setEditingStudent] = useState(null);
   const [editForm, setEditForm] = useState({
-    mahs: '', hoten: '', ngaysinh: '', gioitinh: '', khoi: '', tenlop: '', diachi: '', lienhe: ''
+    mahs: '', hoten: '', ngaysinh: '', gioitinh: '', khoi: '', tenlop: '', diachi: '', lienhe: '', bantru: false
   });
+  
+  const [filterGrade, setFilterGrade] = useState('');
+  const [filterClass, setFilterClass] = useState('');
+  const [filterBoarding, setFilterBoarding] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  const isAdmin = user?.role?.includes('admin') || user?.role?.includes('vip-admin');
+  const isGiaoVienOnly = user?.role?.includes('giaovien') && !isAdmin && !user?.role?.includes('giamthi');
+  const teacherClass = user?.teacherClass;
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
-      const [stData, clData] = await Promise.all([
-        fetchStudents(), // Fetch all to allow smooth local filtering
-        fetchClasses()
-      ]);
-      setStudents(stData);
-      setClasses(clData);
-      setLoading(false);
+      try {
+        const [stData, clData] = await Promise.all([
+          fetchStudents(),
+          fetchClasses()
+        ]);
+        setStudents(stData);
+        setClasses(clData);
+      } catch (err) {
+        console.error('Error loading data:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     loadData();
   }, []);
 
-  // Extract unique grades
-  const gradeOptions = useMemo(() => {
-    const grades = [...new Set(classes.map(c => c.khoi).filter(Boolean))];
-    return [
-      { value: '', label: 'Tất cả khối' },
-      ...grades.sort((a, b) => Number(String(a).replace(/\D/g, '')) - Number(String(b).replace(/\D/g, ''))).map(g => ({ value: g, label: String(g).includes('Khối') ? g : `Khối ${g}` }))
-    ];
-  }, [classes]);
+  const uniqueGrades = [...new Set(classes.map(c => c.khoi))].sort();
+  const gradeOptions = [
+    { value: '', label: 'Tất cả khối' },
+    ...uniqueGrades.sort((a, b) => Number(String(a).replace(/\D/g, '')) - Number(String(b).replace(/\D/g, ''))).map(g => ({ value: g, label: String(g).includes('Khối') ? g : `Khối ${g}` }))
+  ];
 
-  // Filter classes based on selected grade
-  const classOptions = useMemo(() => {
-    let filteredClasses = classes;
-    if (filterGrade) {
-      filteredClasses = classes.filter(c => c.khoi === filterGrade);
-    }
-    return [
-      { value: '', label: 'Tất cả lớp' },
-      ...filteredClasses.map(c => ({ value: c.tenlop, label: c.tenlop }))
-    ];
-  }, [classes, filterGrade]);
+  const classOptions = [
+    { value: '', label: 'Tất cả lớp' },
+    ...classes.filter(c => filterGrade ? String(c.khoi) === String(filterGrade) : true).map(c => ({ value: c.tenlop, label: c.tenlop }))
+  ];
 
-  // Handle grade change -> reset class filter if class is no longer in this grade
   const handleGradeChange = (e) => {
     const newGrade = e.target.value;
     setFilterGrade(newGrade);
@@ -71,16 +67,21 @@ export function StudentList() {
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
       if (isGiaoVienOnly) {
-        return s.tenlop === teacherClass;
+        if (s.tenlop !== teacherClass) return false;
+      } else {
+        if (filterGrade && s.khoi !== filterGrade && !s.tenlop?.startsWith(filterGrade)) {
+          // Fallback: If student doesn't have 'khoi' field, we guess from 'tenlop' prefix (e.g. 10A1 -> starts with 10)
+          return false;
+        }
+        if (filterClass && s.tenlop !== filterClass) return false;
       }
-      if (filterGrade && s.khoi !== filterGrade && !s.tenlop?.startsWith(filterGrade)) {
-        // Fallback: If student doesn't have 'khoi' field, we guess from 'tenlop' prefix (e.g. 10A1 -> starts with 10)
-        return false;
-      }
-      if (filterClass && s.tenlop !== filterClass) return false;
+      
+      if (filterBoarding === 'yes' && !s.bantru) return false;
+      if (filterBoarding === 'no' && s.bantru) return false;
+      
       return true;
     });
-  }, [students, filterGrade, filterClass, isGiaoVienOnly, teacherClass]);
+  }, [students, filterGrade, filterClass, filterBoarding, isGiaoVienOnly, teacherClass]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xoá học sinh này? Tất cả dữ liệu liên quan sẽ bị mất.')) {
@@ -147,7 +148,7 @@ export function StudentList() {
             <span className="font-semibold">{filteredStudents.length} học sinh</span>
           </div>
           
-          <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+          <div style={{ display: 'flex', gap: '10px', width: '100%', flexWrap: 'wrap' }}>
             {!isGiaoVienOnly && (
               <>
                 <Select
@@ -164,6 +165,16 @@ export function StudentList() {
                 />
               </>
             )}
+            <Select
+              value={filterBoarding}
+              onChange={(e) => setFilterBoarding(e.target.value)}
+              options={[
+                { value: 'all', label: 'Tất cả (Bán trú & Không)' },
+                { value: 'yes', label: 'Bán trú' },
+                { value: 'no', label: 'Không bán trú' }
+              ]}
+              className="filter-select"
+            />
             {isGiaoVienOnly && (
               <div className="text-primary font-medium flex items-center">
                 Lớp chủ nhiệm: {teacherClass || 'Chưa phân công'}
