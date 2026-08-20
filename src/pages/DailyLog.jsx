@@ -188,7 +188,7 @@ export function DailyLog() {
       const logData = {
         ...formData,
         images,
-        createdBy: user?.displayName || user?.email || 'Unknown',
+        createdBy: user?.fullName || user?.name || user?.hoten || user?.displayName || user?.username || 'Unknown',
         createdById: user?.id || null
       };
       
@@ -201,7 +201,7 @@ export function DailyLog() {
           type: 'daily_log',
           relatedId: res.id,
           targetRoles: ['admin', 'vip-admin', 'giamthi'],
-          createdBy: user?.displayName || user?.email || 'Unknown',
+          createdBy: user?.fullName || user?.name || user?.hoten || user?.displayName || user?.username || 'Unknown',
         });
 
         setSuccess(true);
