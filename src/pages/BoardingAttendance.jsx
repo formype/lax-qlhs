@@ -52,7 +52,7 @@ export function BoardingAttendance() {
   const navigate = useNavigate();
   
   const [statusFilter, setStatusFilter] = useState('absent'); // all, present, absent
-  const [sessionFilter, setSessionFilter] = useState('all'); // all, Sáng, Chiều
+  const [sessionFilter, setSessionFilter] = useState('Sáng'); // Hardcode to Sáng for Boarding Attendance
 
   useEffect(() => {
     const loadData = async () => {
@@ -633,20 +633,7 @@ export function BoardingAttendance() {
                 />
               </div>
 
-              {/* Filter 4: Buổi học */}
-              <div className="filter-group">
-                <label className="text-sm font-semibold mb-1 block">Buổi học</label>
-                <Select 
-                  value={sessionFilter} 
-                  onChange={e => setSessionFilter(e.target.value)}
-                  options={[
-                    {value: 'all', label: 'Tất cả buổi'},
-                    {value: 'Sáng', label: 'Sáng'},
-                    {value: 'Chiều', label: 'Chiều'}
-                  ]}
-                  style={{ minWidth: '120px' }}
-                />
-              </div>
+
 
             </div>
           </CardBody>
