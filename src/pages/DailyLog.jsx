@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
-import { Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { addDailyLog, getStudentByCode, createNotification } from '../lib/firebase';
+import { addDailyLog, createNotification } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Upload, Camera, FileText, AlertCircle } from 'lucide-react';
+import { CheckCircle, Upload, Camera, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './AddViolation.css';
 
@@ -28,17 +27,11 @@ export function DailyLog() {
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
-
-  const [studentWarning, setStudentWarning] = useState('');
-  const [searchingStudent, setSearchingStudent] = useState(false);
   
   const [uploading, setUploading] = useState(false);
   const [evidenceList, setEvidenceList] = useState([]); 
 
   const [formData, setFormData] = useState({
-    mahs: '',
-    hoten: '',
-    tenlop: '',
     noidung: '',
     ngay: getLocalISODate(),
     buoi: getCurrentSession()
@@ -56,32 +49,6 @@ export function DailyLog() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleMahsChange = async (e) => {
-    const code = e.target.value.toUpperCase();
-    setFormData(prev => ({ ...prev, mahs: code, hoten: '', tenlop: '' }));
-    setStudentWarning('');
-    
-    if (code.length >= 4) {
-      setSearchingStudent(true);
-      try {
-        const student = await getStudentByCode(code);
-        if (student) {
-          setFormData(prev => ({
-            ...prev,
-            hoten: student.hoten,
-            tenlop: student.tenlop
-          }));
-        } else {
-          setStudentWarning('Không tìm thấy học sinh với mã này');
-        }
-      } catch (err) {
-        console.error("Error finding student:", err);
-      } finally {
-        setSearchingStudent(false);
-      }
-    }
   };
 
   const handleImageUpload = (e) => {
@@ -124,8 +91,8 @@ export function DailyLog() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.mahs || !formData.hoten || !formData.tenlop || !formData.noidung) {
-      alert('Vui lòng điền đầy đủ các thông tin bắt buộc (Mã HS, Nội dung)');
+    if (!formData.noidung) {
+      alert('Vui lòng điền đầy đủ các thông tin bắt buộc (Nội dung)');
       return;
     }
     setLoading(true);
@@ -144,11 +111,10 @@ export function DailyLog() {
       if (res.success) {
         await createNotification({
           title: 'Ghi nhận sự việc mới',
-          message: "Sự việc liên quan đến HS " + formData.hoten + " (" + formData.tenlop + ") đã được ghi nhận.",
+          message: "Sự việc mới đã được ghi nhận trong ngày.",
           type: 'daily_log',
           relatedId: res.id,
           targetRoles: ['admin', 'vip-admin', 'giamthi'],
-          targetClasses: [formData.tenlop],
           createdBy: user?.displayName || user?.email || 'Unknown',
         });
 
@@ -156,9 +122,6 @@ export function DailyLog() {
         setTimeout(() => {
           setSuccess(false);
           setFormData({
-            mahs: '',
-            hoten: '',
-            tenlop: '',
             noidung: '',
             ngay: getLocalISODate(),
             buoi: getCurrentSession()
@@ -184,46 +147,6 @@ export function DailyLog() {
           <CardBody>
             <form onSubmit={handleSubmit} className="violation-form">
               
-              <div className="input-group full-width">
-                <label className="input-label required-label">Mã học sinh</label>
-                <input 
-                  type="text" 
-                  name="mahs"
-                  className="input-field"
-                  placeholder="Nhập mã HS..." 
-                  value={formData.mahs}
-                  onChange={handleMahsChange}
-                  required
-                />
-                {searchingStudent && <span className="helper-text info-text">Đang tìm kiếm...</span>}
-                {studentWarning && (
-                  <span className="helper-text error-text">
-                    <AlertCircle size={14} style={{ marginRight: '4px' }} />
-                    {studentWarning}
-                  </span>
-                )}
-              </div>
-
-              <div className="input-group full-width blurred-group">
-                <label className="input-label">Họ và tên</label>
-                <input 
-                  type="text" 
-                  className="input-field disabled-field"
-                  value={formData.hoten}
-                  disabled
-                />
-              </div>
-
-              <div className="input-group full-width blurred-group">
-                <label className="input-label">Lớp</label>
-                <input 
-                  type="text" 
-                  className="input-field disabled-field"
-                  value={formData.tenlop}
-                  disabled
-                />
-              </div>
-
               <div className="input-group full-width blurred-group">
                 <label className="input-label required-label">Ngày ghi nhận</label>
                 <input 
@@ -291,11 +214,11 @@ export function DailyLog() {
                 )}
               </div>
 
-              <div className="form-actions full-width" style={{ marginTop: '16px' }}>
-                <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
+              <div className="form-actions full-width" style={{ marginTop: '16px', display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')} style={{ flex: 1 }}>
                   Hủy bỏ
                 </Button>
-                <Button type="submit" variant="primary" isLoading={loading} disabled={success}>
+                <Button type="submit" variant="primary" isLoading={loading} disabled={success} style={{ flex: 1 }}>
                   {success ? (
                     <span className="flex-center"><CheckCircle size={18} className="mr-2"/> Đã ghi nhận</span>
                   ) : (
