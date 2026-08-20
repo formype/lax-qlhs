@@ -63,6 +63,15 @@ const FEATURE_SECTIONS = [
         path: '/student-list'
       },
       {
+        label: 'Danh sách bán trú',
+        icon: UsersRound,
+        color: '#3b82f6',
+        bg: 'rgba(59, 130, 246, 0.08)',
+        border: 'rgba(59, 130, 246, 0.2)',
+        shadow: 'rgba(59, 130, 246, 0.15)',
+        path: '/boarding-students'
+      },
+      {
         label: 'Chuyên cần',
         icon: CalendarCheck,
         color: '#10b981',
