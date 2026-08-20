@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
-import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2 } from 'lucide-react';
+import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
 
@@ -70,6 +70,15 @@ const FEATURE_SECTIONS = [
         border: 'rgba(16, 185, 129, 0.2)',
         shadow: 'rgba(16, 185, 129, 0.15)',
         path: '/attendance-search'
+      },
+      {
+        label: 'Theo dõi bán trú',
+        icon: Coffee, // Using Coffee icon for boarding
+        color: '#8b5cf6',
+        bg: 'rgba(139, 92, 246, 0.08)',
+        border: 'rgba(139, 92, 246, 0.2)',
+        shadow: 'rgba(139, 92, 246, 0.15)',
+        path: '/boarding-attendance'
       },
       {
         label: 'Danh sách vi phạm',

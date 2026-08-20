@@ -12,6 +12,7 @@ import { ManageStudents } from './pages/ManageStudents';
 import { Attendance } from './pages/Attendance';
 import { AttendanceSearch } from './pages/AttendanceSearch';
 import { StudentList } from './pages/StudentList';
+import { BoardingAttendance } from './pages/BoardingAttendance';
 import { Statistics } from './pages/Statistics';
 import { AccountSettings } from './pages/AccountSettings';
 import { ManageAccounts } from './pages/ManageAccounts';
@@ -205,6 +206,7 @@ function AppRoutes() {
         <Route path="/students" element={<ProtectedRoute><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance-search" element={<ProtectedRoute><MainLayout><AttendanceSearch /></MainLayout></ProtectedRoute>} />
+        <Route path="/boarding-attendance" element={<ProtectedRoute><MainLayout><BoardingAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/student-list" element={<ProtectedRoute><MainLayout><StudentList /></MainLayout></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute><MainLayout><Statistics /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
