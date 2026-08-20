@@ -344,7 +344,10 @@ export function BoardingAttendance() {
   };
 
   const exportPDF = async () => {
-    if (filteredData.length === 0) return;
+    if (filteredData.length === 0) {
+      alert("Không có dữ liệu để xuất!");
+      return;
+    }
 
     const fetchFont = async (url) => {
       const response = await fetch(url);
@@ -378,9 +381,9 @@ export function BoardingAttendance() {
     doc.text("Độc lập - Tự do - Hạnh phúc", pageWidth - 14, 21, { align: 'right' });
 
     doc.setFontSize(16);
-    doc.text("DANH SÁCH THEO DÕI TÌNH HÌNH CHUYÊN CẦN CỦA HỌC SINH", pageWidth / 2, 35, { align: 'center' });
+    doc.text("DANH SÁCH THEO DÕI TÌNH HÌNH BÁN TRÚ CỦA HỌC SINH", pageWidth / 2, 35, { align: 'center' });
 
-    const tableColumn = ["STT", "Họ tên", "Lớp", "Ngày", "Buổi", "Trạng thái", "Ghi chú"];
+    const tableColumn = ["STT", "Họ tên", "Lớp", "Ngày", "Trạng thái", "Ghi chú"];
     const tableRows = filteredData.map((v, index) => {
       let statusStr = 'Có mặt';
       let reasonStr = '';
@@ -392,7 +395,6 @@ export function BoardingAttendance() {
         v.hoten || '',
         v.className || '',
         v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : '',
-        v.session || '',
         statusStr,
         reasonStr
       ];
@@ -405,17 +407,20 @@ export function BoardingAttendance() {
       styles: { font: 'Tinos', fontSize: 13, lineWidth: 0.1, lineColor: [0, 0, 0] },
       headStyles: { font: 'Tinos', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0] },
       columnStyles: {
-        6: { cellWidth: 70 }
+        5: { cellWidth: 70 }
       }
     });
 
-    doc.save(`BaoCaoChuyenCan_${format(new Date(), 'ddMMyyyy')}.pdf`);
+    doc.save(`TheoDoiBanTru_${format(new Date(), 'ddMMyyyy')}.pdf`);
   };
   const exportExcel = async () => {
-    if (filteredData.length === 0) return;
+    if (filteredData.length === 0) {
+      alert("Không có dữ liệu để xuất!");
+      return;
+    }
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('BaoCaoChuyenCan');
+    const worksheet = workbook.addWorksheet('TheoDoiBanTru');
 
     worksheet.pageSetup.orientation = 'landscape';
     worksheet.pageSetup.paperSize = 9; // A4
@@ -425,47 +430,46 @@ export function BoardingAttendance() {
       { width: 30 }, // B: Họ tên
       { width: 15 }, // C: Lớp
       { width: 15 }, // D: Ngày
-      { width: 15 }, // E: Buổi
-      { width: 20 }, // F: Trạng thái
-      { width: 20 }, // G: Lý do vắng
-      { width: 30 }  // H: Ghi chú
+      { width: 20 }, // E: Trạng thái
+      { width: 20 }, // F: Lý do vắng
+      { width: 30 }  // G: Ghi chú
     ];
 
     // Row 1
-    worksheet.mergeCells('A1:D1');
+    worksheet.mergeCells('A1:C1');
     const cellA1 = worksheet.getCell('A1');
     cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG";
     cellA1.font = { name: 'Times New Roman', size: 13, bold: false };
     cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    worksheet.mergeCells('E1:H1');
-    const cellE1 = worksheet.getCell('E1');
+    worksheet.mergeCells('D1:G1');
+    const cellE1 = worksheet.getCell('D1');
     cellE1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
     cellE1.font = { name: 'Times New Roman', size: 13, bold: true };
     cellE1.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 2
-    worksheet.mergeCells('A2:D2');
+    worksheet.mergeCells('A2:C2');
     const cellA2 = worksheet.getCell('A2');
     cellA2.value = "TRƯỜNG THCS LÊ ANH XUÂN";
     cellA2.font = { name: 'Times New Roman', size: 13, bold: true, underline: true };
     cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    worksheet.mergeCells('E2:H2');
-    const cellE2 = worksheet.getCell('E2');
+    worksheet.mergeCells('D2:G2');
+    const cellE2 = worksheet.getCell('D2');
     cellE2.value = "Độc lập - Tự do - Hạnh phúc";
     cellE2.font = { name: 'Times New Roman', size: 14, bold: true, underline: true };
     cellE2.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 4: Title
-    worksheet.mergeCells('A4:H4');
+    worksheet.mergeCells('A4:G4');
     const cellA4 = worksheet.getCell('A4');
-    cellA4.value = "DANH SÁCH THEO DÕI TÌNH HÌNH CHUYÊN CẦN CỦA HỌC SINH";
+    cellA4.value = "DANH SÁCH THEO DÕI TÌNH HÌNH BÁN TRÚ CỦA HỌC SINH";
     cellA4.font = { name: 'Times New Roman', size: 16, bold: true };
     cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 6: Headers
-    const headers = ["STT", "Họ tên", "Lớp", "Ngày", "Buổi", "Trạng thái", "Lý do vắng", "Ghi chú"];
+    const headers = ["STT", "Họ tên", "Lớp", "Ngày", "Trạng thái", "Lý do vắng", "Ghi chú"];
     const headerRow = worksheet.getRow(6);
     headerRow.values = headers;
     headerRow.font = { name: 'Times New Roman', size: 13, bold: true };
@@ -493,7 +497,6 @@ export function BoardingAttendance() {
         v.hoten || '',
         v.className || '',
         v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : '',
-        v.session || '',
         statusStr,
         v.status === 'absent_p' ? (v.reason || 'Việc riêng') : reasonTypeStr,
         '' // Ghi chú
@@ -508,7 +511,7 @@ export function BoardingAttendance() {
           bottom: { style: 'thin' },
           right: { style: 'thin' }
         };
-        if (colNumber === 8) {
+        if (colNumber === 7) {
           cell.alignment = { vertical: 'middle', wrapText: true };
         } else {
           cell.alignment = { vertical: 'middle' };
@@ -518,7 +521,7 @@ export function BoardingAttendance() {
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `BaoCaoChuyenCan_${format(new Date(), 'ddMMyyyy')}.xlsx`);
+    saveAs(blob, `TheoDoiBanTru_${format(new Date(), 'ddMMyyyy')}.xlsx`);
   };
 
   return (
