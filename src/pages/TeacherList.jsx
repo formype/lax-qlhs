@@ -42,7 +42,7 @@ export function TeacherList() {
     const loadData = async () => {
       setLoading(true);
       const data = await fetchTeachers();
-      setTeachers(data.sort((a, b) => a.hoten.localeCompare(b.hoten)));
+      setTeachers(data.sort((a, b) => (a.magv || '').localeCompare(b.magv || '')));
       setLoading(false);
     };
     loadData();
@@ -138,49 +138,56 @@ export function TeacherList() {
           </div>
         </div>
 
-        <div className="student-list-filters mb-4">
-          <div className="filter-group-inline">
-            <label className="font-semibold text-sm mr-2">Hiển thị:</label>
-            <Select
-              value={filterType}
-              onChange={(e) => {
-                setFilterType(e.target.value);
-                setFilterDepartment('');
-                setFilterSubject('');
-              }}
-              options={[
-                { value: 'Toàn trường', label: 'Toàn trường' },
-                { value: 'Theo tổ chuyên môn', label: 'Theo tổ chuyên môn' },
-                { value: 'Theo bộ môn', label: 'Theo bộ môn' }
-              ]}
-              className="filter-select"
-            />
-            
-            {filterType === 'Theo tổ chuyên môn' && (
-              <Select
-                value={filterDepartment}
-                onChange={(e) => setFilterDepartment(e.target.value)}
-                options={[
-                  { value: '', label: '-- Chọn tổ chuyên môn --' },
-                  ...Object.keys(DEPARTMENTS).map(d => ({ value: d, label: d }))
-                ]}
-                className="filter-select ml-2"
-              />
-            )}
+        <Card className="filter-card mb-4" style={{ padding: '4px' }}>
+          <CardBody>
+            <div className="filter-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div className="filter-group">
+                <label className="text-sm font-semibold mb-1 block">Tùy chọn lọc</label>
+                <Select
+                  value={filterType}
+                  onChange={(e) => {
+                    setFilterType(e.target.value);
+                    setFilterDepartment('');
+                    setFilterSubject('');
+                  }}
+                  options={[
+                    { value: 'Toàn trường', label: 'Toàn trường' },
+                    { value: 'Theo tổ chuyên môn', label: 'Theo tổ chuyên môn' },
+                    { value: 'Theo bộ môn', label: 'Theo bộ môn' }
+                  ]}
+                />
+              </div>
+              
+              {filterType === 'Theo tổ chuyên môn' && (
+                <div className="filter-group">
+                  <label className="text-sm font-semibold mb-1 block">Tổ chuyên môn</label>
+                  <Select
+                    value={filterDepartment}
+                    onChange={(e) => setFilterDepartment(e.target.value)}
+                    options={[
+                      { value: '', label: '-- Chọn tổ chuyên môn --' },
+                      ...Object.keys(DEPARTMENTS).map(d => ({ value: d, label: d }))
+                    ]}
+                  />
+                </div>
+              )}
 
-            {filterType === 'Theo bộ môn' && (
-              <Select
-                value={filterSubject}
-                onChange={(e) => setFilterSubject(e.target.value)}
-                options={[
-                  { value: '', label: '-- Chọn bộ môn --' },
-                  ...allSubjects.map(s => ({ value: s, label: s }))
-                ]}
-                className="filter-select ml-2"
-              />
-            )}
-          </div>
-        </div>
+              {filterType === 'Theo bộ môn' && (
+                <div className="filter-group">
+                  <label className="text-sm font-semibold mb-1 block">Bộ môn giảng dạy</label>
+                  <Select
+                    value={filterSubject}
+                    onChange={(e) => setFilterSubject(e.target.value)}
+                    options={[
+                      { value: '', label: '-- Chọn bộ môn --' },
+                      ...allSubjects.map(s => ({ value: s, label: s }))
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
 
         {loading ? (
           <p className="text-muted text-center mt-4">Đang tải...</p>
