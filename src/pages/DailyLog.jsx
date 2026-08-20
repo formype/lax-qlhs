@@ -51,41 +51,93 @@ export function DailyLog() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleFileUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].size > MAX_FILE_SIZE) {
+        const sizeMB = (files[i].size / (1024 * 1024)).toFixed(1);
+        alert(`Tệp "${files[i].name}" quá lớn (${sizeMB}MB). Vui lòng chọn tệp nhỏ hơn 5MB.`);
+        e.target.value = '';
+        return;
+      }
+    }
 
     setUploading(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
-        if (width > height) {
-          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-        } else {
-          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+    const newEvidences = [];
+    const totalFiles = files.length;
+    const appsScriptUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwsJP68m0xVqnKZVjw-U8_EL_EQPZLfhrZxV4M-xicykesYD25wN1PcihVVLclxwtNLHw/exec";
+
+    for (let i = 0; i < totalFiles; i++) {
+      const file = files[i];
+      const localUrl = URL.createObjectURL(file);
+      const fileType = file.type || '';
+      let finalDriveUrl = '';
+      
+      if (appsScriptUrl && appsScriptUrl.trim()) {
+        try {
+          const reader = new FileReader();
+          const base64Promise = new Promise((resolve) => {
+            reader.onloadend = () => {
+              const pureBase64 = reader.result.split(',')[1];
+              resolve(pureBase64);
+            };
+          });
+          reader.readAsDataURL(file);
+          const base64Data = await base64Promise;
+
+          const response = await fetch(appsScriptUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'text/plain',
+            },
+            body: JSON.stringify({
+              filename: file.name || `Upload_${Date.now()}`,
+              mimeType: fileType,
+              base64: base64Data,
+              folderId: import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || ''
+            })
+          });
+          
+          const responseText = await response.text();
+          let result;
+          try {
+            result = JSON.parse(responseText);
+          } catch (jsonError) {
+            throw new Error("Apps Script returned invalid HTML/text.");
+          }
+
+          if (result.result === 'success' || result.success === true || result.url) {
+            finalDriveUrl = result.url;
+          } else {
+            throw new Error(result.error || 'Lỗi không xác định từ Apps Script');
+          }
+        } catch (error) {
+          alert("Không thể upload minh chứng lên Google Drive. Lỗi: " + error.message);
+          setUploading(false);
+          if (e.target.value) e.target.value = '';
+          return;
         }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        
-        setEvidenceList(prev => [...prev, {
-          name: file.name,
-          localUrl: dataUrl,
-          type: 'image'
-        }]);
+      } else {
+        alert("Chưa cấu hình URL của Google Apps Script trong .env.local!");
         setUploading(false);
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+        if (e.target.value) e.target.value = '';
+        return;
+      }
+      
+      newEvidences.push({
+        name: file.name || `Tài_liệu_${Date.now()}`,
+        driveUrl: finalDriveUrl,
+        localUrl,
+        type: fileType
+      });
+    }
+
+    setEvidenceList(prev => [...prev, ...newEvidences]);
+    setUploading(false);
     if (e.target.value) e.target.value = '';
   };
 
@@ -98,7 +150,7 @@ export function DailyLog() {
     setLoading(true);
     
     try {
-      const images = evidenceList.map(e => e.localUrl);
+      const images = evidenceList.map(e => e.driveUrl);
       const logData = {
         ...formData,
         images,
@@ -192,8 +244,8 @@ export function DailyLog() {
                     <Upload size={18} /> Tải ảnh lên
                   </button>
                   
-                  <input type="file" accept="image/*" capture="environment" style={{display: 'none'}} ref={cameraInputRef} onChange={handleImageUpload} />
-                  <input type="file" accept="image/*" style={{display: 'none'}} ref={fileInputRef} onChange={handleImageUpload} />
+                  <input type="file" accept="image/*" capture="environment" style={{display: 'none'}} ref={cameraInputRef} onChange={handleFileUpload} />
+                  <input type="file" accept="image/*" style={{display: 'none'}} ref={fileInputRef} onChange={handleFileUpload} />
                 </div>
                 
                 {uploading && <div className="mt-2 text-sm text-muted">Đang xử lý ảnh...</div>}
