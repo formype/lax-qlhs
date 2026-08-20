@@ -8,7 +8,7 @@ import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
 import { getAttendanceHistory, fetchStudents, fetchClasses, fetchSystemSettings, updateAttendanceStudent, createNotification } from '../lib/firebase';
 import { parseISO, format, addDays, parse, getMonth } from 'date-fns';
-import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X } from 'lucide-react';
+import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -25,6 +25,7 @@ export function AttendanceSearch() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [proofImage, setProofImage] = useState(null);
+  const [localPreview, setLocalPreview] = useState(null);
   const [updateReason, setUpdateReason] = useState('Việc riêng');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -256,6 +257,7 @@ export function AttendanceSearch() {
   const handleOpenDetail = (record) => {
     setSelectedRecord(record);
     setProofImage(record.proofImage || '');
+    setLocalPreview(null);
     setIsModalOpen(true);
   };
 
@@ -263,6 +265,7 @@ export function AttendanceSearch() {
     setIsModalOpen(false);
     setSelectedRecord(null);
     setProofImage('');
+    setLocalPreview(null);
   };
 
   const handleImageUpload = async (e) => {
@@ -318,6 +321,9 @@ export function AttendanceSearch() {
       });
       
       const base64Data = await base64Promise;
+      if (fileType.startsWith('image/')) {
+        setLocalPreview(`data:${fileType || 'image/jpeg'};base64,${base64Data}`);
+      }
 
       const response = await fetch(appsScriptUrl, {
         method: 'POST',
@@ -835,20 +841,32 @@ export function AttendanceSearch() {
                       </select>
                     </div>
 
-                      {proofImage && (
+                      {(localPreview || proofImage) && (
                         <div className="image-preview mt-3 text-center">
                           <p className="text-xs text-muted mb-2">Ảnh minh chứng:</p>
-                          <img src={proofImage} alt="Minh chứng" onClick={() => window.open(proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh gốc" />
+                          {localPreview || proofImage.startsWith('data:') ? (
+                            <img src={localPreview || proofImage} alt="Minh chứng" onClick={() => window.open(localPreview || proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh lớn" />
+                          ) : (
+                            <a href={proofImage} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              <ExternalLink size={16} className="mr-1" /> Xem ảnh minh chứng
+                            </a>
+                          )}
                         </div>
                       )}
                   </div>
                 )}
 
                 {(selectedRecord.status === 'absent_p' || selectedRecord.status === 'present') && proofImage && (
-                  <div className="upload-proof-section mt-4">
+                  <div className="upload-proof-section mt-4 text-center">
                     <p className="text-sm font-semibold mb-2">Hình ảnh minh chứng:</p>
-                    <div className="image-preview text-center">
-                      <img src={proofImage} alt="Minh chứng" onClick={() => window.open(proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh gốc" />
+                    <div className="image-preview">
+                      {proofImage.startsWith('data:') ? (
+                        <img src={proofImage} alt="Minh chứng" onClick={() => window.open(proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh lớn" />
+                      ) : (
+                        <a href={proofImage} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', marginTop: '8px' }}>
+                          <ExternalLink size={16} className="mr-1" /> Mở ảnh minh chứng
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}
