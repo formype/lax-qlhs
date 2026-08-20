@@ -22,6 +22,7 @@ export function BoardingAttendance() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [totalBoardingCount, setTotalBoardingCount] = useState(0);
+  const [allStudents, setAllStudents] = useState([]);
   
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,6 +97,7 @@ export function BoardingAttendance() {
       setAttendanceData(flatData);
       setClasses(classesData);
       setSettings(sData);
+      setAllStudents(studentsData);
       
       const activeBoarding = studentsData.filter(s => s.bantru && s.trangthai !== 'Thôi học').length;
       setTotalBoardingCount(activeBoarding);
@@ -162,6 +164,45 @@ export function BoardingAttendance() {
     }
   }, [location.state?.openRecordId, attendanceData, navigate, location.pathname]);
 
+  // Generate virtual records for "Chưa điểm danh" if filtering by day
+  const fullDataForDay = useMemo(() => {
+    if (timeFilterType !== 'day') return attendanceData;
+
+    const markedIds = new Set();
+    const records = [];
+    
+    attendanceData.forEach(item => {
+      records.push(item);
+      if (item.date === timeValueDay && item.session === 'Sáng') {
+         markedIds.add(item.studentId);
+      }
+    });
+
+    allStudents.forEach(student => {
+      if (student.trangthai !== 'Thôi học' && !markedIds.has(student.id)) {
+        records.push({
+          id: `missing_${student.id}`,
+          date: timeValueDay,
+          session: 'Sáng',
+          className: student.lop || '',
+          studentId: student.id,
+          mahs: student.mahs || '',
+          hoten: student.hoten || '',
+          khoi: student.khoi || '',
+          bantru: student.bantru || false,
+          status: 'unmarked',
+          reason: null,
+          proofImage: null,
+          createdBy: '',
+          updatedBy: null,
+          updatedAt: null
+        });
+      }
+    });
+
+    return records;
+  }, [attendanceData, allStudents, timeFilterType, timeValueDay]);
+
   // Filtering Logic
   const filteredData = useMemo(() => {
     if (!settings) return [];
@@ -170,7 +211,7 @@ export function BoardingAttendance() {
     const s2Start = parse(settings.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
     const s1Weeks = settings.semester1Weeks || 18;
 
-    return attendanceData.filter(v => {
+    return fullDataForDay.filter(v => {
       if (!v.date) return false;
       const vDate = parse(v.date, 'yyyy-MM-dd', new Date());
 
@@ -235,7 +276,7 @@ export function BoardingAttendance() {
 
       return true;
     });
-  }, [attendanceData, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, timeValueSemester, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, statusFilter, sessionFilter, boardingFilter]);
+  }, [fullDataForDay, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, timeValueSemester, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, statusFilter, sessionFilter, boardingFilter]);
 
   const formatDateToVN = (dateStr) => {
     if (!dateStr) return '';
@@ -389,9 +430,10 @@ export function BoardingAttendance() {
 
     const tableColumn = ["STT", "Họ tên", "Lớp", "Ngày", "Trạng thái", "Ghi chú"];
     const tableRows = filteredData.map((v, index) => {
-      let statusStr = 'Có mặt';
+      let statusStr = 'Chưa điểm danh';
       let reasonStr = '';
-      if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonStr = 'Có phép (P)'; }
+      if (v.status === 'present') { statusStr = 'Có mặt'; }
+      else if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonStr = 'Có phép (P)'; }
       else if (v.status === 'absent_kp') { statusStr = 'Vắng'; reasonStr = 'Không phép (KP)'; }
 
       return [
@@ -491,9 +533,10 @@ export function BoardingAttendance() {
 
     // Row 7+: Data
     filteredData.forEach((v, index) => {
-      let statusStr = 'Có mặt';
+      let statusStr = 'Chưa điểm danh';
       let reasonTypeStr = '';
-      if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonTypeStr = 'Có phép (P)'; }
+      if (v.status === 'present') { statusStr = 'Có mặt'; }
+      else if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonTypeStr = 'Có phép (P)'; }
       else if (v.status === 'absent_kp') { statusStr = 'Vắng'; reasonTypeStr = 'Không phép (KP)'; }
 
       const rowData = [
@@ -652,7 +695,8 @@ export function BoardingAttendance() {
                     {value: 'absent', label: 'Vắng mặt (P và KP)'},
                     {value: 'absent_kp', label: 'Vắng không phép'},
                     {value: 'absent_p', label: 'Vắng có phép'},
-                    {value: 'present', label: 'Có mặt'}
+                    {value: 'present', label: 'Có mặt'},
+                    {value: 'unmarked', label: 'Chưa điểm danh'}
                   ]}
                   style={{ minWidth: '150px' }}
                 />
@@ -702,7 +746,11 @@ export function BoardingAttendance() {
                         </div>
                       </td>
                       <td>
-                        {v.status.startsWith('absent') ? (
+                        {v.status === 'unmarked' ? (
+                          <span className="attendance-status-label inline-flex" style={{ color: '#9ca3af', backgroundColor: '#f3f4f6' }}>
+                            <AlertTriangle size={14} className="mr-1" /> Chưa điểm danh
+                          </span>
+                        ) : v.status.startsWith('absent') ? (
                           <span className="attendance-status-label absent inline-flex">
                             <XCircle size={14} className="mr-1" /> Vắng mặt
                           </span>
@@ -767,8 +815,8 @@ export function BoardingAttendance() {
                 </div>
                 <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
                   <span className="text-muted">Trạng thái:</span>
-                  <span className="font-semibold" style={{ color: selectedRecord.status === 'present' ? '#10b981' : (selectedRecord.status === 'absent_p' ? '#3b82f6' : '#ef4444') }}>
-                    {selectedRecord.status === 'present' ? 'Có mặt' : (selectedRecord.status === 'absent_p' ? 'Vắng có phép' : 'Vắng không phép')}
+                  <span className="font-semibold" style={{ color: selectedRecord.status === 'present' ? '#10b981' : (selectedRecord.status === 'unmarked' ? '#9ca3af' : (selectedRecord.status === 'absent_p' ? '#3b82f6' : '#ef4444')) }}>
+                    {selectedRecord.status === 'present' ? 'Có mặt' : (selectedRecord.status === 'unmarked' ? 'Chưa điểm danh' : (selectedRecord.status === 'absent_p' ? 'Vắng có phép' : 'Vắng không phép'))}
                   </span>
                 </div>
                 {selectedRecord.status === 'absent_p' && (
