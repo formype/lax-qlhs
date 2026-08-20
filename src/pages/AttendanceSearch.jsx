@@ -27,6 +27,7 @@ export function AttendanceSearch() {
   const [proofImage, setProofImage] = useState(null);
   const [updateReason, setUpdateReason] = useState('Việc riêng');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const { user } = useAuth();
 
   // Filters state
@@ -264,41 +265,86 @@ export function AttendanceSearch() {
     setProofImage('');
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`Tệp quá lớn. Vui lòng chọn tệp nhỏ hơn 5MB.`);
+      e.target.value = '';
+      return;
+    }
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
+    setIsUploading(true);
+    const appsScriptUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwsJP68m0xVqnKZVjw-U8_EL_EQPZLfhrZxV4M-xicykesYD25wN1PcihVVLclxwtNLHw/exec";
+    const fileType = file.type || '';
+
+    try {
+      const base64Promise = new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (fileType.startsWith('image/')) {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 1200;
+              const MAX_HEIGHT = 1200;
+              let width = img.width;
+              let height = img.height;
+              
+              if (width > height) {
+                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+              } else {
+                if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+              }
+              
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              resolve(dataUrl.split(',')[1]);
+            };
+            img.onerror = () => resolve(event.target.result.split(',')[1]);
+            img.src = event.target.result;
+          } else {
+            resolve(event.target.result.split(',')[1]);
           }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        setProofImage(dataUrl);
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+        };
+        reader.onerror = () => reject(new Error("Lỗi đọc file"));
+        reader.readAsDataURL(file);
+      });
+      
+      const base64Data = await base64Promise;
+
+      const response = await fetch(appsScriptUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          filename: file.name || `Upload_${Date.now()}`,
+          mimeType: fileType,
+          base64: base64Data,
+          folderId: import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '1Et-Jz9EiFoFpGHp139dmf504ZDFe9yhD'
+        })
+      });
+      
+      const responseText = await response.text();
+      let result = JSON.parse(responseText);
+
+      if (result.result === 'success' || result.success === true || result.url) {
+        setProofImage(result.url);
+      } else {
+        throw new Error(result.error || 'Lỗi từ Google Drive');
+      }
+    } catch (error) {
+      alert("Không thể upload minh chứng. Lỗi: " + error.message);
+    } finally {
+      setIsUploading(false);
+      if (e.target.value) e.target.value = '';
+    }
   };
 
   const handleUpdateStatus = async () => {
@@ -774,6 +820,8 @@ export function AttendanceSearch() {
                       </label>
                     </div>
 
+                    {isUploading && <div className="text-center mt-2 mb-3 text-sm text-muted">Đang xử lý và tải ảnh lên...</div>}
+
                     <div className="flex-row justify-center mb-3 items-center">
                       <span className="text-sm mr-2 text-dark font-medium">Lý do nghỉ:</span>
                       <select 
@@ -787,12 +835,12 @@ export function AttendanceSearch() {
                       </select>
                     </div>
 
-                    {proofImage && (
-                      <div className="image-preview mt-3 text-center">
-                        <p className="text-xs text-muted mb-2">Ảnh minh chứng:</p>
-                        <img src={proofImage} alt="Minh chứng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)' }} />
-                      </div>
-                    )}
+                      {proofImage && (
+                        <div className="image-preview mt-3 text-center">
+                          <p className="text-xs text-muted mb-2">Ảnh minh chứng:</p>
+                          <img src={proofImage} alt="Minh chứng" onClick={() => window.open(proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh gốc" />
+                        </div>
+                      )}
                   </div>
                 )}
 
@@ -800,7 +848,7 @@ export function AttendanceSearch() {
                   <div className="upload-proof-section mt-4">
                     <p className="text-sm font-semibold mb-2">Hình ảnh minh chứng:</p>
                     <div className="image-preview text-center">
-                      <img src={proofImage} alt="Minh chứng" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid var(--border-color)' }} />
+                      <img src={proofImage} alt="Minh chứng" onClick={() => window.open(proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh gốc" />
                     </div>
                   </div>
                 )}
@@ -809,8 +857,8 @@ export function AttendanceSearch() {
             <div className="modal-footer">
               <Button variant="secondary" onClick={handleCloseDetail}>Đóng</Button>
               {selectedRecord.status === 'absent_kp' && (user?.role?.includes('giamthi') || user?.role?.includes('admin') || user?.role?.includes('vip-admin') || (isGiaovienOnly && teacherClass === selectedRecord.className)) && (
-                <Button variant="primary" onClick={handleUpdateStatus} disabled={isUpdating}>
-                  {isUpdating ? 'Đang cập nhật...' : 'Duyệt phép & Lưu'}
+                <Button variant="primary" onClick={handleUpdateStatus} disabled={isUpdating || isUploading}>
+                  {isUpdating ? 'Đang cập nhật...' : (isUploading ? 'Đang tải ảnh...' : 'Duyệt phép & Lưu')}
                 </Button>
               )}
             </div>
