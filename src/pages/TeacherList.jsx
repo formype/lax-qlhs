@@ -15,7 +15,7 @@ const DEPARTMENTS = {
   'Tổ Xã hội': ['Sử - Địa', 'GDCD'],
   'Tổ VTM': ['Mỹ thuật', 'Nhạc', 'Thể dục'],
   'Tổ Tin học - Công nghệ': ['Tin học', 'Công nghệ'],
-  'Tổ Ngoại ngữ': ['Tiếng Anh']
+  'Tổ Tiếng anh': ['Tiếng Anh']
 };
 
 export function TeacherList() {
