@@ -47,6 +47,16 @@ const FEATURE_SECTIONS = [
         shadow: 'rgba(16, 185, 129, 0.15)',
         path: '/attendance'
       },
+      {
+        label: 'Ghi nhận trong ngày',
+        icon: ClipboardList,
+        color: '#f43f5e',
+        bg: 'rgba(244, 63, 94, 0.08)',
+        border: 'rgba(244, 63, 94, 0.2)',
+        shadow: 'rgba(244, 63, 94, 0.15)',
+        path: '/daily-log',
+        roles: ['admin', 'vip-admin', 'giamthi']
+      },
     ]
   },
   {
@@ -125,6 +135,10 @@ export function Features() {
               </div>
               <div className="feature-grid">
               {section.items.map((item) => {
+                if (item.roles && !item.roles.some(r => user?.role?.includes(r))) {
+                  return null;
+                }
+                
                 if (!isAdmin && !isGiamthi && (
                   item.path === '/add' || 
                   item.path === '/attendance'

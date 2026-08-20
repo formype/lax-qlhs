@@ -44,7 +44,8 @@ export const COLLECTIONS = {
   VIOLATION_RULES: 'violationRules',
   DISCIPLINARY_ACTIONS: 'disciplinaryActions',
   ATTENDANCE: 'attendance',
-  NOTIFICATIONS: 'notifications'
+  NOTIFICATIONS: 'notifications',
+  DAILY_LOGS: 'dailyLogs'
 };
 
 // --- USERS / AUTH ---
@@ -1398,5 +1399,22 @@ export const getNotificationsPaginated = async (userRoles, userClass, userName, 
   } catch (error) {
     console.error("Lỗi khi tải thông báo phân trang:", error);
     return { notifications: [], lastDoc: null, hasMore: false };
+  }
+};
+
+
+// --- DAILY LOGS ---
+export const addDailyLog = async (logData) => {
+  try {
+    const dailyLogsRef = collection(db, COLLECTIONS.DAILY_LOGS);
+    const docRef = await addDoc(dailyLogsRef, {
+      ...logData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    console.error("Error adding daily log: ", error);
+    return { success: false, error: error.message };
   }
 };
