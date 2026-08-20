@@ -51,7 +51,7 @@ export function BoardingAttendance() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const [statusFilter, setStatusFilter] = useState('absent'); // all, present, absent
+  const [statusFilter, setStatusFilter] = useState('present'); // all, present, absent
   const [sessionFilter, setSessionFilter] = useState('Sáng'); // Hardcode to Sáng for Boarding Attendance
 
   useEffect(() => {
