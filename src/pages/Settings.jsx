@@ -349,7 +349,7 @@ export function Settings() {
             <div className="modal-body">
               <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.1)', color: '#d97706', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <AlertTriangle size={20} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: '0.9rem' }}><strong>CẢNH BÁO:</strong> Hành động này sẽ xóa toàn bộ dữ liệu Lớp, Học sinh, Vi phạm và Chuyên cần hiện có và thay thế bằng dữ liệu từ bản sao lưu.</span>
+                <span style={{ fontSize: '0.9rem' }}><strong>CẢNH BÁO:</strong> Hành động này sẽ xóa toàn bộ dữ liệu Lớp, Học sinh, Vi phạm, Chuyên cần và Ghi nhận trong ngày hiện có và thay thế bằng dữ liệu từ bản sao lưu.</span>
               </div>
               <p>Bản sao lưu chứa:</p>
               <ul style={{ margin: '10px 0 20px 20px' }}>
@@ -379,7 +379,7 @@ export function Settings() {
             <div className="modal-body">
               <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <AlertTriangle size={20} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: '0.9rem' }}><strong>CẢNH BÁO NGUY HIỂM:</strong> Hành động này sẽ <strong>XÓA SẠCH</strong> toàn bộ dữ liệu về Lớp học, Học sinh, Vi phạm và Chuyên cần trên hệ thống.</span>
+                <span style={{ fontSize: '0.9rem' }}><strong>CẢNH BÁO NGUY HIỂM:</strong> Hành động này sẽ <strong>XÓA SẠCH</strong> toàn bộ dữ liệu về Lớp học, Học sinh, Vi phạm, Chuyên cần và Ghi nhận trong ngày trên hệ thống.</span>
               </div>
               <p>Dữ liệu đã xóa sẽ <strong>KHÔNG THỂ KHÔI PHỤC</strong> nếu bạn chưa sao lưu.</p>
               <p>Bạn có thực sự muốn xóa?</p>

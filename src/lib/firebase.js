@@ -946,7 +946,8 @@ export const exportDatabase = async () => {
       violations: [],
       attendance: [],
       settings: [],
-      notifications: []
+      notifications: [],
+      daily_logs: []
     };
     
     // Fetch all collections except users
@@ -968,6 +969,9 @@ export const exportDatabase = async () => {
     const notifSnap = await getDocs(collection(db, COLLECTIONS.NOTIFICATIONS));
     notifSnap.forEach(doc => data.notifications.push({ id: doc.id, ...doc.data() }));
 
+    const dailyLogsSnap = await getDocs(collection(db, COLLECTIONS.DAILY_LOGS));
+    dailyLogsSnap.forEach(doc => data.daily_logs.push({ id: doc.id, ...doc.data() }));
+
     return data;
   } catch (error) {
     console.error("Lỗi khi xuất dữ liệu:", error);
@@ -982,7 +986,8 @@ export const deleteAllData = async () => {
       COLLECTIONS.CLASSES,
       COLLECTIONS.VIOLATIONS,
       COLLECTIONS.ATTENDANCE,
-      COLLECTIONS.NOTIFICATIONS
+      COLLECTIONS.NOTIFICATIONS,
+      COLLECTIONS.DAILY_LOGS
     ];
 
     for (const col of collectionsToClear) {
@@ -1018,6 +1023,7 @@ export const importDatabase = async (backupData) => {
       { name: COLLECTIONS.VIOLATIONS, data: backupData.violations || [] },
       { name: COLLECTIONS.ATTENDANCE, data: backupData.attendance || [] },
       { name: COLLECTIONS.NOTIFICATIONS, data: backupData.notifications || [] },
+      { name: COLLECTIONS.DAILY_LOGS, data: backupData.daily_logs || [] },
       { name: 'settings', data: backupData.settings || [] }
     ];
 
