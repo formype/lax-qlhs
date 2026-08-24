@@ -411,10 +411,12 @@ export function Statistics() {
      let absent_kp = 0;
      let absent_benh = 0;
      let absent_viecrieng = 0;
+     let total_absent_students = 0;
 
      const studentList = Object.values(studentMap)
        .map(s => {
           if (s.total_absent === 0) perfect_attendance_count++;
+          if (s.total_absent > 0) total_absent_students++;
           if (s.absent_p > 0) absent_p++;
           if (s.absent_kp > 0) absent_kp++;
           if (s.absent_benh > 0) absent_benh++;
@@ -439,6 +441,7 @@ export function Statistics() {
      return { 
         present: perfect_attendance_count, 
         absent_p, absent_kp, absent_benh, absent_viecrieng, 
+        total_absent: total_absent_students,
         studentList, pieData 
      };
   }, [filteredAttendance, filteredStudentsForStats]);
@@ -519,6 +522,7 @@ export function Statistics() {
      if (!modalType) return [];
      if (modalType === 'violation') return violationStats.studentList;
      if (modalType === 'attendance_present') return attendanceStats.studentList.filter(s => s.total_absent === 0);
+     if (modalType === 'attendance_absent_total') return attendanceStats.studentList.filter(s => s.total_absent > 0);
      if (modalType === 'attendance_absent_p') return attendanceStats.studentList.filter(s => s.absent_p > 0);
      if (modalType === 'attendance_absent_kp') return attendanceStats.studentList.filter(s => s.absent_kp > 0);
      if (modalType === 'attendance_absent_benh') return attendanceStats.studentList.filter(s => s.absent_benh > 0);
@@ -735,14 +739,7 @@ export function Statistics() {
                    className="w-full flex-1"
                  />
                  {timeFilterType === 'day' && (
-                   <div className="date-picker-wrapper flex-1" onClick={() => dateInputRef.current?.showPicker()}>
-                     <input 
-                       ref={dateInputRef}
-                       type="date" 
-                       className="input-field native-date-input" 
-                       value={timeValueDay}
-                       onChange={(e) => setTimeValueDay(e.target.value)}
-                     />
+                   <div className="date-picker-wrapper flex-1">
                      <DayPicker value={timeValueDay} onChange={setTimeValueDay} />
                    </div>
                  )}
@@ -890,6 +887,14 @@ export function Statistics() {
                       <div className="stat-left-col">
                          <span className="stat-title">Tổng đi học</span>
                          <span className="stat-value">{attendanceStats.present}</span>
+                      </div>
+                   </div>
+                 )}
+                 {(statusFilter === 'all' || statusFilter === 'absent_p' || statusFilter === 'absent_kp') && (
+                   <div className="premium-stat-card" onClick={() => { setModalType('attendance_absent_total'); setModalTitle('Học sinh vắng'); setShowModal(true); }}>
+                      <div className="stat-left-col">
+                         <span className="stat-title">Vắng</span>
+                         <span className="stat-value">{attendanceStats.total_absent}</span>
                       </div>
                    </div>
                  )}
