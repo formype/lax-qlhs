@@ -67,7 +67,8 @@ export function Settings() {
         students: data.students?.length || 0,
         classes: data.classes?.length || 0,
         violations: data.violations?.length || 0,
-        attendance: data.attendance?.length || 0
+        attendance: data.attendance?.length || 0,
+        dailyLogs: data.daily_logs?.length || 0
       });
       setShowRestoreModal(true);
     } catch (err) {
@@ -357,6 +358,7 @@ export function Settings() {
                 <li><strong>{backupSummary?.students}</strong> học sinh</li>
                 <li><strong>{backupSummary?.violations}</strong> vi phạm</li>
                 <li><strong>{backupSummary?.attendance}</strong> lượt điểm danh</li>
+                <li><strong>{backupSummary?.dailyLogs}</strong> lượt ghi nhận</li>
               </ul>
               <p>Bạn có chắc chắn muốn tiến hành?</p>
             </div>
