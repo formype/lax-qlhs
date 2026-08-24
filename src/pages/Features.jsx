@@ -150,6 +150,7 @@ export function Features() {
       <div className="features-content">
         {FEATURE_SECTIONS.map((section) => {
           const isAdmin = user?.role?.includes('admin') || user?.role?.includes('vip-admin');
+          const isVipAdmin = user?.role?.includes('vip-admin');
           const isGiamthi = user?.role?.includes('giamthi');
           const isGiaovien = user?.role?.includes('giaovien');
           if (section.title === 'Nhập thông tin' && !isAdmin && !isGiamthi) {
@@ -167,6 +168,10 @@ export function Features() {
                     return null;
                   }
                   
+                  if (!isVipAdmin && (item.path === '/teachers' || item.path === '/teacher-list')) {
+                    return null;
+                  }
+                  
                   if (!isAdmin && !isGiamthi && (
                     item.path === '/add' || 
                     item.path === '/attendance'
@@ -174,14 +179,13 @@ export function Features() {
                     return null;
                   }
                   if (!isAdmin && !isGiamthi && !isGiaovien && (
-                    item.path === '/student-list' || item.path === '/teacher-list'
+                    item.path === '/student-list'
                   )) {
                     return null;
                   }
                   if (!isAdmin && (
                     item.path === '/classes' || 
-                    item.path === '/students' ||
-                    item.path === '/teachers'
+                    item.path === '/students'
                   )) {
                     return null;
                   }

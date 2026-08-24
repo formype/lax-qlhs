@@ -208,8 +208,8 @@ function AppRoutes() {
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute><MainLayout><ManageClasses /></MainLayout></ProtectedRoute>} />
         <Route path="/students" element={<ProtectedRoute><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
-        <Route path="/teachers" element={<ProtectedRoute><MainLayout><ManageTeachers /></MainLayout></ProtectedRoute>} />
-        <Route path="/teacher-list" element={<ProtectedRoute><MainLayout><TeacherList /></MainLayout></ProtectedRoute>} />
+        <Route path="/teachers" element={<ProtectedRoute allowedRoles={['vip-admin']}><MainLayout><ManageTeachers /></MainLayout></ProtectedRoute>} />
+        <Route path="/teacher-list" element={<ProtectedRoute allowedRoles={['vip-admin']}><MainLayout><TeacherList /></MainLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLog /></MainLayout></ProtectedRoute>} />
