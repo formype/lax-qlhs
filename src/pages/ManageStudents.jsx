@@ -20,7 +20,7 @@ export function ManageStudents() {
   const [newGioitinh, setNewGioitinh] = useState('');
   const [newKhoi, setNewKhoi] = useState('');
   const [newClass, setNewClass] = useState('');
-  const [newDiachi, setNewDiachi] = useState('');
+  const [newDantoc, setNewDantoc] = useState('');
   const [newLienhe, setNewLienhe] = useState('');
   const [newBantru, setNewBantru] = useState(false);
   const [manualError, setManualError] = useState('');
@@ -65,7 +65,7 @@ export function ManageStudents() {
       gioitinh: newGioitinh,
       khoi: newKhoi,
       tenlop: newClass,
-      diachi: newDiachi,
+      dantoc: newDantoc,
       lienhe: newLienhe,
       bantru: newBantru
     });
@@ -78,7 +78,7 @@ export function ManageStudents() {
       setNewGioitinh('');
       setNewKhoi('');
       setNewClass('');
-      setNewDiachi('');
+      setNewDantoc('');
       setNewLienhe('');
       setNewBantru(false);
       setTimeout(() => setManualSuccess(false), 3000);
@@ -128,7 +128,7 @@ export function ManageStudents() {
           const tenlop = row[3] ? String(row[3]).trim() : '';
           const ngaysinh = row[4] ? String(row[4]).trim() : '';
           const gioitinh = row[5] ? String(row[5]).trim() : '';
-          const diachi = row[6] ? String(row[6]).trim() : '';
+          const dantoc = row[6] ? String(row[6]).trim() : '';
           const lienhe = row[7] ? String(row[7]).trim() : '';
           const bantruRaw = row[8] ? String(row[8]).toLowerCase().trim() : '';
           const bantru = ['x', 'có', 'co', '1', 'yes'].includes(bantruRaw);
@@ -145,7 +145,7 @@ export function ManageStudents() {
             gioitinh,
             khoi,
             tenlop,
-            diachi,
+            dantoc,
             lienhe,
             bantru
           });
@@ -291,29 +291,23 @@ export function ManageStudents() {
                     ]}
                     disabled={!newKhoi}
                   />
-                </div>
 
-                <div className="input-group full-width mt-3">
-                  <label className="input-label">ĐỊA CHỈ</label>
-                  <textarea 
-                    className="input-field textarea-field" 
-                    rows="3" 
-                    value={newDiachi}
-                    onChange={(e) => setNewDiachi(e.target.value)}
-                  ></textarea>
-                </div>
-
-                <div className="input-group full-width mt-3 mb-4">
-                  <label className="input-label">LIÊN HỆ PHỤ HUYNH</label>
                   <Input 
+                    label="DÂN TỘC"
+                    placeholder="Ví dụ: Kinh, Tày, Thái..." 
+                    value={newDantoc}
+                    onChange={(e) => setNewDantoc(e.target.value)}
+                  />
+
+                  <Input 
+                    label="LIÊN HỆ PHỤ HUYNH"
                     placeholder="Số điện thoại hoặc email" 
                     value={newLienhe}
                     onChange={(e) => setNewLienhe(e.target.value)}
-                    hideLabel
                   />
                 </div>
 
-                <div className="form-group mb-4" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="form-group mb-4 mt-4" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <input 
                     type="checkbox" 
                     id="isBoarding"

@@ -15,7 +15,7 @@ export function StudentList() {
   // Edit Modal State
   const [editingStudent, setEditingStudent] = useState(null);
   const [editForm, setEditForm] = useState({
-    mahs: '', hoten: '', ngaysinh: '', gioitinh: '', khoi: '', tenlop: '', diachi: '', lienhe: '', bantru: false
+    mahs: '', hoten: '', ngaysinh: '', gioitinh: '', khoi: '', tenlop: '', dantoc: '', lienhe: '', bantru: false
   });
   
   const [filterGrade, setFilterGrade] = useState('');
@@ -102,7 +102,7 @@ export function StudentList() {
       gioitinh: student.gioitinh || '',
       khoi: student.khoi || '',
       tenlop: student.tenlop || '',
-      diachi: student.diachi || '',
+      dantoc: student.dantoc || student.diachi || '',
       lienhe: student.lienhe || '',
       bantru: student.bantru || false
     });
@@ -124,7 +124,7 @@ export function StudentList() {
       gioitinh: editForm.gioitinh,
       khoi: editForm.khoi,
       tenlop: editForm.tenlop,
-      diachi: editForm.diachi,
+      dantoc: editForm.dantoc,
       lienhe: editForm.lienhe,
       bantru: editForm.bantru
     };
@@ -288,27 +288,23 @@ export function StudentList() {
                   ]}
                   disabled={isGiaoVienOnly}
                 />
-              </div>
-              <div className="input-group full-width mt-3">
-                <label className="input-label">ĐỊA CHỈ</label>
-                <textarea 
-                  className="input-field textarea-field" 
-                  rows="2" 
-                  value={editForm.diachi}
-                  onChange={e => setEditForm({...editForm, diachi: e.target.value})}
-                  disabled={isGiaoVienOnly}
-                ></textarea>
-              </div>
-              <div className="input-group full-width mt-3">
-                <label className="input-label">LIÊN HỆ</label>
+                
                 <Input 
+                  label="DÂN TỘC"
+                  value={editForm.dantoc}
+                  onChange={e => setEditForm({...editForm, dantoc: e.target.value})}
+                  disabled={isGiaoVienOnly}
+                />
+                
+                <Input 
+                  label="LIÊN HỆ PHỤ HUYNH"
                   value={editForm.lienhe}
                   onChange={e => setEditForm({...editForm, lienhe: e.target.value})}
-                  hideLabel
                   disabled={isGiaoVienOnly}
                 />
               </div>
-              <div className="form-group full-width mt-3" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+              <div className="form-group full-width mt-4" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input 
                   type="checkbox" 
                   id="editBantru"
