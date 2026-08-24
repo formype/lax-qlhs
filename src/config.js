@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.2.4';
+export const APP_VERSION = '2.3.0';
 
 /**
  * Compares two semantic version strings (e.g. "2.2.4" vs "2.2.5").
