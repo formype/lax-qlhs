@@ -106,7 +106,8 @@ const FEATURE_SECTIONS = [
         bg: 'rgba(139, 92, 246, 0.08)',
         border: 'rgba(139, 92, 246, 0.2)',
         shadow: 'rgba(139, 92, 246, 0.15)',
-        path: '/boarding-attendance'
+        path: '/boarding-attendance',
+        roles: ['admin', 'vip-admin', 'giamthi']
       },
       {
         label: 'Danh sách vi phạm',

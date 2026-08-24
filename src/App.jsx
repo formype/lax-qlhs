@@ -215,7 +215,7 @@ function AppRoutes() {
         <Route path="/daily-log" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLog /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLogList /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance-search" element={<ProtectedRoute><MainLayout><AttendanceSearch /></MainLayout></ProtectedRoute>} />
-        <Route path="/boarding-attendance" element={<ProtectedRoute><MainLayout><BoardingAttendance /></MainLayout></ProtectedRoute>} />
+        <Route path="/boarding-attendance" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><BoardingAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/student-list" element={<ProtectedRoute><MainLayout><StudentList /></MainLayout></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute><MainLayout><Statistics /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
