@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
-import { getRecentViolations, getAttendanceByDate } from '../lib/firebase';
+import { getRecentViolations, getAttendanceByDate, fetchStudents } from '../lib/firebase';
 import { format, isToday, isThisWeek, parseISO } from 'date-fns';
 import { AlertCircle, Clock, ShieldAlert, TrendingUp, CheckCircle, UserCheck, UserX } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,9 +17,10 @@ export function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       const todayStr = format(new Date(), 'yyyy-MM-dd');
-      const [data, attendanceData] = await Promise.all([
+      const [data, attendanceData, studentsData] = await Promise.all([
         getRecentViolations(),
-        getAttendanceByDate(todayStr)
+        getAttendanceByDate(todayStr),
+        fetchStudents()
       ]);
       setViolations(data);
 
@@ -27,7 +28,13 @@ export function Dashboard() {
       const teacherClass = user?.teacherClass;
       const currentSession = new Date().getHours() < 12 ? 'Sáng' : 'Chiều';
 
-      let presentCount = 0;
+      let totalStudents = 0;
+      if (isGlobalView) {
+        totalStudents = studentsData.length;
+      } else if (teacherClass) {
+        totalStudents = studentsData.filter(s => s.tenlop === teacherClass).length;
+      }
+
       let absentCount = 0;
       attendanceData.forEach(doc => {
         // Filter by class if not global view
@@ -41,11 +48,14 @@ export function Dashboard() {
 
         if (doc.records) {
           Object.values(doc.records).forEach(status => {
-            if (status === 'present') presentCount++;
-            else if (status.startsWith('absent')) absentCount++;
+            if (status.startsWith('absent')) absentCount++;
           });
         }
       });
+      
+      let presentCount = totalStudents - absentCount;
+      if (presentCount < 0) presentCount = 0;
+
       setAttendanceStats({ present: presentCount, absent: absentCount, session: currentSession });
       setLoading(false);
     };
