@@ -8,7 +8,7 @@ import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
 import { getAttendanceHistory, fetchStudents, fetchClasses, fetchSystemSettings, updateAttendanceStudent, createNotification } from '../lib/firebase';
 import { parseISO, format, addDays, parse, getMonth } from 'date-fns';
-import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X, ExternalLink } from 'lucide-react';
+import { FileText, Download, XCircle, CheckCircle, AlertCircle, Eye, Camera, Upload, X, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -18,6 +18,7 @@ import './AttendanceSearch.css';
 
 export function AttendanceSearch() {
   const [attendanceData, setAttendanceData] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +94,7 @@ export function AttendanceSearch() {
       });
 
       setAttendanceData(flatData);
+      setAllStudents(studentsData);
       setClasses(classesData);
       setSettings(sData);
 
@@ -162,6 +164,71 @@ export function AttendanceSearch() {
   const filteredData = useMemo(() => {
     if (!settings) return [];
     
+    if (statusFilter === 'unattended') {
+      if (timeFilterType !== 'day') {
+        return [{
+          id: 'dummy',
+          hoten: 'Vui lòng chọn "Theo ngày" để xem danh sách chưa điểm danh.',
+          className: '',
+          status: 'unattended'
+        }];
+      }
+
+      const attendedSet = new Set();
+      attendanceData.forEach(v => {
+        if (v.date === timeValueDay) {
+          if (sessionFilter === 'all' || v.session === sessionFilter) {
+            attendedSet.add(`${v.studentId}_${v.session}`);
+          }
+        }
+      });
+
+      let studentsToCheck = allStudents;
+      if (isGiaovienOnly) {
+         studentsToCheck = studentsToCheck.filter(s => s.tenlop === teacherClass);
+      } else {
+         if (targetFilterType === 'grade' && targetValueGrade) {
+           studentsToCheck = studentsToCheck.filter(s => s.khoi === targetValueGrade || s.tenlop?.startsWith(targetValueGrade));
+         } else if (targetFilterType === 'class' && targetValueClass) {
+           studentsToCheck = studentsToCheck.filter(s => s.tenlop === targetValueClass);
+         }
+      }
+      if (targetValueStudentId) {
+          const searchStr = targetValueStudentId.toLowerCase();
+          studentsToCheck = studentsToCheck.filter(s => 
+            (s.mahs || '').toLowerCase().includes(searchStr) || 
+            (s.hoten || '').toLowerCase().includes(searchStr)
+          );
+      }
+
+      const missing = [];
+      const sessionsToCheck = sessionFilter === 'all' ? ['Sáng', 'Chiều'] : [sessionFilter];
+      
+      studentsToCheck.forEach(s => {
+        sessionsToCheck.forEach(sess => {
+          if (!attendedSet.has(`${s.id}_${sess}`)) {
+            missing.push({
+              id: `unattended_${s.id}_${sess}`,
+              date: timeValueDay,
+              session: sess,
+              className: s.tenlop || 'Chưa xếp lớp',
+              studentId: s.id,
+              mahs: s.mahs || '',
+              hoten: s.hoten || '',
+              khoi: s.khoi || '',
+              status: 'unattended',
+              reason: null,
+              proofImage: null,
+              createdBy: null,
+              updatedBy: null,
+              updatedAt: null
+            });
+          }
+        });
+      });
+      return missing;
+    }
+
     const s1Start = parse(settings.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
     const s2Start = parse(settings.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
     const s1Weeks = settings.semester1Weeks || 18;
@@ -227,7 +294,7 @@ export function AttendanceSearch() {
 
       return true;
     });
-  }, [attendanceData, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, timeValueSemester, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, statusFilter, sessionFilter]);
+  }, [attendanceData, allStudents, settings, timeFilterType, timeValueDay, timeValueWeek, timeValueMonth, timeValueSemester, targetFilterType, targetValueGrade, targetValueClass, targetValueStudentId, statusFilter, sessionFilter, isGiaovienOnly, teacherClass]);
 
   const formatDateToVN = (dateStr) => {
     if (!dateStr) return '';
@@ -430,7 +497,8 @@ export function AttendanceSearch() {
     const tableRows = filteredData.map((v, index) => {
       let statusStr = 'Có mặt';
       let reasonStr = '';
-      if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonStr = 'Có phép (P)'; }
+      if (v.status === 'unattended') { statusStr = 'Chưa điểm danh'; }
+      else if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonStr = 'Có phép (P)'; }
       else if (v.status === 'absent_kp') { statusStr = 'Vắng'; reasonStr = 'Không phép (KP)'; }
 
       return [
@@ -531,7 +599,8 @@ export function AttendanceSearch() {
     filteredData.forEach((v, index) => {
       let statusStr = 'Có mặt';
       let reasonTypeStr = '';
-      if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonTypeStr = 'Có phép (P)'; }
+      if (v.status === 'unattended') { statusStr = 'Chưa điểm danh'; }
+      else if (v.status === 'absent_p') { statusStr = 'Vắng'; reasonTypeStr = 'Có phép (P)'; }
       else if (v.status === 'absent_kp') { statusStr = 'Vắng'; reasonTypeStr = 'Không phép (KP)'; }
 
       const rowData = [
@@ -541,7 +610,7 @@ export function AttendanceSearch() {
         v.date ? format(parseISO(v.date), 'dd/MM/yyyy') : '',
         v.session || '',
         statusStr,
-        v.status === 'absent_p' ? (v.reason || 'Việc riêng') : reasonTypeStr,
+        v.status === 'unattended' ? '' : (v.status === 'absent_p' ? (v.reason || 'Việc riêng') : reasonTypeStr),
         '' // Ghi chú
       ];
       const row = worksheet.addRow(rowData);
@@ -659,7 +728,8 @@ export function AttendanceSearch() {
                     {value: 'absent', label: 'Vắng mặt (P và KP)'},
                     {value: 'absent_kp', label: 'Vắng không phép'},
                     {value: 'absent_p', label: 'Vắng có phép'},
-                    {value: 'present', label: 'Có mặt'}
+                    {value: 'present', label: 'Có mặt'},
+                    {value: 'unattended', label: 'Chưa điểm danh'}
                   ]}
                   style={{ minWidth: '150px' }}
                 />
@@ -722,38 +792,46 @@ export function AttendanceSearch() {
                         </div>
                       </td>
                       <td>
-                        {v.status.startsWith('absent') ? (
-                          <span className="attendance-status-label absent inline-flex">
-                            <XCircle size={14} className="mr-1" /> Vắng mặt
-                          </span>
-                        ) : (
-                          <span className="attendance-status-label inline-flex" style={{ color: '#10b981' }}>
-                            <CheckCircle size={14} className="mr-1" /> Có mặt
-                          </span>
-                        )}
+                      {v.status === 'unattended' ? (
+                        <span className="attendance-status-label inline-flex" style={{ color: 'var(--warning)' }}>
+                          <AlertCircle size={14} className="mr-1" /> Chưa điểm danh
+                        </span>
+                      ) : v.status.startsWith('absent') ? (
+                        <span className="attendance-status-label absent inline-flex">
+                          <XCircle size={14} className="mr-1" /> Vắng mặt
+                        </span>
+                      ) : (
+                        <span className="attendance-status-label inline-flex" style={{ color: '#10b981' }}>
+                          <CheckCircle size={14} className="mr-1" /> Có mặt
+                        </span>
+                      )}
                       </td>
                       <td className="font-medium">
+                        {v.status === 'unattended' && <span style={{ color: 'var(--warning)' }}>-</span>}
                         {v.status === 'absent_p' && <span style={{ color: '#3b82f6' }}>Có phép (P)</span>}
                         {v.status === 'absent_kp' && <span style={{ color: '#ef4444' }}>Không phép (KP)</span>}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <button 
-                          className="action-btn view-btn mx-auto" 
-                          onClick={() => handleOpenDetail(v)}
-                          style={{
-                            background: 'rgba(99, 102, 241, 0.1)',
-                            color: 'var(--primary-color)',
-                            border: 'none',
-                            padding: '6px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <Eye size={18} />
-                        </button>
+                        {v.status !== 'unattended' && (
+                          <button 
+                            className="action-btn view-btn mx-auto" 
+                            onClick={() => handleOpenDetail(v)}
+                            title="Xem chi tiết"
+                            style={{
+                              background: 'rgba(99, 102, 241, 0.1)',
+                              color: 'var(--primary-color)',
+                              border: 'none',
+                              padding: '6px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <Eye size={18} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
