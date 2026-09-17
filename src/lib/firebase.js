@@ -50,19 +50,36 @@ export const COLLECTIONS = {
 };
 
 // --- CACHE SYSTEM (Để tiết kiệm Firebase Read) ---
-const AppCache = {
-  students: { data: null, timestamp: 0 },
-  classes: { data: null, timestamp: 0 },
-  settings: { data: null, timestamp: 0 },
-  violationTypes: { data: null, timestamp: 0 },
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days cho dữ liệu tĩnh
+
+const getLocalCache = (key) => {
+  try {
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.timestamp < CACHE_TTL) {
+        return parsed.data;
+      }
+    }
+  } catch (e) {
+    console.error('Error reading localStorage cache', e);
+  }
+  return null;
 };
-const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 hours cho dữ liệu tĩnh
+
+const setLocalCache = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (e) {
+    console.error('Error writing localStorage cache', e);
+  }
+};
 
 export const clearAppCache = () => {
-  AppCache.students.data = null;
-  AppCache.classes.data = null;
-  AppCache.settings.data = null;
-  AppCache.violationTypes.data = null;
+  localStorage.removeItem('qlhs_cache_students');
+  localStorage.removeItem('qlhs_cache_classes');
+  localStorage.removeItem('qlhs_cache_settings');
+  localStorage.removeItem('qlhs_cache_violationTypes');
 };
 
 // --- USERS / AUTH ---
@@ -370,8 +387,9 @@ export const getUserByUsername = async (username) => {
 // --- CLASSES ---
 export const fetchClasses = async (grade, forceRefresh = false) => {
   try {
-    if (!grade && !forceRefresh && AppCache.classes.data && (Date.now() - AppCache.classes.timestamp < CACHE_TTL)) {
-      return AppCache.classes.data;
+    if (!grade && !forceRefresh) {
+      const cached = getLocalCache('qlhs_cache_classes');
+      if (cached) return cached;
     }
 
     let q = collection(db, COLLECTIONS.CLASSES);
@@ -387,8 +405,7 @@ export const fetchClasses = async (grade, forceRefresh = false) => {
     const sorted = classes.sort((a, b) => a.tenlop.localeCompare(b.tenlop));
     
     if (!grade) {
-      AppCache.classes.data = sorted;
-      AppCache.classes.timestamp = Date.now();
+      setLocalCache('qlhs_cache_classes', sorted);
     }
     
     return sorted;
@@ -466,8 +483,9 @@ export const fetchStudents = async (filters = {}, forceRefresh = false) => {
     const hasFilters = Object.keys(filters).length > 0;
     
     // Return cache if valid and no specific filters requested
-    if (!hasFilters && !forceRefresh && AppCache.students.data && (Date.now() - AppCache.students.timestamp < CACHE_TTL)) {
-      return AppCache.students.data;
+    if (!hasFilters && !forceRefresh) {
+      const cached = getLocalCache('qlhs_cache_students');
+      if (cached) return cached;
     }
 
     let constraints = [];
@@ -485,8 +503,7 @@ export const fetchStudents = async (filters = {}, forceRefresh = false) => {
     
     // Save to cache if no filters
     if (!hasFilters) {
-      AppCache.students.data = sorted;
-      AppCache.students.timestamp = Date.now();
+      setLocalCache('qlhs_cache_students', sorted);
     }
     
     return sorted;
@@ -868,8 +885,13 @@ export const getAttendanceHistory = async (days = 30) => {
 };
 
 // --- VIOLATION TYPES ---
-export const fetchViolationTypes = async () => {
+export const fetchViolationTypes = async (forceRefresh = false) => {
   try {
+    if (!forceRefresh) {
+      const cached = getLocalCache('qlhs_cache_violationTypes');
+      if (cached) return cached;
+    }
+
     const defaultTypes = [
       'Đi trễ',
       'Sai đồng phục',
@@ -889,20 +911,12 @@ export const fetchViolationTypes = async () => {
     });
     
     const merged = Array.from(new Set([...defaultTypes, ...customTypes]));
-    return [...merged.map(t => ({ value: t, label: t })), { value: 'Khác', label: 'Khác' }];
+    const data = [...merged.map(t => ({ value: t, label: t })), { value: 'Khác', label: 'Khác' }];
+    setLocalCache('qlhs_cache_violationTypes', data);
+    return data;
   } catch (error) {
     console.error("Error fetching violation types:", error);
-    return [
-      { value: 'Đi trễ', label: 'Đi trễ' },
-      { value: 'Sai đồng phục', label: 'Sai đồng phục' },
-      { value: 'Vi phạm nội quy lớp học', label: 'Vi phạm nội quy lớp học' },
-      { value: 'Vô lễ với giáo viên', label: 'Vô lễ với giáo viên' },
-      { value: 'Đánh nhau', label: 'Đánh nhau' },
-      { value: 'Mang/Sử dụng điện thoại', label: 'Mang/Sử dụng điện thoại' },
-      { value: 'Mang giày sai quy định', label: 'Mang giày sai quy định' },
-      { value: 'Phá hoại tài sản nhà trường', label: 'Phá hoại tài sản nhà trường' },
-      { value: 'Khác', label: 'Khác' }
-    ];
+    return [];
   }
 };
 

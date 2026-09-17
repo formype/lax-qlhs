@@ -90,6 +90,9 @@ export function Search() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [editData, setEditData] = useState({ loaivipham: '', trangthai: '', minhchung: '' });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
  // For modal
 
   useEffect(() => {
@@ -386,6 +389,13 @@ export function Search() {
     return `Tháng ${month}/${year}`;
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredData]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const exportPDF = async () => {
     if (filteredData.length === 0) return;
 
@@ -656,7 +666,7 @@ export function Search() {
           ) : filteredData.length === 0 ? (
             <p className="text-center text-muted mt-4 w-full py-4">Không có dữ liệu</p>
           ) : (
-            filteredData.map((v) => (
+            paginatedData.map((v) => (
               <Card key={v.id} className="violation-card-modern">
                 <CardBody>
                   <div className="flex-between mb-2 align-start">
@@ -687,6 +697,18 @@ export function Search() {
             ))
           )}
         </div>
+        
+        {totalPages > 1 && (
+          <div className="flex-row gap-2" style={{ justifyContent: 'center', marginTop: '20px', marginBottom: '20px' }}>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+              &lt; Trước
+            </Button>
+            <span style={{ display: 'flex', alignItems: 'center', fontSize: '14px', padding: '0 10px' }}>Trang {currentPage} / {totalPages}</span>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+              Sau &gt;
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Detail Modal */}

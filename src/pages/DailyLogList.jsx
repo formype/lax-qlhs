@@ -46,6 +46,9 @@ export function DailyLogList() {
   const [usersMap, setUsersMap] = useState({});
   const [loading, setLoading] = useState(true);
   
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const [timeFilterType, setTimeFilterType] = useState('all'); // all, day, week, month
   const [timeValueDay, setTimeValueDay] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [timeValueWeek, setTimeValueWeek] = useState('1');
@@ -132,10 +135,17 @@ export function DailyLogList() {
     fetchData();
   };
 
-  const weekOptions = settings ? Array.from({ length: parseInt(settings.semester1Weeks || 18) + parseInt(settings.semester2Weeks || 17) }, (_, i) => ({
-    value: (i + 1).toString(),
+  const weekOptions = settings ? Array.from({ length: settings.semester1Weeks + settings.semester2Weeks }, (_, i) => ({
+    value: String(i + 1),
     label: `Tuần ${i + 1}`
   })) : [];
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [logs]);
+
+  const totalPages = Math.ceil(logs.length / itemsPerPage);
+  const paginatedLogs = logs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="search-page pb-20">
@@ -200,7 +210,7 @@ export function DailyLogList() {
           ) : logs.length === 0 ? (
             <p className="text-center text-muted mt-4 w-full py-4">Không có dữ liệu ghi nhận</p>
           ) : (
-            logs.map(log => (
+            paginatedLogs.map(log => (
               <Card key={log.id} className="violation-card-modern">
                 <CardBody>
                   <div className="flex-between mb-2 align-start">
@@ -247,6 +257,18 @@ export function DailyLogList() {
             ))
           )}
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex-row gap-2" style={{ justifyContent: 'center', marginTop: '20px', marginBottom: '20px' }}>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+              &lt; Trước
+            </Button>
+            <span style={{ display: 'flex', alignItems: 'center', fontSize: '14px', padding: '0 10px' }}>Trang {currentPage} / {totalPages}</span>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+              Sau &gt;
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

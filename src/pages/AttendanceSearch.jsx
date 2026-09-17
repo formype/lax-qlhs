@@ -66,6 +66,9 @@ export function AttendanceSearch() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const { user } = useAuth();
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // Filters state
   const [timeFilterType, setTimeFilterType] = useState('all'); // all, day, week, month, semester
   const [timeValueDay, setTimeValueDay] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -532,6 +535,13 @@ export function AttendanceSearch() {
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredData]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const exportPDF = async () => {
     if (filteredData.length === 0) return;
 
@@ -857,7 +867,7 @@ export function AttendanceSearch() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData.map((v) => (
+                  {paginatedData.map((v) => (
                     <tr key={v.id}>
                       <td className="font-semibold text-dark">{v.hoten}</td>
                       <td><span className="class-badge-modern table-badge">{v.className}</span></td>
@@ -916,6 +926,18 @@ export function AttendanceSearch() {
             </div>
           )}
         </div>
+        
+        {totalPages > 1 && (
+          <div className="flex-row gap-2" style={{ justifyContent: 'center', marginTop: '20px', marginBottom: '20px' }}>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+              &lt; Trước
+            </Button>
+            <span style={{ display: 'flex', alignItems: 'center', fontSize: '14px', padding: '0 10px' }}>Trang {currentPage} / {totalPages}</span>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+              Sau &gt;
+            </Button>
+          </div>
+        )}
       </div>
 
       {isModalOpen && selectedRecord && (
