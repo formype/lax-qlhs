@@ -49,6 +49,22 @@ export const COLLECTIONS = {
   DAILY_LOGS: 'dailyLogs'
 };
 
+// --- CACHE SYSTEM (Để tiết kiệm Firebase Read) ---
+const AppCache = {
+  students: { data: null, timestamp: 0 },
+  classes: { data: null, timestamp: 0 },
+  settings: { data: null, timestamp: 0 },
+  violationTypes: { data: null, timestamp: 0 },
+};
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour cho dữ liệu tĩnh
+
+export const clearAppCache = () => {
+  AppCache.students.data = null;
+  AppCache.classes.data = null;
+  AppCache.settings.data = null;
+  AppCache.violationTypes.data = null;
+};
+
 // --- USERS / AUTH ---
 export const loginUser = async (rawUsername, rawPassword) => {
   try {
@@ -352,8 +368,12 @@ export const getUserByUsername = async (username) => {
 };
 
 // --- CLASSES ---
-export const fetchClasses = async (grade) => {
+export const fetchClasses = async (grade, forceRefresh = false) => {
   try {
+    if (!grade && !forceRefresh && AppCache.classes.data && (Date.now() - AppCache.classes.timestamp < CACHE_TTL)) {
+      return AppCache.classes.data;
+    }
+
     let q = collection(db, COLLECTIONS.CLASSES);
     if (grade) {
       q = query(q, where("khoi", "==", grade));
@@ -363,7 +383,15 @@ export const fetchClasses = async (grade) => {
     querySnapshot.forEach((doc) => {
       classes.push({ id: doc.id, ...doc.data() });
     });
-    return classes.sort((a, b) => a.tenlop.localeCompare(b.tenlop));
+    
+    const sorted = classes.sort((a, b) => a.tenlop.localeCompare(b.tenlop));
+    
+    if (!grade) {
+      AppCache.classes.data = sorted;
+      AppCache.classes.timestamp = Date.now();
+    }
+    
+    return sorted;
   } catch (error) {
     console.error("Error fetching classes:", error);
     return [];
@@ -433,8 +461,15 @@ export const updateClass = async (classId, updates) => {
 };
 
 // --- STUDENTS ---
-export const fetchStudents = async (filters = {}) => {
+export const fetchStudents = async (filters = {}, forceRefresh = false) => {
   try {
+    const hasFilters = Object.keys(filters).length > 0;
+    
+    // Return cache if valid and no specific filters requested
+    if (!hasFilters && !forceRefresh && AppCache.students.data && (Date.now() - AppCache.students.timestamp < CACHE_TTL)) {
+      return AppCache.students.data;
+    }
+
     let constraints = [];
     if (filters.grade) constraints.push(where("khoi", "==", filters.grade));
     if (filters.className) constraints.push(where("tenlop", "==", filters.className));
@@ -445,7 +480,16 @@ export const fetchStudents = async (filters = {}) => {
     querySnapshot.forEach((doc) => {
       students.push({ id: doc.id, ...doc.data() });
     });
-    return students.sort((a, b) => (a.mahs || '').localeCompare(b.mahs || ''));
+    
+    const sorted = students.sort((a, b) => (a.mahs || '').localeCompare(b.mahs || ''));
+    
+    // Save to cache if no filters
+    if (!hasFilters) {
+      AppCache.students.data = sorted;
+      AppCache.students.timestamp = Date.now();
+    }
+    
+    return sorted;
   } catch (error) {
     console.error("Error fetching students:", error);
     return [];
@@ -599,9 +643,16 @@ export const addViolation = async (data) => {
   }
 };
 
-export const getRecentViolations = async () => {
+export const getRecentViolations = async (days = 30) => {
   try {
-    const q = query(collection(db, COLLECTIONS.VIOLATIONS), orderBy('createdAt', 'desc'));
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    
+    const q = query(
+      collection(db, COLLECTIONS.VIOLATIONS), 
+      where('createdAt', '>=', Timestamp.fromDate(fromDate)),
+      orderBy('createdAt', 'desc')
+    );
     const querySnapshot = await getDocs(q);
     const data = [];
     querySnapshot.forEach((doc) => {
@@ -793,9 +844,17 @@ export const getAttendanceByDate = async (date) => {
   }
 };
 
-export const getAttendanceHistory = async () => {
+export const getAttendanceHistory = async (days = 30) => {
   try {
-    const q = query(collection(db, COLLECTIONS.ATTENDANCE), orderBy('date', 'desc'));
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    const dateStr = fromDate.toISOString().split('T')[0];
+
+    const q = query(
+      collection(db, COLLECTIONS.ATTENDANCE),
+      where('date', '>=', dateStr),
+      orderBy('date', 'desc')
+    );
     const querySnapshot = await getDocs(q);
     const data = [];
     querySnapshot.forEach((doc) => {
@@ -866,8 +925,12 @@ export const addCustomViolationType = async (typeName) => {
 };
 
 // --- SETTINGS ---
-export const fetchSystemSettings = async () => {
+export const fetchSystemSettings = async (forceRefresh = false) => {
   try {
+    if (!forceRefresh && AppCache.settings.data && (Date.now() - AppCache.settings.timestamp < CACHE_TTL)) {
+      return AppCache.settings.data;
+    }
+    
     // Return default settings directly. Real DB logic can be added later.
     // For now we try to read from "settings" collection "academic_year" doc
     const q = collection(db, 'settings');
@@ -888,6 +951,9 @@ export const fetchSystemSettings = async () => {
         settings = { ...settings, ...data };
       }
     });
+    
+    AppCache.settings.data = settings;
+    AppCache.settings.timestamp = Date.now();
     return settings;
   } catch (error) {
     console.error("Error fetching settings:", error);
@@ -1488,11 +1554,14 @@ export const getDailyLogs = async (startDate, endDate) => {
     const dailyLogsRef = collection(db, COLLECTIONS.DAILY_LOGS);
     let q = dailyLogsRef;
     
-    // Nếu có startDate và endDate, ta filter theo thuộc tính `ngay` (ví dụ '2026-07-15')
     if (startDate && endDate) {
       q = query(dailyLogsRef, where('ngay', '>=', startDate), where('ngay', '<=', endDate), orderBy('ngay', 'desc'), orderBy('createdAt', 'desc'));
     } else {
-      q = query(dailyLogsRef, orderBy('ngay', 'desc'), orderBy('createdAt', 'desc'));
+      // Mặc định tải 30 ngày
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const defaultStartDate = thirtyDaysAgo.toISOString().split('T')[0];
+      q = query(dailyLogsRef, where('ngay', '>=', defaultStartDate), orderBy('ngay', 'desc'), orderBy('createdAt', 'desc'));
     }
     
     const querySnapshot = await getDocs(q);
@@ -1500,16 +1569,18 @@ export const getDailyLogs = async (startDate, endDate) => {
   } catch (error) {
     console.error("Error fetching daily logs: ", error);
     
-    // Nếu thiếu index Firebase, gọi fallback:
     if (error.message.includes('index')) {
-       const dailyLogsRef = collection(db, COLLECTIONS.DAILY_LOGS);
-       const q = query(dailyLogsRef, orderBy('createdAt', 'desc'));
-       const querySnapshot = await getDocs(q);
-       let data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-       if (startDate && endDate) {
-         data = data.filter(d => d.ngay >= startDate && d.ngay <= endDate);
+       // Fallback nếu thiếu index
+       try {
+         const thirtyDaysAgo = new Date();
+         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+         const fbq = query(collection(db, COLLECTIONS.DAILY_LOGS), where('createdAt', '>=', Timestamp.fromDate(thirtyDaysAgo)), orderBy('createdAt', 'desc'));
+         const snapshot = await getDocs(fbq);
+         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+       } catch (err) {
+         console.error("Fallback error: ", err);
+         return [];
        }
-       return data;
     }
     return [];
   }
