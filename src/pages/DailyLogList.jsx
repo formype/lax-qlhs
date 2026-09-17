@@ -10,6 +10,36 @@ import { Card, CardBody } from '../components/ui/Card';
 import { ExternalLink, Trash2, Calendar, Clock, User } from 'lucide-react';
 import './Search.css'; // Re-use search css
 
+const ProofImagePreview = ({ url, labelText }) => {
+  const [isImageError, setIsImageError] = useState(false);
+  if (!url) return null;
+
+  let imgSrc = url;
+  const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch) {
+    imgSrc = `https://drive.google.com/uc?id=${driveMatch[1]}`;
+  }
+
+  return (
+    <>
+      {!isImageError ? (
+        <img 
+          src={imgSrc} 
+          alt="Đính kèm" 
+          onClick={() => window.open(url, '_blank')} 
+          style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)', cursor: 'pointer' }} 
+          title="Nhấn để xem ảnh lớn"
+          onError={() => setIsImageError(true)}
+        />
+      ) : (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <ExternalLink size={14} style={{ marginRight: '6px' }} /> {labelText || 'Mở file đính kèm'}
+        </a>
+      )}
+    </>
+  );
+};
+
 export function DailyLogList() {
   const [allLogs, setAllLogs] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -188,13 +218,11 @@ export function DailyLogList() {
                   {log.images && log.images.length > 0 && (
                     <div className="mt-3 mb-2">
                       <p className="text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Hình ảnh đính kèm:</p>
-                      <div className="flex-row gap-2 flex-wrap">
-                        {log.images.map((url, index) => (
-                           <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                              <ExternalLink size={14} style={{ marginRight: '6px' }} /> Xem ảnh {index + 1}
-                           </a>
-                        ))}
-                      </div>
+                        <div className="flex-row gap-2 flex-wrap">
+                          {log.images.map((url, index) => (
+                             <ProofImagePreview key={index} url={url} labelText={`Xem ảnh ${index + 1}`} />
+                          ))}
+                        </div>
                     </div>
                   )}
                   
