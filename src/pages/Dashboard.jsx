@@ -106,7 +106,6 @@ export function Dashboard() {
   const filteredViolations = violations.filter(v => {
     if (isGlobalView) return true;
     if (teacherClass && v.tenlop === teacherClass) return true;
-    if (v.createdById === user?.uid) return true; // Include own violations for GV
     return false;
   });
 
@@ -229,15 +228,6 @@ export function Dashboard() {
                   </Card>
                 </>
               )}
-              <Card className="stat-card">
-                <CardBody className="flex-col gap-2">
-                  <div className="flex-row gap-2 text-muted">
-                    <CheckCircle size={16} color="var(--success)" />
-                    <span>Ghi nhận vi phạm của bạn (Tháng này)</span>
-                  </div>
-                  <div className="stat-number" style={{ color: 'var(--success)' }}>{loading ? '-' : filteredViolations.filter(v => v.createdById === user?.uid).length}</div>
-                </CardBody>
-              </Card>
             </>
           )}
 
