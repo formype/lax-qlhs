@@ -187,11 +187,11 @@ body.dark .view-detail-btn:hover {
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  max-height: 85vh; /* iOS safe max-height */
   display: flex;
   flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  overflow: hidden; /* Hide outer overflow */
 }
 
 .modal-header {
@@ -200,6 +200,7 @@ body.dark .view-detail-btn:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -212,6 +213,19 @@ body.dark .view-detail-btn:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+  flex: 1; /* Take remaining space */
+  min-height: 0; /* Allow scrolling */
+}
+
+.modal-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .detail-row {
