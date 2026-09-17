@@ -56,7 +56,7 @@ const AppCache = {
   settings: { data: null, timestamp: 0 },
   violationTypes: { data: null, timestamp: 0 },
 };
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour cho dữ liệu tĩnh
+const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 hours cho dữ liệu tĩnh
 
 export const clearAppCache = () => {
   AppCache.students.data = null;
