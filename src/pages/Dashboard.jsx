@@ -97,11 +97,16 @@ export function Dashboard() {
   }, [user]);
 
   const isGlobalView = user?.role?.some(r => ['admin', 'vip-admin', 'giamthi'].includes(r));
+  const isAdmin = user?.role?.some(r => ['admin', 'vip-admin'].includes(r));
+  const isGiamthi = user?.role?.includes('giamthi') && !isAdmin;
+  const isGiaovien = user?.role?.includes('giaovien') && !isAdmin && !isGiamthi;
+  
   const teacherClass = user?.teacherClass;
 
   const filteredViolations = violations.filter(v => {
     if (isGlobalView) return true;
     if (teacherClass && v.tenlop === teacherClass) return true;
+    if (v.createdById === user?.uid) return true; // Include own violations for GV
     return false;
   });
 
@@ -127,83 +132,115 @@ export function Dashboard() {
         )}
 
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <AlertCircle size={16} color="var(--warning)" />
-                <span>Hôm nay</span>
-              </div>
-              <div className="stat-number">{loading ? '-' : todayCount}</div>
-            </CardBody>
-          </Card>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <ShieldAlert size={16} color="var(--primary-color)" />
-                <span>Tuần này</span>
-              </div>
-              <div className="stat-number">{loading ? '-' : weekCount}</div>
-            </CardBody>
-          </Card>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <Clock size={16} color="var(--danger)" />
-                <span>Chưa xử lý</span>
-              </div>
-              <div className="stat-number" style={{ color: 'var(--danger)' }}>{loading ? '-' : pendingCount}</div>
-            </CardBody>
-          </Card>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <CheckCircle size={16} color="var(--success)" />
-                <span>Đã xử lý</span>
-              </div>
-              <div className="stat-number" style={{ color: 'var(--success)' }}>{loading ? '-' : resolvedCount}</div>
-            </CardBody>
-          </Card>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <UserCheck size={16} color="var(--primary-color)" />
-                <span>Có mặt ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
-              </div>
-              <div className="stat-number" style={{ color: 'var(--primary-color)' }}>{loading ? '-' : attendanceStats.present}</div>
-            </CardBody>
-          </Card>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <UserX size={16} color="var(--danger)" />
-                <span>Vắng ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
-              </div>
-              <div className="stat-number" style={{ color: 'var(--danger)' }}>{loading ? '-' : attendanceStats.absent}</div>
-            </CardBody>
-          </Card>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <CheckCircle size={16} color="var(--success)" />
-                <span>Đã điểm danh ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
-              </div>
-              <div className="stat-number" style={{ color: 'var(--success)' }}>{loading ? '-' : attendanceStats.attended}</div>
-            </CardBody>
-          </Card>
-          <Card className="stat-card">
-            <CardBody className="flex-col gap-2">
-              <div className="flex-row gap-2 text-muted">
-                <AlertCircle size={16} color="var(--warning)" />
-                <span>Chưa điểm danh ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
-              </div>
-              <div className="stat-number" style={{ color: 'var(--warning)' }}>{loading ? '-' : attendanceStats.unattended}</div>
-              {!loading && attendanceStats.unattendedClasses?.length > 0 && (
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Lớp: {attendanceStats.unattendedClasses.join(', ')}
-                </div>
+          
+          {/* STATS FOR ADMIN */}
+          {isAdmin && (
+            <>
+              <Card className="stat-card">
+                <CardBody className="flex-col gap-2">
+                  <div className="flex-row gap-2 text-muted">
+                    <UserCheck size={16} color="var(--primary-color)" />
+                    <span>Có mặt ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
+                  </div>
+                  <div className="stat-number" style={{ color: 'var(--primary-color)' }}>{loading ? '-' : attendanceStats.present}</div>
+                </CardBody>
+              </Card>
+              <Card className="stat-card">
+                <CardBody className="flex-col gap-2">
+                  <div className="flex-row gap-2 text-muted">
+                    <UserX size={16} color="var(--danger)" />
+                    <span>Vắng ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
+                  </div>
+                  <div className="stat-number" style={{ color: 'var(--danger)' }}>{loading ? '-' : attendanceStats.absent}</div>
+                </CardBody>
+              </Card>
+              <Card className="stat-card">
+                <CardBody className="flex-col gap-2">
+                  <div className="flex-row gap-2 text-muted">
+                    <CheckCircle size={16} color="var(--success)" />
+                    <span>Đã điểm danh ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
+                  </div>
+                  <div className="stat-number" style={{ color: 'var(--success)' }}>{loading ? '-' : attendanceStats.attended}</div>
+                </CardBody>
+              </Card>
+              <Card className="stat-card">
+                <CardBody className="flex-col gap-2">
+                  <div className="flex-row gap-2 text-muted">
+                    <AlertCircle size={16} color="var(--warning)" />
+                    <span>Chưa điểm danh ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
+                  </div>
+                  <div className="stat-number" style={{ color: 'var(--warning)' }}>{loading ? '-' : attendanceStats.unattended}</div>
+                  {!loading && attendanceStats.unattendedClasses?.length > 0 && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Lớp: {attendanceStats.unattendedClasses.join(', ')}
+                    </div>
+                  )}
+                </CardBody>
+              </Card>
+            </>
+          )}
+
+          {/* STATS FOR GIAMTHI */}
+          {isGiamthi && (
+            <>
+              <Card className="stat-card">
+                <CardBody className="flex-col gap-2">
+                  <div className="flex-row gap-2 text-muted">
+                    <UserCheck size={16} color="var(--primary-color)" />
+                    <span>Có mặt ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
+                  </div>
+                  <div className="stat-number" style={{ color: 'var(--primary-color)' }}>{loading ? '-' : attendanceStats.present}</div>
+                </CardBody>
+              </Card>
+              <Card className="stat-card">
+                <CardBody className="flex-col gap-2">
+                  <div className="flex-row gap-2 text-muted">
+                    <UserX size={16} color="var(--danger)" />
+                    <span>Vắng ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
+                  </div>
+                  <div className="stat-number" style={{ color: 'var(--danger)' }}>{loading ? '-' : attendanceStats.absent}</div>
+                </CardBody>
+              </Card>
+            </>
+          )}
+
+          {/* PROPOSED STATS FOR GIAOVIEN */}
+          {isGiaovien && (
+            <>
+              {teacherClass && (
+                <>
+                  <Card className="stat-card">
+                    <CardBody className="flex-col gap-2">
+                      <div className="flex-row gap-2 text-muted">
+                        <UserX size={16} color="var(--danger)" />
+                        <span>HS Lớp {teacherClass} vắng ({attendanceStats.session || 'Sáng'})</span>
+                      </div>
+                      <div className="stat-number" style={{ color: 'var(--danger)' }}>{loading ? '-' : attendanceStats.absent}</div>
+                    </CardBody>
+                  </Card>
+                  <Card className="stat-card">
+                    <CardBody className="flex-col gap-2">
+                      <div className="flex-row gap-2 text-muted">
+                        <AlertCircle size={16} color="var(--warning)" />
+                        <span>Lỗi vi phạm lớp {teacherClass} (Tuần này)</span>
+                      </div>
+                      <div className="stat-number" style={{ color: 'var(--warning)' }}>{loading ? '-' : weekCount}</div>
+                    </CardBody>
+                  </Card>
+                </>
               )}
-            </CardBody>
-          </Card>
+              <Card className="stat-card">
+                <CardBody className="flex-col gap-2">
+                  <div className="flex-row gap-2 text-muted">
+                    <CheckCircle size={16} color="var(--success)" />
+                    <span>Ghi nhận vi phạm của bạn (Tháng này)</span>
+                  </div>
+                  <div className="stat-number" style={{ color: 'var(--success)' }}>{loading ? '-' : filteredViolations.filter(v => v.createdById === user?.uid).length}</div>
+                </CardBody>
+              </Card>
+            </>
+          )}
+
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 'auto', paddingBottom: '20px', color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: '1.6' }}>
