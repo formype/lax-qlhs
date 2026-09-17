@@ -212,8 +212,10 @@ export function Search() {
       minhchung: editData.minhchung,
       updatedBy: updaterName
     });
+    setIsSavingEdit(false);
     
     if (result.success) {
+      alert('Cập nhật chi tiết vi phạm thành công!');
       // Update local state
       const updatedViolation = {
         ...selectedViolation,
@@ -224,10 +226,14 @@ export function Search() {
         updatedAt: { toMillis: () => Date.now() }
       };
       
+      // Cập nhật local data trước để UI phản hồi nhanh
       setViolations(prev => prev.map(v => v.id === selectedViolation.id ? updatedViolation : v));
-      setFilteredViolations(prev => prev.map(v => v.id === selectedViolation.id ? updatedViolation : v));
       setSelectedViolation(updatedViolation);
       setIsEditing(false);
+      
+      // Refresh lại dữ liệu từ server để hiển thị cập nhật mới nhất cho danh sách
+      const freshVData = await getRecentViolations();
+      setViolations(freshVData);
       
       // Notify Admin & Teacher
       createNotification(
@@ -245,8 +251,7 @@ export function Search() {
     } else {
       alert("Lỗi khi lưu chỉnh sửa: " + result.error);
     }
-    setIsSavingEdit(false);
-  };
+    };
 
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa vi phạm này không? Dữ liệu không thể khôi phục.")) {
@@ -836,8 +841,10 @@ export function Search() {
 
                       {uploading && (
                         <div className="upload-progress-container mt-2">
-                          <div className="upload-progress-bar" style={{ width: `${uploadProgress}%` }}></div>
-                          <span className="upload-progress-text">Đang tải file lên... {uploadProgress}%</span>
+                          <div className="progress-bar-track">
+                            <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }}></div>
+                          </div>
+                          <span className="upload-status-text">Đang tải lên... ({uploadProgress}%)</span>
                         </div>
                       )}
                     </div>

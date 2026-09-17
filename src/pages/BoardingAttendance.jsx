@@ -392,6 +392,7 @@ export function BoardingAttendance() {
     const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage, updaterName, updateReason);
     setIsUpdating(false);
     if (result.success) {
+      alert('Cập nhật chi tiết chuyên cần thành công!');
       createNotification(
         `Tài khoản ${updaterName} đã điều chỉnh phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}. Lý do: ${updateReason}`,
         ['admin', 'vip-admin'], // Gửi cho admin/vip-admin
@@ -415,6 +416,42 @@ export function BoardingAttendance() {
         }
         return item;
       }));
+
+      // Refresh lại dữ liệu từ server
+      const freshAttData = await getAttendanceHistory();
+      
+      const flatData = [];
+      const classesData = await fetchClasses();
+      const studentsData = await fetchStudents();
+      freshAttData.forEach(att => {
+        const studentIds = Object.keys(att.status || {});
+        
+        studentIds.forEach(studentId => {
+          const status = att.status[studentId];
+          const student = studentsData.find(s => s.id === studentId);
+          if (student) {
+            flatData.push({
+              id: `${att.id}_${studentId}`,
+              date: att.date,
+              session: att.session || 'Sáng',
+              className: att.className,
+              studentId: studentId,
+              mahs: student.mahs || '',
+              hoten: student.hoten || '',
+              khoi: student.khoi || '',
+              bantru: student.bantru || false,
+              status: status,
+              reason: att.reasons ? att.reasons[studentId] : (status === 'absent_p' ? 'Việc riêng' : null),
+              proofImage: att.proofs ? att.proofs[studentId] : null,
+              createdBy: att.createdBy || 'Hệ thống',
+              updatedBy: att.updatedBy ? att.updatedBy[studentId] : null,
+              updatedAt: att.updatedAt
+            });
+          }
+        });
+      });
+
+      setAttendanceData(flatData);
       handleCloseDetail();
     } else {
       alert("Cập nhật thất bại: " + result.error);

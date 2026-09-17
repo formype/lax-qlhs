@@ -63,6 +63,7 @@ export function AttendanceSearch() {
   const [updateReason, setUpdateReason] = useState('Việc riêng');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { user } = useAuth();
 
   // Filters state
@@ -380,6 +381,7 @@ export function AttendanceSearch() {
     }
 
     setIsUploading(true);
+    setUploadProgress(20);
     const appsScriptUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwsJP68m0xVqnKZVjw-U8_EL_EQPZLfhrZxV4M-xicykesYD25wN1PcihVVLclxwtNLHw/exec";
     const fileType = file.type || '';
 
@@ -425,6 +427,7 @@ export function AttendanceSearch() {
         setLocalPreview(`data:${fileType || 'image/jpeg'};base64,${base64Data}`);
       }
 
+      setUploadProgress(50);
       const response = await fetch(appsScriptUrl, {
         method: 'POST',
         mode: 'cors',
@@ -437,10 +440,12 @@ export function AttendanceSearch() {
         })
       });
       
+      setUploadProgress(90);
       const responseText = await response.text();
       let result = JSON.parse(responseText);
 
       if (result.result === 'success' || result.success === true || result.url) {
+        setUploadProgress(100);
         setProofImage(result.url);
       } else {
         throw new Error(result.error || 'Lỗi từ Google Drive');
@@ -449,7 +454,8 @@ export function AttendanceSearch() {
       alert("Không thể upload minh chứng. Lỗi: " + error.message);
     } finally {
       setIsUploading(false);
-      if (e.target.value) e.target.value = '';
+      setUploadProgress(0);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -460,6 +466,7 @@ export function AttendanceSearch() {
     const result = await updateAttendanceStudent(selectedRecord.date, selectedRecord.session, selectedRecord.className, selectedRecord.studentId, 'absent_p', proofImage, updaterName, updateReason);
     setIsUpdating(false);
     if (result.success) {
+      alert('Cập nhật chi tiết chuyên cần thành công!');
       createNotification(
         `Tài khoản ${updaterName} đã điều chỉnh phép vắng cho học sinh ${selectedRecord.hoten} lớp ${selectedRecord.className}. Lý do: ${updateReason}`,
         ['admin', 'vip-admin'], // Gửi cho admin/vip-admin
@@ -477,13 +484,49 @@ export function AttendanceSearch() {
           updatedBy: updaterName
         }
       );
-      setAttendanceData(prev => prev.map(item => {
-        if (item.id === selectedRecord.id) {
-          return { ...item, status: 'absent_p', reason: updateReason, proofImage: proofImage, updatedBy: updaterName, updatedAt: { toMillis: () => Date.now() } };
-        }
-        return item;
-      }));
-      handleCloseDetail();
+        setAttendanceData(prev => prev.map(item => {
+          if (item.id === selectedRecord.id) {
+            return { ...item, status: 'absent_p', reason: updateReason, proofImage: proofImage, updatedBy: updaterName, updatedAt: { toMillis: () => Date.now() } };
+          }
+          return item;
+        }));
+        
+        // Refresh lại dữ liệu từ server
+        const freshAttData = await getAttendanceHistory();
+        
+        const flatData = [];
+        const classesData = await fetchClasses();
+        const studentsData = await fetchStudents();
+        freshAttData.forEach(att => {
+          const classStudents = studentsData.filter(s => s.tenlop === att.className);
+          const studentIds = Object.keys(att.status || {});
+          
+          studentIds.forEach(studentId => {
+            const status = att.status[studentId];
+            const student = studentsData.find(s => s.id === studentId);
+            if (student) {
+              flatData.push({
+                id: `${att.id}_${studentId}`,
+                date: att.date,
+                session: att.session || 'Sáng',
+                className: att.className,
+                studentId: studentId,
+                mahs: student.mahs || '',
+                hoten: student.hoten || '',
+                khoi: student.khoi || '',
+                bantru: student.bantru || false,
+                status: status,
+                reason: att.reasons ? att.reasons[studentId] : (status === 'absent_p' ? 'Việc riêng' : null),
+                proofImage: att.proofs ? att.proofs[studentId] : null,
+                createdBy: att.createdBy || 'Hệ thống',
+                updatedBy: att.updatedBy ? att.updatedBy[studentId] : null,
+                updatedAt: att.updatedAt
+              });
+            }
+          });
+        });
+        setAttendanceData(flatData);
+        handleCloseDetail();
     } else {
       alert("Cập nhật thất bại: " + result.error);
     }
@@ -937,7 +980,14 @@ export function AttendanceSearch() {
                       </label>
                     </div>
 
-                    {isUploading && <div className="text-center mt-2 mb-3 text-sm text-muted">Đang xử lý và tải ảnh lên...</div>}
+                    {isUploading && (
+                      <div className="upload-progress-container mt-2 mb-3">
+                        <div className="progress-bar-track">
+                          <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }}></div>
+                        </div>
+                        <span className="upload-status-text">Đang tải lên... ({uploadProgress}%)</span>
+                      </div>
+                    )}
 
                     <div className="flex-row justify-center mb-3 items-center">
                       <span className="text-sm mr-2 text-dark font-medium">Lý do nghỉ:</span>
