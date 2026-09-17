@@ -8,13 +8,46 @@ import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
 import { getAttendanceHistory, fetchStudents, fetchClasses, fetchSystemSettings, updateAttendanceStudent, createNotification } from '../lib/firebase';
 import { parseISO, format, addDays, parse, getMonth } from 'date-fns';
-import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X, AlertTriangle } from 'lucide-react';
+import { FileText, Download, XCircle, CheckCircle, Eye, Camera, Upload, X, AlertTriangle, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import './Search.css'; // Reuse core search UI styles
 import './AttendanceSearch.css';
+
+const ProofImagePreview = ({ url, localPreview, labelText }) => {
+  const [isImageError, setIsImageError] = useState(false);
+  const targetUrl = localPreview || url;
+  if (!targetUrl) return null;
+
+  let imgSrc = targetUrl;
+  if (!localPreview) {
+    const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      imgSrc = `https://drive.google.com/uc?id=${driveMatch[1]}`;
+    }
+  }
+
+  return (
+    <>
+      {!isImageError ? (
+        <img 
+          src={imgSrc} 
+          alt="Minh chứng" 
+          onClick={() => window.open(targetUrl, '_blank')} 
+          style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer', marginTop: '8px' }} 
+          title="Nhấn để xem ảnh lớn"
+          onError={() => setIsImageError(true)}
+        />
+      ) : (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', marginTop: '8px' }}>
+          <ExternalLink size={16} className="mr-1" /> {labelText || 'Mở file minh chứng'}
+        </a>
+      )}
+    </>
+  );
+};
 
 export function BoardingAttendance() {
   const [attendanceData, setAttendanceData] = useState([]);
@@ -869,8 +902,8 @@ export function BoardingAttendance() {
 
                     {proofImage && (
                       <div className="image-preview mt-3 text-center">
-                        <p className="text-xs text-muted mb-2">Ảnh minh chứng:</p>
-                        <img src={proofImage} alt="Minh chứng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)' }} />
+                        <p className="text-xs text-muted mb-2">Minh chứng:</p>
+                        <ProofImagePreview url={proofImage} localPreview={null} labelText="Xem file minh chứng" />
                       </div>
                     )}
                   </div>
@@ -878,9 +911,9 @@ export function BoardingAttendance() {
 
                 {(selectedRecord.status === 'absent_p' || selectedRecord.status === 'present') && proofImage && (
                   <div className="upload-proof-section mt-4">
-                    <p className="text-sm font-semibold mb-2">Hình ảnh minh chứng:</p>
+                    <p className="text-sm font-semibold mb-2">Minh chứng:</p>
                     <div className="image-preview text-center">
-                      <img src={proofImage} alt="Minh chứng" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid var(--border-color)' }} />
+                      <ProofImagePreview url={proofImage} localPreview={null} labelText="Mở file minh chứng" />
                     </div>
                   </div>
                 )}

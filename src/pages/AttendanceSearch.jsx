@@ -16,6 +16,39 @@ import { saveAs } from 'file-saver';
 import './Search.css'; // Reuse core search UI styles
 import './AttendanceSearch.css';
 
+const ProofImagePreview = ({ url, localPreview, labelText }) => {
+  const [isImageError, setIsImageError] = useState(false);
+  const targetUrl = localPreview || url;
+  if (!targetUrl) return null;
+
+  let imgSrc = targetUrl;
+  if (!localPreview) {
+    const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      imgSrc = `https://drive.google.com/uc?id=${driveMatch[1]}`;
+    }
+  }
+
+  return (
+    <>
+      {!isImageError ? (
+        <img 
+          src={imgSrc} 
+          alt="Minh chứng" 
+          onClick={() => window.open(targetUrl, '_blank')} 
+          style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer', marginTop: '8px' }} 
+          title="Nhấn để xem ảnh lớn"
+          onError={() => setIsImageError(true)}
+        />
+      ) : (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', marginTop: '8px' }}>
+          <ExternalLink size={16} className="mr-1" /> {labelText || 'Mở file minh chứng'}
+        </a>
+      )}
+    </>
+  );
+};
+
 export function AttendanceSearch() {
   const [attendanceData, setAttendanceData] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
@@ -921,14 +954,8 @@ export function AttendanceSearch() {
 
                       {(localPreview || proofImage) && (
                         <div className="image-preview mt-3 text-center">
-                          <p className="text-xs text-muted mb-2">Ảnh minh chứng:</p>
-                          {localPreview || proofImage.startsWith('data:') ? (
-                            <img src={localPreview || proofImage} alt="Minh chứng" onClick={() => window.open(localPreview || proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh lớn" />
-                          ) : (
-                            <a href={proofImage} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                              <ExternalLink size={16} className="mr-1" /> Xem ảnh minh chứng
-                            </a>
-                          )}
+                          <p className="text-xs text-muted mb-2">Minh chứng:</p>
+                          <ProofImagePreview url={proofImage} localPreview={localPreview} labelText="Xem file minh chứng" />
                         </div>
                       )}
                   </div>
@@ -936,15 +963,9 @@ export function AttendanceSearch() {
 
                 {(selectedRecord.status === 'absent_p' || selectedRecord.status === 'present') && proofImage && (
                   <div className="upload-proof-section mt-4 text-center">
-                    <p className="text-sm font-semibold mb-2">Hình ảnh minh chứng:</p>
+                    <p className="text-sm font-semibold mb-2">Minh chứng:</p>
                     <div className="image-preview">
-                      {proofImage.startsWith('data:') ? (
-                        <img src={proofImage} alt="Minh chứng" onClick={() => window.open(proofImage, '_blank')} style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }} title="Nhấn để xem ảnh lớn" />
-                      ) : (
-                        <a href={proofImage} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', marginTop: '8px' }}>
-                          <ExternalLink size={16} className="mr-1" /> Mở ảnh minh chứng
-                        </a>
-                      )}
+                      <ProofImagePreview url={proofImage} localPreview={null} labelText="Mở file minh chứng" />
                     </div>
                   </div>
                 )}

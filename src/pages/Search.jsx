@@ -15,6 +15,44 @@ import { saveAs } from 'file-saver';
 import './Search.css';
 import './AddViolation.css';
 
+const ProofFilePreview = ({ url, idx, isEditing, onRemove }) => {
+  const [isImageError, setIsImageError] = useState(false);
+  let imgSrc = url;
+  const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch) {
+    imgSrc = `https://drive.google.com/uc?id=${driveMatch[1]}`;
+  }
+
+  return (
+    <div className="flex-row items-center gap-2" style={{marginBottom: '4px'}}>
+      {!isImageError ? (
+        <img 
+          src={imgSrc} 
+          alt={`Minh chứng ${idx + 1}`}
+          onError={() => setIsImageError(true)}
+          onClick={() => window.open(url, '_blank')}
+          style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--border-color)' }}
+          title="Nhấn để phóng to"
+        />
+      ) : (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="drive-link">
+          <ExternalLink size={14} style={{ marginRight: '4px' }} />
+          Xem file {idx + 1}
+        </a>
+      )}
+      {isEditing && (
+        <button 
+          className="btn-icon-link text-danger" 
+          style={{ padding: '0 4px' }}
+          onClick={onRemove}
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  );
+};
+
 export function Search() {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
@@ -741,25 +779,18 @@ export function Search() {
                   {(isEditing ? editData.minhchung : selectedViolation.minhchung)?.split(',').map((url, idx) => {
                     const tUrl = url.trim();
                     if (!tUrl) return null;
+                    const canEdit = isEditing && (user?.role?.includes('admin') || user?.role?.includes('vip-admin'));
                     return (
-                      <div key={idx} className="flex-row items-center gap-2" style={{marginBottom: '4px'}}>
-                        <a href={tUrl} target="_blank" rel="noopener noreferrer" className="drive-link">
-                          <ExternalLink size={14} style={{ marginRight: '4px' }} />
-                          Xem file {idx + 1}
-                        </a>
-                        {isEditing && (user?.role?.includes('admin') || user?.role?.includes('vip-admin')) && (
-                          <button 
-                            className="btn-icon-link text-danger" 
-                            style={{ padding: '0 4px' }}
-                            onClick={() => {
-                              const newLinks = editData.minhchung.split(',').map(s => s.trim()).filter((_, i) => i !== idx).join(', ');
-                              setEditData({...editData, minhchung: newLinks});
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
+                      <ProofFilePreview 
+                        key={idx} 
+                        url={tUrl} 
+                        idx={idx} 
+                        isEditing={canEdit} 
+                        onRemove={() => {
+                          const newLinks = editData.minhchung.split(',').map(s => s.trim()).filter((_, i) => i !== idx).join(', ');
+                          setEditData({...editData, minhchung: newLinks});
+                        }}
+                      />
                     );
                   })}
                   {isEditing && (
