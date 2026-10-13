@@ -58,7 +58,6 @@ export function ExtraClassTracking() {
   // --- STATE DÀNH CHO BẢNG MA TRẬN THEO TUẦN (GIỐNG HÌNH ẢNH) ---
   const [matrixClassId, setMatrixClassId] = useState('');
   const [matrixSearch, setMatrixSearch] = useState('');
-  const [matrixWeekMode, setMatrixWeekMode] = useState('term'); // 'term' (12-14 tuần) | 'recorded' (chỉ ngày đã điểm danh)
 
   // --- STATE DÀNH CHO DANH SÁCH CHI TIẾT ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -161,44 +160,19 @@ export function ExtraClassTracking() {
     );
   }, [enrolledStudents, selectedMatrixClass, matrixSearch]);
 
-  // Danh sách các ngày/tuần hiển thị trên cột của ma trận
+  // Danh sách các ngày/tuần hiển thị trên cột của ma trận (chỉ lấy các ngày thực tế đã được điểm danh)
   const matrixDateColumns = useMemo(() => {
     if (!selectedMatrixClass) return [];
 
-    // Các ngày đã thực tế điểm danh của môn này
+    // Các ngày đã thực tế điểm danh của môn này, sắp xếp tăng dần theo thời gian
     const recordedDates = Array.from(new Set(
       rawAttendance
         .filter(a => a.extraClassId === selectedMatrixClass.id && a.date)
         .map(a => a.date)
     )).sort();
 
-    if (matrixWeekMode === 'recorded') {
-      return recordedDates.length > 0 ? recordedDates : [format(new Date(), 'yyyy-MM-dd')];
-    }
-
-    // Chế độ 'term': Nếu có ngày đã điểm danh thì lấy ngày đầu tiên làm mốc tạo chuỗi 12-14 tuần (+7 ngày)
-    // Nếu chưa có, lấy ngày khai giảng học kỳ từ settings hoặc hôm nay
-    let baseDate;
-    if (recordedDates.length > 0) {
-      baseDate = parseISO(recordedDates[0]);
-    } else if (settings?.semester1StartDate) {
-      baseDate = parse(settings.semester1StartDate, 'yyyy-MM-dd', new Date());
-    } else {
-      baseDate = new Date();
-    }
-
-    const projected = [];
-    const totalWeeks = 12; // 12 tuần như trong hình ảnh mẫu
-    for (let i = 0; i < totalWeeks; i++) {
-      const d = new Date(baseDate);
-      d.setDate(baseDate.getDate() + i * 7);
-      projected.push(format(d, 'yyyy-MM-dd'));
-    }
-
-    // Gộp tất cả các ngày đã có điểm danh vào để đảm bảo không bị sót ngày nào
-    const allUnique = Array.from(new Set([...projected, ...recordedDates])).sort();
-    return allUnique;
-  }, [rawAttendance, selectedMatrixClass, matrixWeekMode, settings]);
+    return recordedDates;
+  }, [rawAttendance, selectedMatrixClass]);
 
   // Map tra cứu nhanh điểm danh: key = `${extraClassId}_${date}` -> doc data
   const attendanceMap = useMemo(() => {
@@ -232,6 +206,11 @@ export function ExtraClassTracking() {
   const handleExportMatrixExcel = async () => {
     if (!selectedMatrixClass || matrixStudents.length === 0) {
       alert('Không có dữ liệu học sinh để xuất bảng ma trận!');
+      return;
+    }
+
+    if (matrixDateColumns.length === 0) {
+      alert('Lớp ngoại khóa này chưa có buổi điểm danh nào để xuất bảng ma trận!');
       return;
     }
 
@@ -641,19 +620,6 @@ export function ExtraClassTracking() {
                       )}
                     </div>
                   </div>
-
-                  {/* Tùy chọn phạm vi tuần */}
-                  <div className="matrix-week-col">
-                    <label className="text-sm font-semibold mb-1 block">Phạm vi cột tuần</label>
-                    <Select
-                      value={matrixWeekMode}
-                      onChange={(e) => setMatrixWeekMode(e.target.value)}
-                      options={[
-                        { value: 'term', label: 'Cả học kỳ (12 tuần)' },
-                        { value: 'recorded', label: 'Chỉ ngày đã điểm danh' }
-                      ]}
-                    />
-                  </div>
                 </div>
               </CardBody>
             </Card>
@@ -664,6 +630,9 @@ export function ExtraClassTracking() {
                 <span className="summary-badge-item">
                   Sĩ số: <strong>{matrixStudents.length}</strong> học sinh
                 </span>
+                <span className="summary-badge-item">
+                  Đã điểm danh: <strong>{matrixDateColumns.length}</strong> buổi
+                </span>
                 <span className="summary-badge-item badge-absent">
                   Tổng lượt vắng: <strong>{matrixTotalAbsences}</strong>
                 </span>
@@ -673,7 +642,7 @@ export function ExtraClassTracking() {
                 <Button 
                   className="export-matrix-btn" 
                   onClick={handleExportMatrixExcel}
-                  disabled={loading || matrixStudents.length === 0}
+                  disabled={loading || matrixStudents.length === 0 || matrixDateColumns.length === 0}
                 >
                   <FileSpreadsheet size={16} />
                   <span>Xuất Excel theo mẫu tuần</span>
@@ -690,6 +659,12 @@ export function ExtraClassTracking() {
                   <Sparkles size={36} color="#8b5cf6" style={{ opacity: 0.6 }} />
                   <p className="font-semibold text-base">Không có học sinh trong môn này</p>
                   <p className="text-xs">Vui lòng chọn môn khác hoặc thêm học sinh vào lớp ngoại khóa.</p>
+                </div>
+              ) : matrixDateColumns.length === 0 ? (
+                <div className="text-center text-muted py-12 flex flex-col items-center gap-2">
+                  <Calendar size={36} color="#8b5cf6" style={{ opacity: 0.6 }} />
+                  <p className="font-semibold text-base">Môn này chưa có buổi điểm danh nào</p>
+                  <p className="text-xs">Khi có buổi điểm danh thực tế được lưu, hệ thống sẽ tự động cập nhật các cột ngày vào ma trận này.</p>
                 </div>
               ) : (
                 <div className="matrix-table-container">

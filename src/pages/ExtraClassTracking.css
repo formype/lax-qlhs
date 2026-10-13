@@ -58,7 +58,7 @@ body.dark .mode-pill-btn:hover {
 /* Matrix Controls Row */
 .matrix-controls-row {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr;
   gap: 14px;
   align-items: flex-end;
 }
