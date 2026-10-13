@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { useAuth } from '../contexts/AuthContext';
@@ -862,7 +863,7 @@ export function BoardingAttendance() {
         </div>
       </div>
 
-      {isModalOpen && selectedRecord && (
+      {isModalOpen && selectedRecord && createPortal(
         <div className="modal-overlay" onClick={handleCloseDetail}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <div className="modal-header">
@@ -965,7 +966,8 @@ export function BoardingAttendance() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

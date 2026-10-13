@@ -356,3 +356,27 @@ body.dark .input-field:-webkit-autofill:active{
     -webkit-text-fill-color: #f8fafc !important;
     transition: background-color 5000s ease-in-out 0s;
 }
+
+/* =============================================
+   GLOBAL MODAL FIXES (iOS Safe-Area & High Z-Index)
+   ============================================= */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999 !important;
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top, 16px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
+.main-content:has(.modal-overlay) {
+  z-index: 99998;
+}
+

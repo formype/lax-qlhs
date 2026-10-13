@@ -58,3 +58,10 @@
   border-radius: 50%;
   background: var(--primary-color);
 }
+
+/* Tự động ẩn thanh BottomNav khi có bảng Modal đang mở để không che khuất nút thao tác */
+body:has(.modal-overlay) .bottom-nav,
+.app-shell:has(.modal-overlay) .bottom-nav {
+  display: none !important;
+}
+
