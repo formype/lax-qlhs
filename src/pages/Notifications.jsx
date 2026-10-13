@@ -69,7 +69,8 @@ export function Notifications() {
   };
 
   const handleMarkAllAsRead = async () => {
-    const success = await markAllNotificationsAsRead(user.id);
+    const unreadIds = notifications.filter(n => !n.readBy?.includes(user?.id)).map(n => n.id);
+    const success = await markAllNotificationsAsRead(user.id, unreadIds);
     if (success) {
       setNotifications(prev => prev.map(n => ({
         ...n,

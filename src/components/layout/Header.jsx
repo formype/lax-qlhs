@@ -109,7 +109,8 @@ export function Header({ title }) {
   };
 
   const handleMarkAllAsRead = async () => {
-    await markAllNotificationsAsRead(user.id);
+    const unreadIds = notifications.filter(n => !n.readBy?.includes(user?.id)).map(n => n.id);
+    await markAllNotificationsAsRead(user.id, unreadIds);
   };
 
   const handleNotificationClick = async (notif) => {

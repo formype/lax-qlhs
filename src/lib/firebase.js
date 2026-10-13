@@ -1628,29 +1628,51 @@ export const markNotificationAsRead = async (notificationId, userId) => {
   }
 };
 
-export const markAllNotificationsAsRead = async (userId) => {
+export const markAllNotificationsAsRead = async (userId, notificationIds = []) => {
   try {
+    const docRefsToUpdate = new Set();
+
+    // 1. Ưu tiên thêm danh sách ID thông báo cụ thể (ví dụ đang hiển thị trên màn hình người dùng)
+    if (Array.isArray(notificationIds) && notificationIds.length > 0) {
+      notificationIds.forEach(id => {
+        if (id) docRefsToUpdate.add(id);
+      });
+    }
+
+    // 2. Đồng thời quét 300 thông báo MỚI NHẤT theo thời gian giảm dần
     const q = query(
       collection(db, COLLECTIONS.NOTIFICATIONS),
-      limit(100) // we'll just update recent ones for simplicity, or we can fetch all where readBy doesn't contain userId
+      orderBy("createdAt", "desc"),
+      limit(300)
     );
     const snap = await getDocs(q);
-    let batch = writeBatch(db);
-    let count = 0;
-    
     snap.docs.forEach((docSnap) => {
       const data = docSnap.data();
       if (!data.readBy || !data.readBy.includes(userId)) {
-        batch.update(docSnap.ref, {
-          readBy: arrayUnion(userId)
-        });
-        count++;
+        docRefsToUpdate.add(docSnap.id);
       }
     });
-    
-    if (count > 0) {
+
+    if (docRefsToUpdate.size === 0) {
+      return true;
+    }
+
+    // 3. Xử lý an toàn theo từng batch (tối đa 400 thao tác / batch để không vượt giới hạn 500 của Firestore)
+    const idsArray = Array.from(docRefsToUpdate);
+    const BATCH_SIZE = 400;
+
+    for (let i = 0; i < idsArray.length; i += BATCH_SIZE) {
+      const chunk = idsArray.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach(id => {
+        const ref = doc(db, COLLECTIONS.NOTIFICATIONS, id);
+        batch.update(ref, {
+          readBy: arrayUnion(userId)
+        });
+      });
       await batch.commit();
     }
+
     return true;
   } catch (error) {
     console.error("Lỗi khi đánh dấu đã đọc toàn bộ:", error);
