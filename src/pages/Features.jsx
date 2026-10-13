@@ -77,6 +77,16 @@ const FEATURE_SECTIONS = [
         path: '/attendance'
       },
       {
+        label: 'Điểm danh ngoại khóa',
+        icon: CheckSquare,
+        color: '#8b5cf6',
+        bg: 'rgba(139, 92, 246, 0.08)',
+        border: 'rgba(139, 92, 246, 0.2)',
+        shadow: 'rgba(139, 92, 246, 0.15)',
+        path: '/extra-class-attendance',
+        roles: ['admin', 'vip-admin', 'giamthi']
+      },
+      {
         label: 'Ghi nhận trong ngày',
         icon: BookOpen,
         color: '#f43f5e',
@@ -205,7 +215,8 @@ export function Features() {
                   
                   if (!isAdmin && !isGiamthi && (
                     item.path === '/add' || 
-                    item.path === '/attendance'
+                    item.path === '/attendance' ||
+                    item.path === '/extra-class-attendance'
                   )) {
                     return null;
                   }

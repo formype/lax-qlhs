@@ -47,6 +47,7 @@ export const COLLECTIONS = {
   VIOLATION_RULES: 'violationRules',
   DISCIPLINARY_ACTIONS: 'disciplinaryActions',
   ATTENDANCE: 'attendance',
+  EXTRA_CLASS_ATTENDANCE: 'extraClassAttendance',
   NOTIFICATIONS: 'notifications',
   DAILY_LOGS: 'dailyLogs',
   SYSTEM_CONFIG: 'system_config'
@@ -1420,6 +1421,47 @@ export const getAttendanceForDateClass = async (date, session, className) => {
     return null;
   } catch (e) {
     console.error("Error fetching attendance for date/class:", e);
+    return null;
+  }
+};
+
+export const saveExtraClassAttendance = async (date, extraClassId, extraClassName, attendanceData, createdBy = 'Hệ thống') => {
+  try {
+    const cleanDate = sanitizeDate(date) || date;
+    const cleanExtraClassId = sanitizeText(extraClassId, 100);
+    const cleanExtraClassName = sanitizeText(extraClassName, 100);
+    const docId = `${cleanExtraClassId}_${cleanDate}`;
+    const docRef = doc(db, COLLECTIONS.EXTRA_CLASS_ATTENDANCE, docId);
+
+    const docData = {
+      date: cleanDate,
+      extraClassId: cleanExtraClassId,
+      extraClassName: cleanExtraClassName,
+      records: attendanceData, // studentId -> 'present' | 'absent'
+      createdBy: sanitizeText(createdBy, 100),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(docRef, docData, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving extra class attendance:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const getExtraClassAttendance = async (date, extraClassId) => {
+  try {
+    if (!date || !extraClassId) return null;
+    const docId = `${extraClassId}_${date}`;
+    const docRef = doc(db, COLLECTIONS.EXTRA_CLASS_ATTENDANCE, docId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting extra class attendance:", error);
     return null;
   }
 };

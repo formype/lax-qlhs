@@ -15,6 +15,7 @@ import { ManageTeachers } from './pages/ManageTeachers';
 import { TeacherList } from './pages/TeacherList';
 import { ExtraClassStudentList } from './pages/ExtraClassStudentList';
 import { Attendance } from './pages/Attendance';
+import { ExtraClassAttendance } from './pages/ExtraClassAttendance';
 import { AttendanceSearch } from './pages/AttendanceSearch';
 import { StudentList } from './pages/StudentList';
 import { BoardingAttendance } from './pages/BoardingAttendance';
@@ -59,7 +60,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (!isAdmin && !isGiamthi && (
       location.pathname === '/add' || 
-      location.pathname === '/attendance'
+      location.pathname === '/attendance' ||
+      location.pathname === '/extra-class-attendance'
   )) {
     alert("Giáo viên không có quyền truy cập chức năng này!");
     return <Navigate to="/" replace />;
@@ -227,6 +229,7 @@ function AppRoutes() {
         <Route path="/teacher-list" element={<ProtectedRoute allowedRoles={['vip-admin']}><MainLayout><TeacherList /></MainLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
+        <Route path="/extra-class-attendance" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLog /></MainLayout></ProtectedRoute>} />
         <Route path="/daily-log-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><DailyLogList /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance-search" element={<ProtectedRoute><MainLayout><AttendanceSearch /></MainLayout></ProtectedRoute>} />
