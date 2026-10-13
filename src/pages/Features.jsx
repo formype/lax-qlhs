@@ -1,7 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
-import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee, BookOpen, GraduationCap, Sparkles, UserCheck, Users } from 'lucide-react';
+import { 
+  School, 
+  UserRoundPlus, 
+  CalendarCheck, 
+  FileWarning, 
+  UsersRound, 
+  ClipboardList, 
+  CheckSquare, 
+  BarChart2, 
+  Coffee, 
+  BookOpen, 
+  GraduationCap, 
+  Sparkles, 
+  UserCheck, 
+  Users 
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
 
@@ -38,27 +53,6 @@ const FEATURE_SECTIONS = [
         path: '/teachers'
       },
       {
-        label: 'Nhập thông tin lớp ngoại khóa',
-        icon: Sparkles,
-        color: '#8b5cf6',
-        bg: 'rgba(139, 92, 246, 0.08)',
-        border: 'rgba(139, 92, 246, 0.2)',
-        shadow: 'rgba(139, 92, 246, 0.15)',
-        path: '/extra-classes',
-        roles: ['admin', 'vip-admin']
-      },
-      {
-        label: 'Nhập thông tin học sinh ngoại khóa',
-        icon: UserCheck,
-        color: '#10b981',
-        bg: 'rgba(16, 185, 129, 0.08)',
-        border: 'rgba(16, 185, 129, 0.2)',
-        shadow: 'rgba(16, 185, 129, 0.15)',
-        path: '/extra-class-students',
-        roles: ['admin', 'vip-admin']
-      },
-
-      {
         label: 'Nhập thông tin vi phạm',
         icon: FileWarning,
         color: '#f59e0b',
@@ -75,16 +69,6 @@ const FEATURE_SECTIONS = [
         border: 'rgba(16, 185, 129, 0.2)',
         shadow: 'rgba(16, 185, 129, 0.15)',
         path: '/attendance'
-      },
-      {
-        label: 'Điểm danh ngoại khóa',
-        icon: CheckSquare,
-        color: '#8b5cf6',
-        bg: 'rgba(139, 92, 246, 0.08)',
-        border: 'rgba(139, 92, 246, 0.2)',
-        shadow: 'rgba(139, 92, 246, 0.15)',
-        path: '/extra-class-attendance',
-        roles: ['admin', 'vip-admin', 'giamthi']
       },
       {
         label: 'Ghi nhận trong ngày',
@@ -112,16 +96,6 @@ const FEATURE_SECTIONS = [
         path: '/student-list'
       },
       {
-        label: 'Danh sách học sinh ngoại khóa',
-        icon: Users,
-        color: '#8b5cf6',
-        bg: 'rgba(139, 92, 246, 0.08)',
-        border: 'rgba(139, 92, 246, 0.2)',
-        shadow: 'rgba(139, 92, 246, 0.15)',
-        path: '/extra-class-student-list',
-        roles: ['admin', 'vip-admin', 'giamthi']
-      },
-      {
         label: 'Danh sách giáo viên',
         icon: GraduationCap,
         color: '#f43f5e',
@@ -141,7 +115,7 @@ const FEATURE_SECTIONS = [
       },
       {
         label: 'Theo dõi bán trú',
-        icon: Coffee, // Using Coffee icon for boarding
+        icon: Coffee,
         color: '#8b5cf6',
         bg: 'rgba(139, 92, 246, 0.08)',
         border: 'rgba(139, 92, 246, 0.2)',
@@ -178,6 +152,52 @@ const FEATURE_SECTIONS = [
         path: '/statistics'
       },
     ]
+  },
+  {
+    title: 'Ngoại khóa',
+    icon: '🎯',
+    items: [
+      {
+        label: 'Nhập thông tin lớp ngoại khóa',
+        icon: Sparkles,
+        color: '#8b5cf6',
+        bg: 'rgba(139, 92, 246, 0.08)',
+        border: 'rgba(139, 92, 246, 0.2)',
+        shadow: 'rgba(139, 92, 246, 0.15)',
+        path: '/extra-classes',
+        roles: ['admin', 'vip-admin']
+      },
+      {
+        label: 'Nhập thông tin học sinh ngoại khóa',
+        icon: UserCheck,
+        color: '#10b981',
+        bg: 'rgba(16, 185, 129, 0.08)',
+        border: 'rgba(16, 185, 129, 0.2)',
+        shadow: 'rgba(16, 185, 129, 0.15)',
+        path: '/extra-class-students',
+        roles: ['admin', 'vip-admin']
+      },
+      {
+        label: 'Điểm danh ngoại khóa',
+        icon: CheckSquare,
+        color: '#0ea5e9',
+        bg: 'rgba(14, 165, 233, 0.08)',
+        border: 'rgba(14, 165, 233, 0.2)',
+        shadow: 'rgba(14, 165, 233, 0.15)',
+        path: '/extra-class-attendance',
+        roles: ['admin', 'vip-admin', 'giamthi']
+      },
+      {
+        label: 'Danh sách học sinh ngoại khóa',
+        icon: Users,
+        color: '#f59e0b',
+        bg: 'rgba(245, 158, 11, 0.08)',
+        border: 'rgba(245, 158, 11, 0.2)',
+        shadow: 'rgba(245, 158, 11, 0.15)',
+        path: '/extra-class-student-list',
+        roles: ['admin', 'vip-admin', 'giamthi']
+      }
+    ]
   }
 ];
 
@@ -194,9 +214,15 @@ export function Features() {
           const isVipAdmin = user?.role?.includes('vip-admin');
           const isGiamthi = user?.role?.includes('giamthi');
           const isGiaovien = user?.role?.includes('giaovien');
+
           if (section.title === 'Nhập thông tin' && !isAdmin && !isGiamthi) {
             return null;
           }
+
+          if (section.title === 'Ngoại khóa' && !isAdmin && !isGiamthi) {
+            return null;
+          }
+
           return (
             <div key={section.title} className="feature-section">
               <div className="feature-section-header">
@@ -233,29 +259,29 @@ export function Features() {
                   )) {
                     return null;
                   }
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.label}
-                    className="feature-card"
-                    onClick={() => navigate(item.path)}
-                  >
-                    <div
-                      className="feature-icon-wrapper"
-                      style={{ 
-                        backgroundColor: item.bg,
-                        borderColor: item.border,
-                        boxShadow: `0 6px 16px -4px ${item.shadow}`
-                      }}
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.label}
+                      className="feature-card"
+                      onClick={() => navigate(item.path)}
                     >
-                      <Icon size={26} color={item.color} strokeWidth={1.7} />
-                    </div>
-                    <span className="feature-card-label">{item.label}</span>
-                  </button>
-                );
-              })}
+                      <div
+                        className="feature-icon-wrapper"
+                        style={{ 
+                          backgroundColor: item.bg,
+                          borderColor: item.border,
+                          boxShadow: `0 6px 16px -4px ${item.shadow}`
+                        }}
+                      >
+                        <Icon size={26} color={item.color} strokeWidth={1.7} />
+                      </div>
+                      <span className="feature-card-label">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
           );
         })}
       </div>
