@@ -763,6 +763,20 @@ export const sortExtraClassStudents = (students) => {
   });
 };
 
+export const fetchAllExtraClassStudents = async () => {
+  try {
+    const snap = await getDocs(collection(db, COLLECTIONS.EXTRA_CLASS_STUDENTS));
+    const list = [];
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    return sortExtraClassStudents(list);
+  } catch (error) {
+    console.error("Error fetching all extra class students:", error);
+    return [];
+  }
+};
+
 export const fetchStudentsForExtraClass = async (extraClassId) => {
   try {
     if (!extraClassId) return [];
@@ -788,8 +802,20 @@ export const addStudentsToExtraClass = async (extraClassId, extraClassName, stud
       return { success: false, error: 'Dữ liệu không hợp lệ.' };
     }
 
+    // Fetch existing enrolled students across all extra classes to enforce 1-class rule
+    const existingSnap = await getDocs(collection(db, COLLECTIONS.EXTRA_CLASS_STUDENTS));
+    const existingMap = new Map();
+    existingSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const m = (data.mahs || '').trim().toUpperCase();
+      if (m) {
+        existingMap.set(m, data);
+      }
+    });
+
     const chunkSize = 450;
     let addedCount = 0;
+    let skippedCount = 0;
 
     for (let i = 0; i < studentsList.length; i += chunkSize) {
       const chunk = studentsList.slice(i, i + chunkSize);
@@ -799,6 +825,13 @@ export const addStudentsToExtraClass = async (extraClassId, extraClassName, stud
         const cleanMahs = sanitizeText(st.mahs || '', 50).trim().toUpperCase();
         if (!cleanMahs) return;
         
+        // If student is already enrolled in ANY other extra class, skip them
+        const existing = existingMap.get(cleanMahs);
+        if (existing && existing.extraClassId !== extraClassId) {
+          skippedCount++;
+          return;
+        }
+
         // Doc ID format ensures no duplicates for the same student in this extra class
         const safeDocId = `${extraClassId}_${cleanMahs.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
         const docRef = doc(db, COLLECTIONS.EXTRA_CLASS_STUDENTS, safeDocId);
@@ -815,13 +848,14 @@ export const addStudentsToExtraClass = async (extraClassId, extraClassName, stud
         };
 
         batch.set(docRef, data, { merge: true });
+        existingMap.set(cleanMahs, data);
         addedCount++;
       });
 
       await batch.commit();
     }
 
-    return { success: true, count: addedCount };
+    return { success: true, count: addedCount, skipped: skippedCount };
   } catch (error) {
     console.error("Error adding students to extra class:", error);
     return { success: false, error: error.message || error.toString() };

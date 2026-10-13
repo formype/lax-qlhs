@@ -205,6 +205,18 @@ body.dark .students-selection-table-wrapper .modern-table td {
   cursor: default;
 }
 
+.extra-students-table .student-row.enrolled-other-row td,
+.students-selection-table-wrapper .student-row.enrolled-other-row td {
+  opacity: 0.65;
+  background-color: rgba(245, 158, 11, 0.05);
+  cursor: not-allowed;
+}
+
+body.dark .extra-students-table .student-row.enrolled-other-row td,
+body.dark .students-selection-table-wrapper .student-row.enrolled-other-row td {
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
 .custom-checkbox {
   width: 18px;
   height: 18px;
@@ -231,6 +243,28 @@ body.dark .students-selection-table-wrapper .modern-table td {
   padding: 2px 8px;
   border-radius: 9999px;
   border: 1px solid #a7f3d0;
+}
+
+.badge-enrolled-other {
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid #fde68a;
+  display: inline-block;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+body.dark .badge-enrolled-other {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 .badge-selected {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Input, Select } from '../components/ui/Input';
@@ -7,7 +7,8 @@ import {
   fetchExtraClasses, 
   fetchStudents, 
   fetchClasses, 
-  fetchStudentsForExtraClass, 
+  fetchStudentsForExtraClass,
+  fetchAllExtraClassStudents,
   addStudentsToExtraClass, 
   removeStudentFromExtraClass,
   removeMultipleStudentsFromExtraClass,
@@ -52,8 +53,8 @@ export function ManageExtraClassStudents() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [loadingClasses, setLoadingClasses] = useState(true);
 
-  // Enrolled students in selected extra class
-  const [enrolledStudents, setEnrolledStudents] = useState([]);
+  // All enrolled students across all extra classes
+  const [allEnrolledStudents, setAllEnrolledStudents] = useState([]);
   const [loadingEnrolled, setLoadingEnrolled] = useState(false);
   const [enrolledSearch, setEnrolledSearch] = useState('');
   const [selectedEnrolledIds, setSelectedEnrolledIds] = useState(new Set());
@@ -89,18 +90,59 @@ export function ManageExtraClassStudents() {
   const [excelSuccess, setExcelSuccess] = useState('');
   const [excelError, setExcelError] = useState('');
 
-  // Load extra classes and regular classes on mount
+  // Map of student mahs (uppercase) -> Array of { id, extraClassId, extraClassName }
+  const allEnrolledMap = useMemo(() => {
+    const map = new Map();
+    allEnrolledStudents.forEach(item => {
+      const mahs = (item.mahs || '').trim().toUpperCase();
+      if (!mahs) return;
+      if (!map.has(mahs)) {
+        map.set(mahs, []);
+      }
+      map.get(mahs).push({
+        id: item.id,
+        extraClassId: item.extraClassId,
+        extraClassName: item.extraClassName
+      });
+    });
+    return map;
+  }, [allEnrolledStudents]);
+
+  // Students in currently selected extra class (sorted by class ascending, then by mahs)
+  const enrolledStudents = useMemo(() => {
+    if (!selectedClassId) return [];
+    const list = allEnrolledStudents.filter(s => s.extraClassId === selectedClassId);
+    return sortExtraClassStudents(list);
+  }, [allEnrolledStudents, selectedClassId]);
+
+  // Helper to check student enrollment status relative to selected class
+  const getStudentEnrollmentStatus = (mahs) => {
+    const clean = (mahs || '').trim().toUpperCase();
+    if (!clean) return { inCurrent: false, inOther: false, otherClassName: '' };
+    const list = allEnrolledMap.get(clean) || [];
+    const inCurrent = list.some(e => e.extraClassId === selectedClassId);
+    const otherList = list.filter(e => e.extraClassId !== selectedClassId);
+    return {
+      inCurrent,
+      inOther: otherList.length > 0,
+      otherClassName: otherList.map(e => e.extraClassName).join(', ')
+    };
+  };
+
+  // Load extra classes, regular classes, and all extra class enrollments on mount
   useEffect(() => {
     if (!isAdmin) return;
 
     const loadInitial = async () => {
       setLoadingClasses(true);
-      const [eClasses, cList] = await Promise.all([
+      const [eClasses, cList, enrolledList] = await Promise.all([
         fetchExtraClasses(),
-        fetchClasses()
+        fetchClasses(),
+        fetchAllExtraClassStudents()
       ]);
       setExtraClasses(eClasses);
       setClassesList(cList);
+      setAllEnrolledStudents(enrolledList);
       if (eClasses.length > 0) {
         setSelectedClassId(eClasses[0].id);
         setSelectedClass(eClasses[0]);
@@ -111,15 +153,11 @@ export function ManageExtraClassStudents() {
     loadInitial();
   }, [isAdmin]);
 
-  // Load students for selected extra class
-  const loadEnrolled = async (classId) => {
-    if (!classId) {
-      setEnrolledStudents([]);
-      return;
-    }
+  // Reload all extra class enrollments
+  const loadAllEnrolled = async () => {
     setLoadingEnrolled(true);
-    const list = await fetchStudentsForExtraClass(classId);
-    setEnrolledStudents(sortExtraClassStudents(list));
+    const list = await fetchAllExtraClassStudents();
+    setAllEnrolledStudents(list);
     setSelectedEnrolledIds(new Set());
     setLoadingEnrolled(false);
   };
@@ -138,7 +176,7 @@ export function ManageExtraClassStudents() {
     if (selectedClassId) {
       const cls = extraClasses.find(c => c.id === selectedClassId);
       setSelectedClass(cls || null);
-      loadEnrolled(selectedClassId);
+      setSelectedEnrolledIds(new Set());
       setSelectedToAdd(new Set());
       setManualSuccess('');
       setManualError('');
@@ -160,9 +198,6 @@ export function ManageExtraClassStudents() {
   const handleClassChange = (e) => {
     setSelectedClassId(e.target.value);
   };
-
-  // Enrolled student lookup set by mahs
-  const enrolledMahsSet = new Set(enrolledStudents.map(s => (s.mahs || '').toUpperCase()));
 
   // Filtered all students for Dạng 1 (sorted by class ascending, then by mahs)
   const filteredAllStudents = allStudents
@@ -188,10 +223,18 @@ export function ManageExtraClassStudents() {
       return compareMahs(a.mahs, b.mahs);
     });
 
+  // Available students in filtered list (not enrolled in ANY extra class)
+  const availableStudentsCount = useMemo(() => {
+    return filteredAllStudents.filter(s => {
+      const status = getStudentEnrollmentStatus(s.mahs);
+      return !status.inCurrent && !status.inOther;
+    }).length;
+  }, [filteredAllStudents, allEnrolledMap, selectedClassId]);
+
   // Toggle student selection for Dạng 1
   const toggleSelectStudent = (student) => {
-    const isEnrolled = enrolledMahsSet.has((student.mahs || '').toUpperCase());
-    if (isEnrolled) return; // Already in class
+    const status = getStudentEnrollmentStatus(student.mahs);
+    if (status.inCurrent || status.inOther) return; // Cannot select if already in ANY extra class
 
     const key = student.id || student.mahs;
     setSelectedToAdd(prev => {
@@ -205,13 +248,14 @@ export function ManageExtraClassStudents() {
     });
   };
 
-  // Toggle select all available in filtered list
+  // Toggle select all available in filtered list (only students not in any extra class)
   const toggleSelectAllFiltered = () => {
-    const availableStudents = filteredAllStudents.filter(
-      s => !enrolledMahsSet.has((s.mahs || '').toUpperCase())
-    );
+    const availableStudents = filteredAllStudents.filter(s => {
+      const status = getStudentEnrollmentStatus(s.mahs);
+      return !status.inCurrent && !status.inOther;
+    });
 
-    const allSelected = availableStudents.every(s => selectedToAdd.has(s.id || s.mahs));
+    const allSelected = availableStudents.length > 0 && availableStudents.every(s => selectedToAdd.has(s.id || s.mahs));
 
     if (allSelected) {
       // Deselect all
@@ -221,7 +265,7 @@ export function ManageExtraClassStudents() {
         return next;
       });
     } else {
-      // Select all
+      // Select all available
       setSelectedToAdd(prev => {
         const next = new Set(prev);
         availableStudents.forEach(s => next.add(s.id || s.mahs));
@@ -241,11 +285,22 @@ export function ManageExtraClassStudents() {
       return;
     }
 
+    // Strictly filter out any student enrolled in ANY extra class
+    const studentsToAddList = allStudents.filter(s => {
+      if (!selectedToAdd.has(s.id || s.mahs)) return false;
+      const status = getStudentEnrollmentStatus(s.mahs);
+      return !status.inCurrent && !status.inOther;
+    });
+
+    if (studentsToAddList.length === 0) {
+      setManualError('Không có học sinh hợp lệ để thêm (các học sinh đã tham gia lớp ngoại khóa khác).');
+      return;
+    }
+
     setAddingManual(true);
     setManualError('');
     setManualSuccess('');
 
-    const studentsToAddList = allStudents.filter(s => selectedToAdd.has(s.id || s.mahs));
     const targetClassName = selectedClass.tenlopngoaikhoa || selectedClass.name;
 
     const res = await addStudentsToExtraClass(
@@ -260,7 +315,7 @@ export function ManageExtraClassStudents() {
     if (res.success) {
       setManualSuccess(`✓ Đã thêm thành công ${res.count} học sinh vào lớp "${targetClassName}"!`);
       setSelectedToAdd(new Set());
-      loadEnrolled(selectedClass.id);
+      loadAllEnrolled();
       setTimeout(() => setManualSuccess(''), 4000);
     } else {
       setManualError(res.error || 'Có lỗi xảy ra khi thêm học sinh.');
@@ -303,7 +358,6 @@ export function ManageExtraClassStudents() {
         }
 
         const parsed = [];
-        const enrolledSet = new Set(enrolledStudents.map(s => (s.mahs || '').toUpperCase()));
 
         for (let i = 1; i < rawData.length; i++) {
           const row = rawData[i];
@@ -315,8 +369,20 @@ export function ManageExtraClassStudents() {
 
           if (!mahs && !hoten) continue;
 
-          const isEnrolled = enrolledSet.has(mahs);
+          const status = getStudentEnrollmentStatus(mahs);
+          const isEnrolled = status.inCurrent || status.inOther;
           const isValid = !!(mahs && hoten);
+
+          let statusNote = 'Hợp lệ';
+          if (!mahs) {
+            statusNote = 'Thiếu Mã HS';
+          } else if (!hoten) {
+            statusNote = 'Thiếu Họ tên';
+          } else if (status.inCurrent) {
+            statusNote = 'Đã có trong lớp này';
+          } else if (status.inOther) {
+            statusNote = `Đã học lớp "${status.otherClassName}"`;
+          }
 
           parsed.push({
             mahs,
@@ -324,13 +390,10 @@ export function ManageExtraClassStudents() {
             tenlop,
             isValid,
             isEnrolled,
-            statusNote: !mahs 
-              ? 'Thiếu Mã HS' 
-              : !hoten 
-              ? 'Thiếu Họ tên' 
-              : isEnrolled 
-              ? 'Đã có trong lớp' 
-              : 'Hợp lệ'
+            inCurrent: status.inCurrent,
+            inOther: status.inOther,
+            otherClassName: status.otherClassName,
+            statusNote
           });
         }
 
@@ -386,7 +449,7 @@ export function ManageExtraClassStudents() {
 
     const validStudents = excelPreview.filter(p => p.isValid && !p.isEnrolled);
     if (validStudents.length === 0) {
-      setExcelError('Không có học sinh mới nào hợp lệ để thêm (các học sinh có thể đã có trong lớp hoặc thông tin không hợp lệ).');
+      setExcelError('Không có học sinh mới nào hợp lệ để thêm (các học sinh có thể đã có trong lớp, đã tham gia lớp ngoại khóa khác hoặc thông tin không hợp lệ).');
       return;
     }
 
@@ -409,7 +472,7 @@ export function ManageExtraClassStudents() {
       setExcelSuccess(`✓ Đã thêm thành công ${res.count} học sinh từ Excel vào lớp "${targetClassName}"!`);
       setExcelPreview([]);
       setExcelFile(null);
-      loadEnrolled(selectedClass.id);
+      loadAllEnrolled();
       setTimeout(() => setExcelSuccess(''), 4000);
     } else {
       setExcelError(res.error || 'Có lỗi xảy ra khi lưu dữ liệu từ Excel.');
@@ -421,7 +484,7 @@ export function ManageExtraClassStudents() {
     if (window.confirm(`Bạn có chắc muốn xóa học sinh "${student.hoten}" khỏi lớp ngoại khóa này?`)) {
       const res = await removeStudentFromExtraClass(student.id);
       if (res.success) {
-        loadEnrolled(selectedClassId);
+        loadAllEnrolled();
       } else {
         alert(res.error || 'Lỗi khi xóa học sinh.');
       }
@@ -437,7 +500,7 @@ export function ManageExtraClassStudents() {
       setIsDeleting(false);
       if (res.success) {
         setSelectedEnrolledIds(new Set());
-        loadEnrolled(selectedClassId);
+        loadAllEnrolled();
       } else {
         alert(res.error || 'Lỗi khi xóa học sinh.');
       }
@@ -503,7 +566,7 @@ export function ManageExtraClassStudents() {
       setIsTransferModalOpen(false);
       setStudentsToTransfer([]);
       setSelectedEnrolledIds(new Set());
-      loadEnrolled(selectedClassId);
+      loadAllEnrolled();
       setManualSuccess(`✓ Đã chuyển thành công ${res.count} học sinh sang lớp "${targetClassName}"!`);
       setTimeout(() => setManualSuccess(''), 4000);
     } else {
@@ -694,10 +757,13 @@ export function ManageExtraClassStudents() {
                       type="button"
                       className="select-all-btn"
                       onClick={toggleSelectAllFiltered}
-                      disabled={filteredAllStudents.length === 0}
+                      disabled={availableStudentsCount === 0}
                     >
-                      {filteredAllStudents.filter(s => !enrolledMahsSet.has((s.mahs || '').toUpperCase())).length > 0 &&
-                       filteredAllStudents.filter(s => !enrolledMahsSet.has((s.mahs || '').toUpperCase())).every(s => selectedToAdd.has(s.id || s.mahs)) ? (
+                      {availableStudentsCount > 0 &&
+                       filteredAllStudents.filter(s => {
+                         const status = getStudentEnrollmentStatus(s.mahs);
+                         return !status.inCurrent && !status.inOther;
+                       }).every(s => selectedToAdd.has(s.id || s.mahs)) ? (
                         <>
                           <CheckSquare size={16} color="#8b5cf6" />
                           <span>Bỏ chọn tất cả</span>
@@ -705,7 +771,7 @@ export function ManageExtraClassStudents() {
                       ) : (
                         <>
                           <Square size={16} />
-                          <span>Chọn tất cả ({filteredAllStudents.filter(s => !enrolledMahsSet.has((s.mahs || '').toUpperCase())).length} HS)</span>
+                          <span>Chọn tất cả ({availableStudentsCount} HS chưa tham gia)</span>
                         </>
                       )}
                     </button>
@@ -741,20 +807,21 @@ export function ManageExtraClassStudents() {
                         </thead>
                         <tbody>
                           {filteredAllStudents.map((st) => {
-                            const isEnrolled = enrolledMahsSet.has((st.mahs || '').toUpperCase());
+                            const { inCurrent, inOther, otherClassName } = getStudentEnrollmentStatus(st.mahs);
+                            const isDisabled = inCurrent || inOther;
                             const isChecked = selectedToAdd.has(st.id || st.mahs);
                             return (
                               <tr 
                                 key={st.id || st.mahs}
-                                className={`student-row ${isEnrolled ? 'enrolled-row' : ''} ${isChecked ? 'selected-row' : ''}`}
-                                onClick={() => toggleSelectStudent(st)}
+                                className={`student-row ${inCurrent ? 'enrolled-row' : ''} ${inOther ? 'enrolled-other-row' : ''} ${isChecked ? 'selected-row' : ''}`}
+                                onClick={() => !isDisabled && toggleSelectStudent(st)}
                               >
                                 <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                                   <input
                                     type="checkbox"
-                                    checked={isEnrolled || isChecked}
-                                    disabled={isEnrolled}
-                                    onChange={() => toggleSelectStudent(st)}
+                                    checked={inCurrent || isChecked}
+                                    disabled={isDisabled}
+                                    onChange={() => !isDisabled && toggleSelectStudent(st)}
                                     className="custom-checkbox"
                                   />
                                 </td>
@@ -764,8 +831,12 @@ export function ManageExtraClassStudents() {
                                   <span className="class-badge-mini">{st.tenlop}</span>
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
-                                  {isEnrolled ? (
+                                  {inCurrent ? (
                                     <span className="badge-already-enrolled">Đã trong lớp</span>
+                                  ) : inOther ? (
+                                    <span className="badge-enrolled-other" title={`Đã tham gia lớp ngoại khóa "${otherClassName}"`}>
+                                      Đã học: {otherClassName}
+                                    </span>
                                   ) : isChecked ? (
                                     <span className="badge-selected">Đã chọn</span>
                                   ) : (
@@ -896,7 +967,10 @@ export function ManageExtraClassStudents() {
                           </thead>
                           <tbody>
                             {excelPreview.map((item, idx) => (
-                              <tr key={idx} className={item.isEnrolled ? 'enrolled-row' : !item.isValid ? 'error-row' : ''}>
+                              <tr 
+                                key={idx} 
+                                className={item.inCurrent ? 'enrolled-row' : item.inOther ? 'enrolled-other-row' : !item.isValid ? 'error-row' : ''}
+                              >
                                 <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                                 <td className="font-semibold">{item.mahs || '---'}</td>
                                 <td>{item.hoten || '---'}</td>
@@ -904,8 +978,12 @@ export function ManageExtraClassStudents() {
                                   {item.tenlop ? <span className="class-badge-mini">{item.tenlop}</span> : '---'}
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
-                                  {item.isEnrolled ? (
-                                    <span className="badge-already-enrolled">Đã có trong lớp</span>
+                                  {item.inCurrent ? (
+                                    <span className="badge-already-enrolled">Đã trong lớp</span>
+                                  ) : item.inOther ? (
+                                    <span className="badge-enrolled-other" title={`Đã tham gia lớp ngoại khóa "${item.otherClassName}"`}>
+                                      Đã học: {item.otherClassName}
+                                    </span>
                                   ) : item.isValid ? (
                                     <span className="badge-selected">Sẵn sàng thêm</span>
                                   ) : (
