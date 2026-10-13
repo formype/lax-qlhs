@@ -37,6 +37,7 @@ export function AddViolation() {
 
   const [formData, setFormData] = useState({
     mahs: '',
+    studentId: '',
     hoten: '',
     tenlop: '',
     loaivipham: '',
@@ -47,6 +48,7 @@ export function AddViolation() {
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
   const dateInputRef = useRef(null);
 
   // Load violation types on mount
@@ -75,7 +77,7 @@ export function AddViolation() {
 
     if (!mahsVal.trim()) {
       setStudentWarning('');
-      setFormData(f => ({ ...f, hoten: '', tenlop: '' }));
+      setFormData(f => ({ ...f, studentId: '', hoten: '', tenlop: '' }));
       return;
     }
 
@@ -87,12 +89,13 @@ export function AddViolation() {
       setStudentWarning('');
       setFormData(f => ({
         ...f,
+        studentId: result.data.id,
         hoten: result.data.hoten,
         tenlop: result.data.tenlop
       }));
     } else {
       setStudentWarning('Không tồn tại học sinh có mã học sinh này');
-      setFormData(f => ({ ...f, hoten: '', tenlop: '' }));
+      setFormData(f => ({ ...f, studentId: '', hoten: '', tenlop: '' }));
     }
   };
 
@@ -299,41 +302,62 @@ export function AddViolation() {
     if (result.success) {
       setSuccess(true);
       
+      const attendanceAdjusted = result.attendanceSync?.updated;
+      const sessionName = result.attendanceSync?.session || (new Date().getHours() < 12 ? 'Sáng' : 'Chiều');
+
+      if (attendanceAdjusted) {
+        setSuccessMsg(`Đã lưu vi phạm! Hệ thống đã tự động chuyển chuyên cần buổi ${sessionName} của học sinh ${formData.hoten} từ Vắng sang Có mặt.`);
+      } else {
+        setSuccessMsg('Đã lưu thông tin vi phạm thành công!');
+      }
+
       // Send notification
+      // If attendance was adjusted, homeroom teacher (GVCN) must always receive it with explicit note
       const isMyClass = user?.teacherClass === formData.tenlop;
-      const targetClasses = isMyClass ? [] : [formData.tenlop];
+      const targetClasses = (attendanceAdjusted || !isMyClass) ? [formData.tenlop] : [];
       
-      createNotification(
-        `Tài khoản ${createdBy} đã ghi nhận học sinh ${formData.hoten} lớp ${formData.tenlop} vi phạm: ${finalViolationType}.`,
-        [], // Giám thị ghi nhận thì chỉ gửi GVCN (qua targetClasses), không gửi Admin
-        targetClasses,
-        {
-          type: 'violation',
-          violationId: result.id,
-          studentName: formData.hoten,
-          className: formData.tenlop,
-          date: formData.ngayvipham,
-          violationName: finalViolationType,
-          createdBy: createdBy
-        }
-      );
+      let notificationMsg = `Tài khoản ${createdBy} đã ghi nhận học sinh ${formData.hoten} lớp ${formData.tenlop} vi phạm: ${finalViolationType}.`;
+      if (attendanceAdjusted) {
+        notificationMsg += ` Chuyên cần buổi ${sessionName} của học sinh đã được hệ thống tự động cập nhật từ Vắng sang Có mặt (GVCN không cần chỉnh sửa thủ công).`;
+      }
+      
+      if (targetClasses.length > 0) {
+        createNotification(
+          notificationMsg,
+          [], // Giám thị ghi nhận thì chỉ gửi GVCN (qua targetClasses), không gửi Admin
+          targetClasses,
+          {
+            type: 'violation',
+            violationId: result.id,
+            studentName: formData.hoten,
+            className: formData.tenlop,
+            date: formData.ngayvipham,
+            violationName: finalViolationType,
+            createdBy: createdBy,
+            attendanceAdjusted: !!attendanceAdjusted,
+            session: sessionName
+          }
+        );
+      }
       
       // Reset form instead of navigating away
       setTimeout(() => {
         setSuccess(false);
+        setSuccessMsg('');
         setFormData(prev => ({
           mahs: '',
+          studentId: '',
           hoten: '',
           tenlop: '',
           loaivipham: prev.loaivipham, 
           noidung: '',
           ngayvipham: getLocalISODate(),
-          trangthai: 'Chưa xử lý'
+          trangthai: 'Đã xử lý'
         }));
         setEvidenceList([]);
         setCustomViolation('');
         setIsCustomSelected(false);
-      }, 2000);
+      }, 3500);
     } else {
       alert("Có lỗi xảy ra khi lưu dữ liệu.");
     }
@@ -563,6 +587,26 @@ export function AddViolation() {
                 onChange={handleChange}
                 required
               />
+
+              {successMsg && (
+                <div className="success-banner" style={{
+                  backgroundColor: '#ecfdf5',
+                  border: '1px solid #10b981',
+                  color: '#065f46',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  marginTop: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  lineHeight: '1.4'
+                }}>
+                  <CheckCircle size={20} color="#10b981" style={{ flexShrink: 0 }} />
+                  <span>{successMsg}</span>
+                </div>
+              )}
 
               <Button
                 type="submit"

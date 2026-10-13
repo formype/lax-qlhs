@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot, limit, arrayUnion, startAfter } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, where, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot, limit, arrayUnion, startAfter, deleteField } from 'firebase/firestore';
 import { 
   sanitizeText, 
   sanitizeUsername, 
@@ -811,6 +811,56 @@ export const updateTeacher = async (teacherId, updateData) => {
 };
 
 // --- VIOLATIONS ---
+export const checkAndSyncLateAttendance = async (studentId, className, date, session, updatedBy = 'Hệ thống') => {
+  try {
+    if (!studentId || !className || !date || !session) {
+      return { updated: false, reason: 'missing_params' };
+    }
+
+    const cleanDate = sanitizeDate(date) || date;
+    const cleanSession = (session === 'Chiều' || session === 'afternoon') ? 'Chiều' : 'Sáng';
+    const safeClassName = sanitizeText(className, 50).replace(/\//g, '-');
+    const docId = `${safeClassName}_${cleanDate}_${cleanSession}`;
+    const docRef = doc(db, COLLECTIONS.ATTENDANCE, docId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      return { updated: false, reason: 'not_attended_yet', session: cleanSession, date: cleanDate };
+    }
+
+    const attData = docSnap.data();
+    const currentStatus = attData.records ? attData.records[studentId] : null;
+
+    // Kiểm tra nếu học sinh đang bị ghi nhận vắng (không phép, có phép, hoặc chung)
+    if (currentStatus === 'absent_kp' || currentStatus === 'absent_p' || currentStatus === 'absent') {
+      const updates = {
+        [`records.${studentId}`]: 'present',
+        [`updatedBy.${studentId}`]: sanitizeText(`${updatedBy} (Đi trễ - tự động đổi sang Có mặt)`, 100),
+        updatedAt: serverTimestamp()
+      };
+
+      if (attData.reasons && attData.reasons[studentId]) {
+        updates[`reasons.${studentId}`] = deleteField();
+      }
+
+      await updateDoc(docRef, updates);
+      return {
+        updated: true,
+        previousStatus: currentStatus,
+        session: cleanSession,
+        date: cleanDate,
+        className,
+        studentId
+      };
+    }
+
+    return { updated: false, currentStatus, session: cleanSession, date: cleanDate };
+  } catch (error) {
+    console.error("Error in checkAndSyncLateAttendance:", error);
+    return { updated: false, error: error.message || error.toString() };
+  }
+};
+
 export const addViolation = async (data) => {
   try {
     // Validate violation payload and image size
@@ -833,7 +883,37 @@ export const addViolation = async (data) => {
     };
 
     const docRef = await addDoc(collection(db, COLLECTIONS.VIOLATIONS), cleanData);
-    return { success: true, id: docRef.id };
+
+    // Tự động kiểm tra và đồng bộ chuyên cần nếu là lỗi "Đi trễ"
+    let attendanceSync = { updated: false };
+    const violationType = (cleanData.loaivipham || '').trim();
+    if (violationType === 'Đi trễ' || violationType.toLowerCase() === 'đi trễ') {
+      try {
+        let studentId = cleanData.studentId;
+        if (!studentId && cleanData.mahs) {
+          const stRes = await getStudentByCode(cleanData.mahs);
+          if (stRes.success && stRes.data) {
+            studentId = stRes.data.id;
+          }
+        }
+
+        const currentHour = new Date().getHours();
+        const currentSession = currentHour < 12 ? 'Sáng' : 'Chiều';
+        const violationDate = cleanData.ngayvipham || new Date().toISOString().split('T')[0];
+
+        attendanceSync = await checkAndSyncLateAttendance(
+          studentId,
+          cleanData.tenlop,
+          violationDate,
+          currentSession,
+          cleanData.createdBy || cleanData.nguoinhap || 'Hệ thống'
+        );
+      } catch (attErr) {
+        console.error("Lỗi khi tự động đồng bộ chuyên cần do đi trễ:", attErr);
+      }
+    }
+
+    return { success: true, id: docRef.id, attendanceSync };
   } catch (error) {
     console.error("Error adding violation: ", error);
     return { success: false, error: error.message || error.toString() };
