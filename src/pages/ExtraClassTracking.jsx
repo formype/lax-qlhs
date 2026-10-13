@@ -209,11 +209,6 @@ export function ExtraClassTracking() {
       return;
     }
 
-    if (matrixDateColumns.length === 0) {
-      alert('Lớp ngoại khóa này chưa có buổi điểm danh nào để xuất bảng ma trận!');
-      return;
-    }
-
     const workbook = new ExcelJS.Workbook();
     const sheetName = (selectedMatrixClass.tenlopngoaikhoa || selectedMatrixClass.name || 'MaTran').replace(/[:\\/?*\[\]]/g, '').slice(0, 30);
     const worksheet = workbook.addWorksheet(sheetName, {
@@ -221,9 +216,14 @@ export function ExtraClassTracking() {
     });
 
     const clsName = selectedMatrixClass.tenlopngoaikhoa || selectedMatrixClass.name || 'Ngoại khóa';
+    const hasRecordedDates = matrixDateColumns.length > 0;
+    const dateColCount = hasRecordedDates ? matrixDateColumns.length : 1;
 
-    // Cấu hình độ rộng các cột
-    const dateColDefs = matrixDateColumns.map(() => ({ width: 11 }));
+    // Cấu hình độ rộng các cột (nếu chưa có buổi điểm danh nào thì tạo 1 cột trống sẵn)
+    const dateColDefs = hasRecordedDates 
+      ? matrixDateColumns.map(() => ({ width: 11 }))
+      : [{ width: 11 }];
+
     worksheet.columns = [
       { key: 'stt', width: 7 },
       { key: 'hoten', width: 28 },
@@ -239,7 +239,7 @@ export function ExtraClassTracking() {
     cellA1.font = { name: 'Times New Roman', size: 12, bold: true };
     cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    const endColLetter = worksheet.getColumn(3 + matrixDateColumns.length + 1).letter;
+    const endColLetter = worksheet.getColumn(3 + dateColCount + 1).letter;
     worksheet.mergeCells(`D1:${endColLetter}1`);
     const cellD1 = worksheet.getCell('D1');
     cellD1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
@@ -279,17 +279,19 @@ export function ExtraClassTracking() {
     cellLop.font = { name: 'Times New Roman', size: 11, bold: true };
     cellLop.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Merge "Tuần học" qua tất cả các cột ngày
+    // Merge "Tuần học" qua các cột ngày (nếu > 1 cột) hoặc gán trực tiếp cho cột D
     const firstDateColLetter = 'D';
-    const lastDateColLetter = worksheet.getColumn(3 + matrixDateColumns.length).letter;
-    worksheet.mergeCells(`${firstDateColLetter}6:${lastDateColLetter}6`);
+    const lastDateColLetter = worksheet.getColumn(3 + dateColCount).letter;
+    if (firstDateColLetter !== lastDateColLetter) {
+      worksheet.mergeCells(`${firstDateColLetter}6:${lastDateColLetter}6`);
+    }
     const cellTuanHoc = worksheet.getCell(`${firstDateColLetter}6`);
     cellTuanHoc.value = "Tuần học";
     cellTuanHoc.font = { name: 'Times New Roman', size: 11, bold: true };
     cellTuanHoc.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Cột Tổng vắng
-    const totalAbsentColLetter = worksheet.getColumn(3 + matrixDateColumns.length + 1).letter;
+    const totalAbsentColLetter = worksheet.getColumn(3 + dateColCount + 1).letter;
     worksheet.mergeCells(`${totalAbsentColLetter}6:${totalAbsentColLetter}7`);
     const cellTongVang = worksheet.getCell(`${totalAbsentColLetter}6`);
     cellTongVang.value = "Tổng vắng";
@@ -298,17 +300,24 @@ export function ExtraClassTracking() {
 
     // Dòng 7: Hàng ngày tháng (Sub-header)
     const row7 = worksheet.getRow(7);
-    matrixDateColumns.forEach((d, idx) => {
-      const cell = row7.getCell(4 + idx);
-      cell.value = format(parseISO(d), 'dd/MM/yy');
+    if (hasRecordedDates) {
+      matrixDateColumns.forEach((d, idx) => {
+        const cell = row7.getCell(4 + idx);
+        cell.value = format(parseISO(d), 'dd/MM/yy');
+        cell.font = { name: 'Times New Roman', size: 10, bold: true };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+    } else {
+      const cell = row7.getCell(4);
+      cell.value = "";
       cell.font = { name: 'Times New Roman', size: 10, bold: true };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
+    }
 
     // Style borders & fill cho Header (Rows 6 & 7)
     for (let r = 6; r <= 7; r++) {
       const row = worksheet.getRow(r);
-      for (let c = 1; c <= 3 + matrixDateColumns.length + 1; c++) {
+      for (let c = 1; c <= 3 + dateColCount + 1; c++) {
         const cell = row.getCell(c);
         cell.border = {
           top: { style: 'thin' },
@@ -333,18 +342,23 @@ export function ExtraClassTracking() {
         st.tenlop || st.lop || ''
       ];
 
-      matrixDateColumns.forEach((d) => {
-        const att = attendanceMap.get(`${selectedMatrixClass.id}_${d}`);
-        let cellVal = '';
-        if (att && att.records) {
-          const stStatus = att.records[st.id] || (st.mahs && att.records[st.mahs]);
-          if (stStatus === 'absent') {
-            cellVal = 'v';
-            stAbsentCount++;
+      if (hasRecordedDates) {
+        matrixDateColumns.forEach((d) => {
+          const att = attendanceMap.get(`${selectedMatrixClass.id}_${d}`);
+          let cellVal = '';
+          if (att && att.records) {
+            const stStatus = att.records[st.id] || (st.mahs && att.records[st.mahs]);
+            if (stStatus === 'absent') {
+              cellVal = 'v';
+              stAbsentCount++;
+            }
           }
-        }
-        rowValues.push(cellVal);
-      });
+          rowValues.push(cellVal);
+        });
+      } else {
+        // Cột trống sẵn
+        rowValues.push('');
+      }
 
       rowValues.push(stAbsentCount > 0 ? stAbsentCount : '');
 
@@ -377,7 +391,7 @@ export function ExtraClassTracking() {
         }
 
         // Cột Tổng vắng có số
-        if (colNumber === 3 + matrixDateColumns.length + 1 && typeof cell.value === 'number') {
+        if (colNumber === 3 + dateColCount + 1 && typeof cell.value === 'number') {
           cell.font = { name: 'Times New Roman', size: 11, bold: true, color: { argb: 'FFDC2626' } };
         }
       });
@@ -642,7 +656,7 @@ export function ExtraClassTracking() {
                 <Button 
                   className="export-matrix-btn" 
                   onClick={handleExportMatrixExcel}
-                  disabled={loading || matrixStudents.length === 0 || matrixDateColumns.length === 0}
+                  disabled={loading || matrixStudents.length === 0}
                 >
                   <FileSpreadsheet size={16} />
                   <span>Xuất Excel theo mẫu tuần</span>
@@ -660,12 +674,6 @@ export function ExtraClassTracking() {
                   <p className="font-semibold text-base">Không có học sinh trong môn này</p>
                   <p className="text-xs">Vui lòng chọn môn khác hoặc thêm học sinh vào lớp ngoại khóa.</p>
                 </div>
-              ) : matrixDateColumns.length === 0 ? (
-                <div className="text-center text-muted py-12 flex flex-col items-center gap-2">
-                  <Calendar size={36} color="#8b5cf6" style={{ opacity: 0.6 }} />
-                  <p className="font-semibold text-base">Môn này chưa có buổi điểm danh nào</p>
-                  <p className="text-xs">Khi có buổi điểm danh thực tế được lưu, hệ thống sẽ tự động cập nhật các cột ngày vào ma trận này.</p>
-                </div>
               ) : (
                 <div className="matrix-table-container">
                   <table className="matrix-spreadsheet-table">
@@ -675,18 +683,24 @@ export function ExtraClassTracking() {
                         <th rowSpan={2} className="matrix-th-stt">STT</th>
                         <th rowSpan={2} className="matrix-th-name">HỌ TÊN HỌC SINH</th>
                         <th rowSpan={2} className="matrix-th-class">LỚP</th>
-                        <th colSpan={matrixDateColumns.length} className="matrix-th-tuan">
+                        <th colSpan={Math.max(matrixDateColumns.length, 1)} className="matrix-th-tuan">
                           Tuần học
                         </th>
                         <th rowSpan={2} className="matrix-th-total">Tổng vắng</th>
                       </tr>
-                      {/* Dòng tiêu đề 2: Các ngày trong tuần */}
+                      {/* Dòng tiêu đề 2: Các ngày trong tuần hoặc cột trống sẵn */}
                       <tr>
-                        {matrixDateColumns.map((d) => (
-                          <th key={d} className="matrix-th-date">
-                            {format(parseISO(d), 'dd/MM/yy')}
+                        {matrixDateColumns.length > 0 ? (
+                          matrixDateColumns.map((d) => (
+                            <th key={d} className="matrix-th-date">
+                              {format(parseISO(d), 'dd/MM/yy')}
+                            </th>
+                          ))
+                        ) : (
+                          <th className="matrix-th-date matrix-th-empty" style={{ minWidth: 90 }} title="Cột trống sẵn">
+                            &nbsp;
                           </th>
-                        ))}
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -701,28 +715,32 @@ export function ExtraClassTracking() {
                             </td>
                             <td className="matrix-td-class">{st.tenlop || st.lop || '---'}</td>
 
-                            {/* Các ô ngày theo tuần */}
-                            {matrixDateColumns.map((d) => {
-                              const att = attendanceMap.get(`${selectedMatrixClass.id}_${d}`);
-                              let isAbsent = false;
-                              if (att && att.records) {
-                                const stStatus = att.records[st.id] || (st.mahs && att.records[st.mahs]);
-                                if (stStatus === 'absent') {
-                                  isAbsent = true;
-                                  absentCount++;
+                            {/* Các ô ngày theo tuần hoặc ô trống sẵn */}
+                            {matrixDateColumns.length > 0 ? (
+                              matrixDateColumns.map((d) => {
+                                const att = attendanceMap.get(`${selectedMatrixClass.id}_${d}`);
+                                let isAbsent = false;
+                                if (att && att.records) {
+                                  const stStatus = att.records[st.id] || (st.mahs && att.records[st.mahs]);
+                                  if (stStatus === 'absent') {
+                                    isAbsent = true;
+                                    absentCount++;
+                                  }
                                 }
-                              }
 
-                              return (
-                                <td 
-                                  key={d} 
-                                  className={`matrix-td-cell ${isAbsent ? 'cell-absent' : 'cell-empty'}`}
-                                  title={isAbsent ? `${st.hoten} vắng ngày ${format(parseISO(d), 'dd/MM/yyyy')}` : ''}
-                                >
-                                  {isAbsent ? 'v' : ''}
-                                </td>
-                              );
-                            })}
+                                return (
+                                  <td 
+                                    key={d} 
+                                    className={`matrix-td-cell ${isAbsent ? 'cell-absent' : 'cell-empty'}`}
+                                    title={isAbsent ? `${st.hoten} vắng ngày ${format(parseISO(d), 'dd/MM/yyyy')}` : ''}
+                                  >
+                                    {isAbsent ? 'v' : ''}
+                                  </td>
+                                );
+                              })
+                            ) : (
+                              <td className="matrix-td-cell cell-empty">&nbsp;</td>
+                            )}
 
                             <td className={`matrix-td-total ${absentCount > 0 ? 'has-absent' : ''}`}>
                               {absentCount > 0 ? absentCount : '-'}
