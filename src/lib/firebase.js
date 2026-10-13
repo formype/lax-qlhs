@@ -2080,7 +2080,7 @@ export const listenToNotifications = (userRoles, userClass, userName, callback) 
       const creator = data.data?.createdBy || data.data?.updatedBy;
       const isCreator = userName && creator && creator === userName;
       
-      const isAttendanceEvent = data.data?.type === 'attendance_absence' || data.data?.type === 'attendance_class';
+      const isAttendanceEvent = data.data?.type === 'attendance_absence' || data.data?.type === 'attendance_class' || data.data?.type === 'extra_class_absence';
       
       if ((roleMatch || classMatch) && (!isCreator || isAttendanceEvent)) {
         notifications.push({ id: doc.id, ...data });

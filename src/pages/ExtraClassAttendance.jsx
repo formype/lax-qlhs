@@ -8,7 +8,8 @@ import {
   fetchExtraClasses, 
   fetchStudentsForExtraClass, 
   saveExtraClassAttendance, 
-  getExtraClassAttendance 
+  getExtraClassAttendance,
+  createNotification
 } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { CheckCircle, XCircle, UserCheck, Sparkles, Calendar, CheckSquare } from 'lucide-react';
@@ -155,6 +156,46 @@ export function ExtraClassAttendance() {
     if (result.success) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+
+      // Gửi thông báo đến giáo viên chủ nhiệm (GVCN) của các học sinh vắng ngoại khóa
+      const absenteesByClass = {};
+      students.forEach(s => {
+        const stStatus = payload[s.id];
+        if (stStatus === 'absent') {
+          const regClass = s.tenlop || s.lop;
+          if (regClass) {
+            if (!absenteesByClass[regClass]) {
+              absenteesByClass[regClass] = [];
+            }
+            absenteesByClass[regClass].push(s.hoten || s.name || s.mahs);
+          }
+        }
+      });
+
+      // Gửi thông báo đến từng lớp chủ nhiệm có học sinh vắng
+      const formattedDate = formatDateToVN(date);
+      Object.entries(absenteesByClass).forEach(([regClass, studentNames]) => {
+        let msg = '';
+        if (studentNames.length === 1) {
+          msg = `Học sinh ${studentNames[0]} (lớp ${regClass}) vắng học ngoại khóa môn ${className} ngày ${formattedDate}.`;
+        } else {
+          msg = `Có ${studentNames.length} học sinh lớp ${regClass} vắng học ngoại khóa môn ${className} ngày ${formattedDate}: ${studentNames.join(', ')}.`;
+        }
+
+        createNotification(
+          msg,
+          [], // targetRoles rỗng để chỉ GVCN lớp đó nhận thông báo
+          [regClass], // targetClasses: lớp chủ nhiệm của học sinh
+          {
+            type: 'extra_class_absence',
+            className: regClass,
+            extraClassName: className,
+            date: formattedDate,
+            absentStudents: studentNames,
+            updatedBy: updaterName
+          }
+        );
+      });
     } else {
       alert("Lưu điểm danh thất bại. Chi tiết lỗi: " + result.error);
     }

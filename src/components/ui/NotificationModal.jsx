@@ -9,6 +9,7 @@ export function NotificationModal({ isOpen, onClose, notification }) {
   const data = notification.data || {};
   const isAttendance = data.type === 'attendance_approval' || data.type === 'attendance_absence';
   const isClassAttendance = data.type === 'attendance_class';
+  const isExtraClassAbsence = data.type === 'extra_class_absence';
   const isViolation = data.type === 'violation';
 
   const formatTimestamp = (ts) => {
@@ -93,6 +94,33 @@ export function NotificationModal({ isOpen, onClose, notification }) {
                   <div className="info-row">
                     <span className="text-muted"><User size={16} className="inline mr-1"/> Người điểm danh:</span>
                     <span className="font-medium text-dark">{data.updatedBy || 'Hệ thống'}</span>
+                  </div>
+                </div>
+              )}
+
+              {isExtraClassAbsence && (
+                <div className="detail-info">
+                  <div className="info-row">
+                    <span className="text-muted"><User size={16} className="inline mr-1"/> Lớp chủ nhiệm:</span>
+                    <span className="font-medium text-dark">{data.className}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="text-muted"><Info size={16} className="inline mr-1"/> Môn ngoại khóa:</span>
+                    <span className="font-semibold text-primary">{data.extraClassName}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="text-muted"><Calendar size={16} className="inline mr-1"/> Ngày học:</span>
+                    <span className="font-medium text-dark">{data.date}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="text-muted"><User size={16} className="inline mr-1"/> Học sinh vắng:</span>
+                    <span className="font-semibold text-danger">
+                      {Array.isArray(data.absentStudents) ? data.absentStudents.join(', ') : data.absentStudents}
+                    </span>
+                  </div>
+                  <div className="info-row">
+                    <span className="text-muted"><User size={16} className="inline mr-1"/> Người điểm danh:</span>
+                    <span className="font-medium text-dark">{data.updatedBy || 'Giám thị'}</span>
                   </div>
                 </div>
               )}
