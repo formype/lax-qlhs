@@ -126,15 +126,16 @@ export function StudentList() {
       tenlop: editForm.tenlop,
       dantoc: editForm.dantoc,
       lienhe: editForm.lienhe,
-      bantru: editForm.bantru
+      bantru: Boolean(editForm.bantru)
     };
 
     const res = await updateStudent(editingStudent.id, updateData);
     if (res.success) {
       setStudents(students.map(s => s.id === editingStudent.id ? { ...s, ...updateData } : s));
       setEditingStudent(null);
+      alert('Cập nhật thông tin học sinh thành công!');
     } else {
-      alert('Lỗi khi cập nhật thông tin.');
+      alert('Lỗi khi cập nhật thông tin: ' + (res.error?.message || res.error || ''));
     }
   };
 

@@ -46,17 +46,54 @@ export const COLLECTIONS = {
   DISCIPLINARY_ACTIONS: 'disciplinaryActions',
   ATTENDANCE: 'attendance',
   NOTIFICATIONS: 'notifications',
-  DAILY_LOGS: 'dailyLogs'
+  DAILY_LOGS: 'dailyLogs',
+  SYSTEM_CONFIG: 'system_config'
 };
 
 // --- CACHE SYSTEM (Để tiết kiệm Firebase Read) ---
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days cho dữ liệu tĩnh
 
-const getLocalCache = (key) => {
+// In-memory cache for server metadata to prevent redundant Firestore calls on same page
+let memoryCacheMetadata = { data: null, timestamp: 0 };
+
+export const getSystemCacheMetadata = async (force = false) => {
+  if (!force && memoryCacheMetadata.data && (Date.now() - memoryCacheMetadata.timestamp < 30000)) {
+    return memoryCacheMetadata.data;
+  }
+  try {
+    const docRef = doc(db, COLLECTIONS.SYSTEM_CONFIG, 'cache_metadata');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      memoryCacheMetadata = { data: snap.data(), timestamp: Date.now() };
+      return memoryCacheMetadata.data;
+    }
+  } catch (e) {
+    console.warn('Could not read cache metadata, using local cache fallback', e);
+  }
+  return memoryCacheMetadata.data || null;
+};
+
+export const updateSystemCacheMetadata = async (field) => {
+  try {
+    const now = Date.now();
+    const docRef = doc(db, COLLECTIONS.SYSTEM_CONFIG, 'cache_metadata');
+    await setDoc(docRef, { [field]: now }, { merge: true });
+    if (!memoryCacheMetadata.data) memoryCacheMetadata.data = {};
+    memoryCacheMetadata.data[field] = now;
+    memoryCacheMetadata.timestamp = now;
+  } catch (e) {
+    console.warn('Could not update cache metadata:', e);
+  }
+};
+
+const getLocalCache = (key, minTimestamp = 0) => {
   try {
     const cached = localStorage.getItem(key);
     if (cached) {
       const parsed = JSON.parse(cached);
+      if (minTimestamp && parsed.timestamp && parsed.timestamp < minTimestamp) {
+        return null;
+      }
       if (Date.now() - parsed.timestamp < CACHE_TTL) {
         return parsed.data;
       }
@@ -67,11 +104,109 @@ const getLocalCache = (key) => {
   return null;
 };
 
-const setLocalCache = (key, data) => {
+const setLocalCache = (key, data, timestamp = Date.now()) => {
   try {
-    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    localStorage.setItem(key, JSON.stringify({ data, timestamp }));
   } catch (e) {
     console.error('Error writing localStorage cache', e);
+  }
+};
+
+const updateStudentInLocalCache = (studentId, updateData) => {
+  try {
+    const cached = localStorage.getItem('qlhs_cache_students');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.data)) {
+        parsed.data = parsed.data.map(s => s.id === studentId ? { ...s, ...updateData } : s);
+        parsed.timestamp = Date.now();
+        localStorage.setItem('qlhs_cache_students', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.error('Error updating local student cache', e);
+  }
+};
+
+const removeStudentFromLocalCache = (studentId) => {
+  try {
+    const cached = localStorage.getItem('qlhs_cache_students');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.data)) {
+        parsed.data = parsed.data.filter(s => s.id !== studentId);
+        parsed.timestamp = Date.now();
+        localStorage.setItem('qlhs_cache_students', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.error('Error removing student from local cache', e);
+  }
+};
+
+const addStudentToLocalCache = (newStudent) => {
+  try {
+    const cached = localStorage.getItem('qlhs_cache_students');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.data)) {
+        parsed.data.push(newStudent);
+        parsed.data.sort((a, b) => (a.mahs || '').localeCompare(b.mahs || ''));
+        parsed.timestamp = Date.now();
+        localStorage.setItem('qlhs_cache_students', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.error('Error adding student to local cache', e);
+  }
+};
+
+const updateClassInLocalCache = (classId, updates) => {
+  try {
+    const cached = localStorage.getItem('qlhs_cache_classes');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.data)) {
+        parsed.data = parsed.data.map(c => c.id === classId ? { ...c, ...updates } : c);
+        parsed.timestamp = Date.now();
+        localStorage.setItem('qlhs_cache_classes', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.error('Error updating local class cache', e);
+  }
+};
+
+const removeClassFromLocalCache = (classId) => {
+  try {
+    const cached = localStorage.getItem('qlhs_cache_classes');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.data)) {
+        parsed.data = parsed.data.filter(c => c.id !== classId);
+        parsed.timestamp = Date.now();
+        localStorage.setItem('qlhs_cache_classes', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.error('Error removing class from local cache', e);
+  }
+};
+
+const addClassToLocalCache = (newClass) => {
+  try {
+    const cached = localStorage.getItem('qlhs_cache_classes');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.data)) {
+        parsed.data.push(newClass);
+        parsed.data.sort((a, b) => (a.tenlop || '').localeCompare(b.tenlop || ''));
+        parsed.timestamp = Date.now();
+        localStorage.setItem('qlhs_cache_classes', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.error('Error adding class to local cache', e);
   }
 };
 
@@ -80,6 +215,7 @@ export const clearAppCache = () => {
   localStorage.removeItem('qlhs_cache_classes');
   localStorage.removeItem('qlhs_cache_settings');
   localStorage.removeItem('qlhs_cache_violationTypes');
+  memoryCacheMetadata = { data: null, timestamp: 0 };
 };
 
 // --- USERS / AUTH ---
@@ -387,8 +523,13 @@ export const getUserByUsername = async (username) => {
 // --- CLASSES ---
 export const fetchClasses = async (grade, forceRefresh = false) => {
   try {
+    let minTimestamp = 0;
     if (!grade && !forceRefresh) {
-      const cached = getLocalCache('qlhs_cache_classes');
+      const metadata = await getSystemCacheMetadata();
+      if (metadata && metadata.classes_updated_at) {
+        minTimestamp = metadata.classes_updated_at;
+      }
+      const cached = getLocalCache('qlhs_cache_classes', minTimestamp);
       if (cached) return cached;
     }
 
@@ -425,6 +566,9 @@ export const addClass = async (classData) => {
       });
     }
 
+    addClassToLocalCache({ id: docRef.id, ...classData });
+    updateSystemCacheMetadata('classes_updated_at');
+
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error("Error adding class:", error);
@@ -445,6 +589,10 @@ export const deleteClass = async (classId) => {
       }
     }
     await deleteDoc(classRef);
+
+    removeClassFromLocalCache(classId);
+    updateSystemCacheMetadata('classes_updated_at');
+
     return { success: true };
   } catch (error) {
     return { success: false, error };
@@ -471,6 +619,9 @@ export const updateClass = async (classId, updates) => {
       await updateDoc(doc(db, COLLECTIONS.USERS, newTeacherId), { teacherClass: newTenlop });
     }
 
+    updateClassInLocalCache(classId, updates);
+    updateSystemCacheMetadata('classes_updated_at');
+
     return { success: true };
   } catch (error) {
     return { success: false, error };
@@ -483,8 +634,13 @@ export const fetchStudents = async (filters = {}, forceRefresh = false) => {
     const hasFilters = Object.keys(filters).length > 0;
     
     // Return cache if valid and no specific filters requested
+    let minTimestamp = 0;
     if (!hasFilters && !forceRefresh) {
-      const cached = getLocalCache('qlhs_cache_students');
+      const metadata = await getSystemCacheMetadata();
+      if (metadata && metadata.students_updated_at) {
+        minTimestamp = metadata.students_updated_at;
+      }
+      const cached = getLocalCache('qlhs_cache_students', minTimestamp);
       if (cached) return cached;
     }
 
@@ -530,6 +686,12 @@ export const getStudentByCode = async (mahs) => {
 export const addStudent = async (studentData) => {
   try {
     const docRef = await addDoc(collection(db, COLLECTIONS.STUDENTS), studentData);
+    
+    // Đồng bộ ngay vào bộ nhớ đệm cục bộ
+    addStudentToLocalCache({ id: docRef.id, ...studentData });
+    // Cập nhật timestamp cho toàn hệ thống
+    updateSystemCacheMetadata('students_updated_at');
+
     return { success: true, id: docRef.id };
   } catch (error) {
     return { success: false, error };
@@ -547,6 +709,12 @@ export const addMultipleStudents = async (studentsArray) => {
     });
     
     await batch.commit();
+
+    // Xoá cache cục bộ để tự tải lại danh sách mới nhất
+    localStorage.removeItem('qlhs_cache_students');
+    // Cập nhật timestamp cho toàn hệ thống
+    updateSystemCacheMetadata('students_updated_at');
+
     return { success: true };
   } catch (error) {
     console.error("Batch add error:", error);
@@ -557,6 +725,12 @@ export const addMultipleStudents = async (studentsArray) => {
 export const deleteStudent = async (studentId) => {
   try {
     await deleteDoc(doc(db, COLLECTIONS.STUDENTS, studentId));
+
+    // Đồng bộ ngay vào bộ nhớ đệm cục bộ
+    removeStudentFromLocalCache(studentId);
+    // Cập nhật timestamp cho toàn hệ thống
+    updateSystemCacheMetadata('students_updated_at');
+
     return { success: true };
   } catch (error) {
     return { success: false, error };
@@ -567,6 +741,12 @@ export const updateStudent = async (studentId, updateData) => {
   try {
     const docRef = doc(db, COLLECTIONS.STUDENTS, studentId);
     await updateDoc(docRef, updateData);
+
+    // Đồng bộ ngay vào bộ nhớ đệm cục bộ
+    updateStudentInLocalCache(studentId, updateData);
+    // Cập nhật timestamp cho toàn hệ thống
+    updateSystemCacheMetadata('students_updated_at');
+
     return { success: true };
   } catch (error) {
     return { success: false, error };
