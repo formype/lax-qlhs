@@ -283,11 +283,55 @@ body.dark .matrix-spreadsheet-table thead th.matrix-th-class {
 
 .matrix-th-date {
   font-size: 0.75rem;
-  font-family: monospace, sans-serif;
-  width: 72px;
-  min-width: 72px;
-  padding: 6px 4px !important;
+  width: 76px;
+  min-width: 76px;
+  padding: 5px 3px !important;
   white-space: nowrap;
+}
+
+.matrix-th-week-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.matrix-th-week-num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+body.dark .matrix-th-week-num {
+  color: #94a3b8;
+}
+
+.matrix-th-week-date {
+  font-size: 0.76rem;
+  font-family: monospace, sans-serif;
+}
+
+.matrix-th-week-date.has-date {
+  font-weight: 700;
+  color: #2563eb;
+}
+
+body.dark .matrix-th-week-date.has-date {
+  color: #60a5fa;
+}
+
+.matrix-th-week-date.no-date {
+  font-weight: 500;
+  color: #94a3b8;
+  opacity: 0.6;
+}
+
+body.dark .matrix-th-week-date.no-date {
+  color: #64748b;
 }
 
 .matrix-th-total,

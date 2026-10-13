@@ -93,7 +93,7 @@ export function ExtraClassTracking() {
       try {
         setLoading(true);
         const [history, extraClassesData, studentsData, regularClassesData, sData] = await Promise.all([
-          getExtraClassAttendanceHistory(120),
+          getExtraClassAttendanceHistory(365),
           fetchExtraClasses(),
           fetchAllExtraClassStudents(),
           fetchClasses(),
@@ -160,48 +160,90 @@ export function ExtraClassTracking() {
     );
   }, [enrolledStudents, selectedMatrixClass, matrixSearch]);
 
-  // Danh sách các ngày/tuần hiển thị trên cột của ma trận (chỉ lấy các ngày thực tế đã được điểm danh)
-  const matrixDateColumns = useMemo(() => {
+  // 18 cột đại diện cho 18 tuần của Học kỳ 1 (tự động cập nhật ngày điểm danh & học sinh vắng)
+  const matrix18Weeks = useMemo(() => {
     if (!selectedMatrixClass) return [];
 
-    // Các ngày đã thực tế điểm danh của môn này, sắp xếp tăng dần theo thời gian
-    const recordedDates = Array.from(new Set(
-      rawAttendance
-        .filter(a => a.extraClassId === selectedMatrixClass.id && a.date)
-        .map(a => a.date)
-    )).sort();
+    const s1StartStr = settings?.semester1StartDate || '2026-09-07';
+    let s1 = parse(s1StartStr, 'yyyy-MM-dd', new Date());
+    if (isNaN(s1.getTime())) s1 = new Date(2026, 8, 7);
+    const s1Date = new Date(s1.getFullYear(), s1.getMonth(), s1.getDate());
 
-    return recordedDates;
-  }, [rawAttendance, selectedMatrixClass]);
+    // Các buổi điểm danh thực tế của lớp ngoại khóa này
+    const classAtts = rawAttendance
+      .filter(a => a.extraClassId === selectedMatrixClass.id && a.date)
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Map tra cứu nhanh điểm danh: key = `${extraClassId}_${date}` -> doc data
-  const attendanceMap = useMemo(() => {
-    const map = new Map();
-    rawAttendance.forEach(att => {
-      if (att.extraClassId && att.date) {
-        map.set(`${att.extraClassId}_${att.date}`, att);
+    // Map: weekNum -> attendance doc
+    const weeksMap = new Map();
+    const unassigned = [];
+
+    // Pass 1: Gán theo tuần năm học nếu trong khoảng 1..18
+    classAtts.forEach(att => {
+      try {
+        const attDate = parseISO(att.date);
+        const curDate = new Date(attDate.getFullYear(), attDate.getMonth(), attDate.getDate());
+        const diffDays = Math.floor((curDate.getTime() - s1Date.getTime()) / (24 * 60 * 60 * 1000));
+        const weekNum = Math.floor(diffDays / 7) + 1;
+
+        if (weekNum >= 1 && weekNum <= 18 && !weeksMap.has(weekNum)) {
+          weeksMap.set(weekNum, att);
+        } else {
+          unassigned.push(att);
+        }
+      } catch {
+        unassigned.push(att);
       }
     });
-    return map;
-  }, [rawAttendance]);
+
+    // Pass 2: Nếu có buổi ngoài khoảng 1..18 hoặc trùng tuần, lấp vào các tuần còn trống
+    if (unassigned.length > 0) {
+      for (let w = 1; w <= 18 && unassigned.length > 0; w++) {
+        if (!weeksMap.has(w)) {
+          weeksMap.set(w, unassigned.shift());
+        }
+      }
+    }
+
+    // Luôn hiển thị tối thiểu 18 cột theo 18 tuần của HK1
+    const maxAssignedWeek = Math.max(0, ...Array.from(weeksMap.keys()));
+    const totalWeeks = Math.max(18, maxAssignedWeek);
+
+    const result = [];
+    for (let w = 1; w <= totalWeeks; w++) {
+      const att = weeksMap.get(w) || null;
+      result.push({
+        weekNum: w,
+        attendance: att,
+        date: att ? att.date : null,
+        hasAttendance: !!att
+      });
+    }
+
+    return result;
+  }, [rawAttendance, selectedMatrixClass, settings]);
 
   // Tổng số lượt vắng của môn trong ma trận
   const matrixTotalAbsences = useMemo(() => {
     let count = 0;
     matrixStudents.forEach(st => {
-      matrixDateColumns.forEach(d => {
-        const att = attendanceMap.get(`${selectedMatrixClass?.id}_${d}`);
-        if (att && att.records) {
-          const stStatus = att.records[st.id] || (st.mahs && att.records[st.mahs]);
+      matrix18Weeks.forEach(w => {
+        if (w.attendance && w.attendance.records) {
+          const stStatus = w.attendance.records[st.id] || (st.mahs && w.attendance.records[st.mahs]);
           if (stStatus === 'absent') count++;
         }
       });
     });
     return count;
-  }, [matrixStudents, matrixDateColumns, attendanceMap, selectedMatrixClass]);
+  }, [matrixStudents, matrix18Weeks]);
+
+  // Số tuần đã điểm danh thực tế
+  const recordedWeeksCount = useMemo(() => {
+    return matrix18Weeks.filter(w => w.hasAttendance).length;
+  }, [matrix18Weeks]);
 
   // =========================================================================
-  // XUẤT EXCEL BẢNG MA TRẬN TUẦN (GIỐNG 100% FILE EXCEL TRONG HÌNH)
+  // XUẤT EXCEL BẢNG MA TRẬN 18 TUẦN HK1
   // =========================================================================
   const handleExportMatrixExcel = async () => {
     if (!selectedMatrixClass || matrixStudents.length === 0) {
@@ -216,19 +258,16 @@ export function ExtraClassTracking() {
     });
 
     const clsName = selectedMatrixClass.tenlopngoaikhoa || selectedMatrixClass.name || 'Ngoại khóa';
-    const hasRecordedDates = matrixDateColumns.length > 0;
-    const dateColCount = hasRecordedDates ? matrixDateColumns.length : 1;
+    const totalCols = matrix18Weeks.length;
 
-    // Cấu hình độ rộng các cột (nếu chưa có buổi điểm danh nào thì tạo 1 cột trống sẵn)
-    const dateColDefs = hasRecordedDates 
-      ? matrixDateColumns.map(() => ({ width: 11 }))
-      : [{ width: 11 }];
+    // Cấu hình độ rộng các cột: 18 cột tuần, mỗi cột width: 11
+    const weekColDefs = matrix18Weeks.map(() => ({ width: 11 }));
 
     worksheet.columns = [
       { key: 'stt', width: 7 },
       { key: 'hoten', width: 28 },
       { key: 'lop', width: 10 },
-      ...dateColDefs,
+      ...weekColDefs,
       { key: 'tongvang', width: 13 }
     ];
 
@@ -239,7 +278,7 @@ export function ExtraClassTracking() {
     cellA1.font = { name: 'Times New Roman', size: 12, bold: true };
     cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    const endColLetter = worksheet.getColumn(3 + dateColCount + 1).letter;
+    const endColLetter = worksheet.getColumn(3 + totalCols + 1).letter;
     worksheet.mergeCells(`D1:${endColLetter}1`);
     const cellD1 = worksheet.getCell('D1');
     cellD1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
@@ -260,7 +299,6 @@ export function ExtraClassTracking() {
     cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Dòng 6: Hàng tiêu đề 1 (Header Row 1)
-    // Merge STT, HỌ TÊN HỌC SINH, LỚP qua 2 dòng (6 & 7)
     worksheet.mergeCells('A6:A7');
     const cellSTT = worksheet.getCell('A6');
     cellSTT.value = "STT";
@@ -279,45 +317,40 @@ export function ExtraClassTracking() {
     cellLop.font = { name: 'Times New Roman', size: 11, bold: true };
     cellLop.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Merge "Tuần học" qua các cột ngày (nếu > 1 cột) hoặc gán trực tiếp cho cột D
+    // Merge "Tuần học (Học kỳ 1)" qua cả 18 cột tuần
     const firstDateColLetter = 'D';
-    const lastDateColLetter = worksheet.getColumn(3 + dateColCount).letter;
-    if (firstDateColLetter !== lastDateColLetter) {
-      worksheet.mergeCells(`${firstDateColLetter}6:${lastDateColLetter}6`);
-    }
+    const lastDateColLetter = worksheet.getColumn(3 + totalCols).letter;
+    worksheet.mergeCells(`${firstDateColLetter}6:${lastDateColLetter}6`);
     const cellTuanHoc = worksheet.getCell(`${firstDateColLetter}6`);
-    cellTuanHoc.value = "Tuần học";
+    cellTuanHoc.value = "Tuần học (Học kỳ 1)";
     cellTuanHoc.font = { name: 'Times New Roman', size: 11, bold: true };
     cellTuanHoc.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Cột Tổng vắng
-    const totalAbsentColLetter = worksheet.getColumn(3 + dateColCount + 1).letter;
+    const totalAbsentColLetter = worksheet.getColumn(3 + totalCols + 1).letter;
     worksheet.mergeCells(`${totalAbsentColLetter}6:${totalAbsentColLetter}7`);
     const cellTongVang = worksheet.getCell(`${totalAbsentColLetter}6`);
     cellTongVang.value = "Tổng vắng";
     cellTongVang.font = { name: 'Times New Roman', size: 11, bold: true };
     cellTongVang.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Dòng 7: Hàng ngày tháng (Sub-header)
+    // Dòng 7: Hàng 18 tuần (Sub-header)
     const row7 = worksheet.getRow(7);
-    if (hasRecordedDates) {
-      matrixDateColumns.forEach((d, idx) => {
-        const cell = row7.getCell(4 + idx);
-        cell.value = format(parseISO(d), 'dd/MM/yy');
-        cell.font = { name: 'Times New Roman', size: 10, bold: true };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      });
-    } else {
-      const cell = row7.getCell(4);
-      cell.value = "";
+    matrix18Weeks.forEach((w, idx) => {
+      const cell = row7.getCell(4 + idx);
+      if (w.hasAttendance && w.date) {
+        cell.value = format(parseISO(w.date), 'dd/MM/yy');
+      } else {
+        cell.value = `Tuần ${w.weekNum}`;
+      }
       cell.font = { name: 'Times New Roman', size: 10, bold: true };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    }
+    });
 
     // Style borders & fill cho Header (Rows 6 & 7)
     for (let r = 6; r <= 7; r++) {
       const row = worksheet.getRow(r);
-      for (let c = 1; c <= 3 + dateColCount + 1; c++) {
+      for (let c = 1; c <= 3 + totalCols + 1; c++) {
         const cell = row.getCell(c);
         cell.border = {
           top: { style: 'thin' },
@@ -342,23 +375,17 @@ export function ExtraClassTracking() {
         st.tenlop || st.lop || ''
       ];
 
-      if (hasRecordedDates) {
-        matrixDateColumns.forEach((d) => {
-          const att = attendanceMap.get(`${selectedMatrixClass.id}_${d}`);
-          let cellVal = '';
-          if (att && att.records) {
-            const stStatus = att.records[st.id] || (st.mahs && att.records[st.mahs]);
-            if (stStatus === 'absent') {
-              cellVal = 'v';
-              stAbsentCount++;
-            }
+      matrix18Weeks.forEach((w) => {
+        let cellVal = '';
+        if (w.attendance && w.attendance.records) {
+          const stStatus = w.attendance.records[st.id] || (st.mahs && w.attendance.records[st.mahs]);
+          if (stStatus === 'absent') {
+            cellVal = 'v';
+            stAbsentCount++;
           }
-          rowValues.push(cellVal);
-        });
-      } else {
-        // Cột trống sẵn
-        rowValues.push('');
-      }
+        }
+        rowValues.push(cellVal);
+      });
 
       rowValues.push(stAbsentCount > 0 ? stAbsentCount : '');
 
@@ -373,14 +400,14 @@ export function ExtraClassTracking() {
           right: { style: 'thin' }
         };
 
-        // Căn giữa STT, Lớp, Ngày, Tổng vắng
+        // Căn giữa STT, Lớp, Các cột tuần, Tổng vắng
         if (colNumber === 1 || colNumber === 3 || colNumber >= 4) {
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         } else {
           cell.alignment = { vertical: 'middle' };
         }
 
-        // Nếu vắng mặt ('v'): Tô nền hồng nhạt, chữ đỏ in đậm giống ảnh mẫu
+        // Nếu vắng mặt ('v'): Tô nền hồng nhạt, chữ đỏ in đậm
         if (cell.value === 'v') {
           cell.fill = {
             type: 'pattern',
@@ -391,7 +418,7 @@ export function ExtraClassTracking() {
         }
 
         // Cột Tổng vắng có số
-        if (colNumber === 3 + dateColCount + 1 && typeof cell.value === 'number') {
+        if (colNumber === 3 + totalCols + 1 && typeof cell.value === 'number') {
           cell.font = { name: 'Times New Roman', size: 11, bold: true, color: { argb: 'FFDC2626' } };
         }
       });
@@ -645,7 +672,7 @@ export function ExtraClassTracking() {
                   Sĩ số: <strong>{matrixStudents.length}</strong> học sinh
                 </span>
                 <span className="summary-badge-item">
-                  Đã điểm danh: <strong>{matrixDateColumns.length}</strong> buổi
+                  Đã điểm danh: <strong>{recordedWeeksCount}</strong> / {matrix18Weeks.length} tuần
                 </span>
                 <span className="summary-badge-item badge-absent">
                   Tổng lượt vắng: <strong>{matrixTotalAbsences}</strong>
@@ -678,29 +705,32 @@ export function ExtraClassTracking() {
                 <div className="matrix-table-container">
                   <table className="matrix-spreadsheet-table">
                     <thead>
-                      {/* Dòng tiêu đề 1: STT, HỌ TÊN HỌC SINH, LỚP, [Tuần học], Tổng vắng */}
+                      {/* Dòng tiêu đề 1: STT, HỌ TÊN HỌC SINH, LỚP, [Tuần học (Học kỳ 1)], Tổng vắng */}
                       <tr>
                         <th rowSpan={2} className="matrix-th-stt">STT</th>
                         <th rowSpan={2} className="matrix-th-name">HỌ TÊN HỌC SINH</th>
                         <th rowSpan={2} className="matrix-th-class">LỚP</th>
-                        <th colSpan={Math.max(matrixDateColumns.length, 1)} className="matrix-th-tuan">
-                          Tuần học
+                        <th colSpan={matrix18Weeks.length} className="matrix-th-tuan">
+                          Tuần học (Học kỳ 1)
                         </th>
                         <th rowSpan={2} className="matrix-th-total">Tổng vắng</th>
                       </tr>
-                      {/* Dòng tiêu đề 2: Các ngày trong tuần hoặc cột trống sẵn */}
+                      {/* Dòng tiêu đề 2: 18 cột theo 18 tuần của HK1 */}
                       <tr>
-                        {matrixDateColumns.length > 0 ? (
-                          matrixDateColumns.map((d) => (
-                            <th key={d} className="matrix-th-date">
-                              {format(parseISO(d), 'dd/MM/yy')}
-                            </th>
-                          ))
-                        ) : (
-                          <th className="matrix-th-date matrix-th-empty" style={{ minWidth: 90 }} title="Cột trống sẵn">
-                            &nbsp;
+                        {matrix18Weeks.map((w) => (
+                          <th 
+                            key={w.weekNum} 
+                            className="matrix-th-date"
+                            title={w.hasAttendance && w.date ? `Tuần ${w.weekNum} - Ngày điểm danh: ${format(parseISO(w.date), 'dd/MM/yyyy')}` : `Tuần ${w.weekNum} (Chưa điểm danh)`}
+                          >
+                            <div className="matrix-th-week-container">
+                              <span className="matrix-th-week-num">Tuần {w.weekNum}</span>
+                              <span className={`matrix-th-week-date ${w.hasAttendance ? 'has-date' : 'no-date'}`}>
+                                {w.hasAttendance && w.date ? format(parseISO(w.date), 'dd/MM/yy') : '---'}
+                              </span>
+                            </div>
                           </th>
-                        )}
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -715,32 +745,27 @@ export function ExtraClassTracking() {
                             </td>
                             <td className="matrix-td-class">{st.tenlop || st.lop || '---'}</td>
 
-                            {/* Các ô ngày theo tuần hoặc ô trống sẵn */}
-                            {matrixDateColumns.length > 0 ? (
-                              matrixDateColumns.map((d) => {
-                                const att = attendanceMap.get(`${selectedMatrixClass.id}_${d}`);
-                                let isAbsent = false;
-                                if (att && att.records) {
-                                  const stStatus = att.records[st.id] || (st.mahs && att.records[st.mahs]);
-                                  if (stStatus === 'absent') {
-                                    isAbsent = true;
-                                    absentCount++;
-                                  }
+                            {/* 18 cột tuần học */}
+                            {matrix18Weeks.map((w) => {
+                              let isAbsent = false;
+                              if (w.attendance && w.attendance.records) {
+                                const stStatus = w.attendance.records[st.id] || (st.mahs && w.attendance.records[st.mahs]);
+                                if (stStatus === 'absent') {
+                                  isAbsent = true;
+                                  absentCount++;
                                 }
+                              }
 
-                                return (
-                                  <td 
-                                    key={d} 
-                                    className={`matrix-td-cell ${isAbsent ? 'cell-absent' : 'cell-empty'}`}
-                                    title={isAbsent ? `${st.hoten} vắng ngày ${format(parseISO(d), 'dd/MM/yyyy')}` : ''}
-                                  >
-                                    {isAbsent ? 'v' : ''}
-                                  </td>
-                                );
-                              })
-                            ) : (
-                              <td className="matrix-td-cell cell-empty">&nbsp;</td>
-                            )}
+                              return (
+                                <td 
+                                  key={w.weekNum} 
+                                  className={`matrix-td-cell ${isAbsent ? 'cell-absent' : 'cell-empty'}`}
+                                  title={isAbsent && w.date ? `${st.hoten} vắng Tuần ${w.weekNum} (${format(parseISO(w.date), 'dd/MM/yyyy')})` : w.hasAttendance ? `${st.hoten} có mặt Tuần ${w.weekNum}` : `Tuần ${w.weekNum}: Chưa điểm danh`}
+                                >
+                                  {isAbsent ? 'v' : ''}
+                                </td>
+                              );
+                            })}
 
                             <td className={`matrix-td-total ${absentCount > 0 ? 'has-absent' : ''}`}>
                               {absentCount > 0 ? absentCount : '-'}
