@@ -40,6 +40,7 @@ export const COLLECTIONS = {
   STUDENTS: 'students',
   TEACHERS: 'teachers',
   CLASSES: 'classes',
+  EXTRA_CLASSES: 'extraClasses',
   VIOLATIONS: 'violations',
   CONFIG: 'config',
   VIOLATION_RULES: 'violationRules',
@@ -625,6 +626,96 @@ export const updateClass = async (classId, updates) => {
     return { success: true };
   } catch (error) {
     return { success: false, error };
+  }
+};
+
+// --- EXTRA CLASSES (LỚP NGOẠI KHÓA) ---
+export const fetchExtraClasses = async () => {
+  try {
+    const q = query(collection(db, COLLECTIONS.EXTRA_CLASSES), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const list = [];
+    querySnapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    return list;
+  } catch (error) {
+    try {
+      const snap = await getDocs(collection(db, COLLECTIONS.EXTRA_CLASSES));
+      const list = [];
+      snap.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      return list.sort((a, b) => (a.tenlopngoaikhoa || a.name || '').localeCompare(b.tenlopngoaikhoa || b.name || ''));
+    } catch (e) {
+      console.error("Error fetching extra classes:", e);
+      return [];
+    }
+  }
+};
+
+export const addExtraClass = async (classData) => {
+  try {
+    const name = sanitizeText(typeof classData === 'string' ? classData : (classData.tenlopngoaikhoa || classData.name || ''), 100).trim();
+    if (!name) {
+      return { success: false, error: 'Vui lòng nhập tên lớp ngoại khóa.' };
+    }
+
+    // Check duplicate
+    const existing = await fetchExtraClasses();
+    const isDuplicate = existing.some(c => (c.tenlopngoaikhoa || c.name || '').trim().toLowerCase() === name.toLowerCase());
+    if (isDuplicate) {
+      return { success: false, error: `Lớp ngoại khóa "${name}" đã tồn tại.` };
+    }
+
+    const docData = {
+      tenlopngoaikhoa: name,
+      name: name,
+      createdBy: sanitizeText(typeof classData === 'object' ? (classData.createdBy || 'Admin') : 'Admin', 100),
+      createdAt: serverTimestamp()
+    };
+
+    const docRef = await addDoc(collection(db, COLLECTIONS.EXTRA_CLASSES), docData);
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    console.error("Error adding extra class:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const updateExtraClass = async (id, newName) => {
+  try {
+    const cleanName = sanitizeText(newName, 100).trim();
+    if (!cleanName) {
+      return { success: false, error: 'Vui lòng nhập tên lớp ngoại khóa.' };
+    }
+
+    const existing = await fetchExtraClasses();
+    const isDuplicate = existing.some(c => c.id !== id && (c.tenlopngoaikhoa || c.name || '').trim().toLowerCase() === cleanName.toLowerCase());
+    if (isDuplicate) {
+      return { success: false, error: `Tên lớp ngoại khóa "${cleanName}" đã tồn tại.` };
+    }
+
+    const docRef = doc(db, COLLECTIONS.EXTRA_CLASSES, id);
+    await updateDoc(docRef, {
+      tenlopngoaikhoa: cleanName,
+      name: cleanName,
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating extra class:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const deleteExtraClass = async (id) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.EXTRA_CLASSES, id));
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting extra class:", error);
+    return { success: false, error: error.message || error.toString() };
   }
 };
 
@@ -1324,6 +1415,7 @@ export const deleteAllData = async () => {
     const collectionsToClear = [
       COLLECTIONS.STUDENTS,
       COLLECTIONS.CLASSES,
+      COLLECTIONS.EXTRA_CLASSES,
       COLLECTIONS.VIOLATIONS,
       COLLECTIONS.ATTENDANCE,
       COLLECTIONS.NOTIFICATIONS,
@@ -1360,6 +1452,7 @@ export const importDatabase = async (backupData) => {
     const collectionsToClear = [
       { name: COLLECTIONS.STUDENTS, data: backupData.students || [] },
       { name: COLLECTIONS.CLASSES, data: backupData.classes || [] },
+      { name: COLLECTIONS.EXTRA_CLASSES, data: backupData.extraClasses || backupData.extra_classes || [] },
       { name: COLLECTIONS.VIOLATIONS, data: backupData.violations || [] },
       { name: COLLECTIONS.ATTENDANCE, data: backupData.attendance || [] },
       { name: COLLECTIONS.NOTIFICATIONS, data: backupData.notifications || [] },

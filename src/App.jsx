@@ -8,6 +8,7 @@ import { Search } from './pages/Search';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { ManageClasses } from './pages/ManageClasses';
+import { ManageExtraClasses } from './pages/ManageExtraClasses';
 import { ManageStudents } from './pages/ManageStudents';
 import { ManageTeachers } from './pages/ManageTeachers';
 import { TeacherList } from './pages/TeacherList';
@@ -30,7 +31,7 @@ import { Button } from './components/ui/Button';
 import { X } from 'lucide-react';
 import './App.css';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -46,6 +47,14 @@ const ProtectedRoute = ({ children }) => {
   const isAdmin = user.role.includes('admin') || user.role.includes('vip-admin');
   const isGiamthi = user.role.includes('giamthi');
 
+  if (allowedRoles && Array.isArray(allowedRoles)) {
+    const hasRole = allowedRoles.some(r => user.role?.includes(r));
+    if (!hasRole) {
+      alert("Bạn không có quyền truy cập chức năng này!");
+      return <Navigate to="/" replace />;
+    }
+  }
+
   if (!isAdmin && !isGiamthi && (
       location.pathname === '/add' || 
       location.pathname === '/attendance'
@@ -56,7 +65,8 @@ const ProtectedRoute = ({ children }) => {
 
   if (!isAdmin && (
       location.pathname === '/classes' || 
-      location.pathname === '/students'
+      location.pathname === '/students' ||
+      location.pathname === '/extra-classes'
   )) {
     alert("Bạn không có quyền truy cập chức năng này!");
     return <Navigate to="/" replace />;
@@ -206,8 +216,9 @@ function AppRoutes() {
         <Route path="/manage-accounts" element={<ProtectedRoute><MainLayout><ManageAccounts /></MainLayout></ProtectedRoute>} />
         <Route path="/manage-updates" element={<ProtectedRoute><MainLayout><ManageUpdates /></MainLayout></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
-        <Route path="/classes" element={<ProtectedRoute><MainLayout><ManageClasses /></MainLayout></ProtectedRoute>} />
-        <Route path="/students" element={<ProtectedRoute><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
+        <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><ManageClasses /></MainLayout></ProtectedRoute>} />
+        <Route path="/extra-classes" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><ManageExtraClasses /></MainLayout></ProtectedRoute>} />
+        <Route path="/students" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
         <Route path="/teachers" element={<ProtectedRoute allowedRoles={['vip-admin']}><MainLayout><ManageTeachers /></MainLayout></ProtectedRoute>} />
         <Route path="/teacher-list" element={<ProtectedRoute allowedRoles={['vip-admin']}><MainLayout><TeacherList /></MainLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
