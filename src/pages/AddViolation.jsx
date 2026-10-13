@@ -343,7 +343,6 @@ export function AddViolation() {
       // Reset form instead of navigating away
       setTimeout(() => {
         setSuccess(false);
-        setSuccessMsg('');
         setFormData(prev => ({
           mahs: '',
           studentId: '',
@@ -351,13 +350,17 @@ export function AddViolation() {
           tenlop: '',
           loaivipham: prev.loaivipham, 
           noidung: '',
-          ngayvipham: getLocalISODate(),
+          ngayvipham: prev.ngayvipham || getLocalISODate(),
           trangthai: 'Đã xử lý'
         }));
         setEvidenceList([]);
         setCustomViolation('');
         setIsCustomSelected(false);
-      }, 3500);
+      }, 1200);
+
+      setTimeout(() => {
+        setSuccessMsg('');
+      }, 4000);
     } else {
       alert("Có lỗi xảy ra khi lưu dữ liệu.");
     }
@@ -579,11 +582,11 @@ export function AddViolation() {
                 label="Tình trạng xử lý"
                 name="trangthai"
                 options={[
+                  { value: 'Đã xử lý', label: 'Đã xử lý' },
                   { value: 'Chưa xử lý', label: 'Chưa xử lý' },
-                  { value: 'Đang xử lý', label: 'Đang xử lý' },
-                  { value: 'Đã xử lý', label: 'Đã xử lý' }
+                  { value: 'Đang xử lý', label: 'Đang xử lý' }
                 ]}
-                value={formData.trangthai}
+                value={formData.trangthai || 'Đã xử lý'}
                 onChange={handleChange}
                 required
               />
