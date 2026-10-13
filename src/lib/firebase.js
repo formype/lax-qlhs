@@ -721,6 +721,48 @@ export const deleteExtraClass = async (id) => {
 };
 
 // --- EXTRA CLASS STUDENTS (HỌC SINH LỚP NGOẠI KHÓA) ---
+export const compareClassNames = (classA, classB) => {
+  const strA = (classA || '').trim();
+  const strB = (classB || '').trim();
+  if (!strA && !strB) return 0;
+  if (!strA) return 1;
+  if (!strB) return -1;
+
+  // Match pattern like "6/1", "10/2", "6A", etc.
+  const regex = /(\d+)[^0-9]+(\d+)/;
+  const matchA = strA.match(regex);
+  const matchB = strB.match(regex);
+
+  if (matchA && matchB) {
+    const num1A = parseInt(matchA[1], 10);
+    const num1B = parseInt(matchB[1], 10);
+    if (num1A !== num1B) return num1A - num1B;
+
+    const num2A = parseInt(matchA[2], 10);
+    const num2B = parseInt(matchB[2], 10);
+    if (num2A !== num2B) return num2A - num2B;
+  }
+
+  return strA.localeCompare(strB, 'vi', { numeric: true, sensitivity: 'base' });
+};
+
+export const compareMahs = (mahsA, mahsB) => {
+  const strA = (mahsA || '').trim();
+  const strB = (mahsB || '').trim();
+  if (!strA && !strB) return 0;
+  if (!strA) return 1;
+  if (!strB) return -1;
+  return strA.localeCompare(strB, 'vi', { numeric: true, sensitivity: 'base' });
+};
+
+export const sortExtraClassStudents = (students) => {
+  return [...students].sort((a, b) => {
+    const classComp = compareClassNames(a.tenlop || a.lop || '', b.tenlop || b.lop || '');
+    if (classComp !== 0) return classComp;
+    return compareMahs(a.mahs, b.mahs);
+  });
+};
+
 export const fetchStudentsForExtraClass = async (extraClassId) => {
   try {
     if (!extraClassId) return [];
@@ -733,7 +775,7 @@ export const fetchStudentsForExtraClass = async (extraClassId) => {
     snap.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() });
     });
-    return list.sort((a, b) => (a.hoten || '').localeCompare(b.hoten || ''));
+    return sortExtraClassStudents(list);
   } catch (error) {
     console.error("Error fetching extra class students:", error);
     return [];

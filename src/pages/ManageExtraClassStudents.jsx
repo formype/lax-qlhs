@@ -6,12 +6,15 @@ import { Button } from '../components/ui/Button';
 import { 
   fetchExtraClasses, 
   fetchStudents, 
-  fetchClasses,
+  fetchClasses, 
   fetchStudentsForExtraClass, 
   addStudentsToExtraClass, 
   removeStudentFromExtraClass,
   removeMultipleStudentsFromExtraClass,
-  transferExtraClassStudents
+  transferExtraClassStudents,
+  compareClassNames,
+  compareMahs,
+  sortExtraClassStudents
 } from '../lib/firebase';
 import { 
   Users, 
@@ -116,7 +119,7 @@ export function ManageExtraClassStudents() {
     }
     setLoadingEnrolled(true);
     const list = await fetchStudentsForExtraClass(classId);
-    setEnrolledStudents(list);
+    setEnrolledStudents(sortExtraClassStudents(list));
     setSelectedEnrolledIds(new Set());
     setLoadingEnrolled(false);
   };
@@ -161,23 +164,29 @@ export function ManageExtraClassStudents() {
   // Enrolled student lookup set by mahs
   const enrolledMahsSet = new Set(enrolledStudents.map(s => (s.mahs || '').toUpperCase()));
 
-  // Filtered all students for Dạng 1
-  const filteredAllStudents = allStudents.filter(s => {
-    if (filterGrade !== 'all') {
-      const sKhoi = s.khoi ? (s.khoi.startsWith('Khối') ? s.khoi : `Khối ${s.khoi}`) : '';
-      if (sKhoi !== filterGrade) return false;
-    }
-    if (filterClass !== 'all' && s.tenlop !== filterClass) {
-      return false;
-    }
-    if (studentSearch.trim()) {
-      const query = studentSearch.trim().toLowerCase();
-      const matchName = (s.hoten || '').toLowerCase().includes(query);
-      const matchId = (s.mahs || '').toLowerCase().includes(query);
-      if (!matchName && !matchId) return false;
-    }
-    return true;
-  });
+  // Filtered all students for Dạng 1 (sorted by class ascending, then by mahs)
+  const filteredAllStudents = allStudents
+    .filter(s => {
+      if (filterGrade !== 'all') {
+        const sKhoi = s.khoi ? (s.khoi.startsWith('Khối') ? s.khoi : `Khối ${s.khoi}`) : '';
+        if (sKhoi !== filterGrade) return false;
+      }
+      if (filterClass !== 'all' && s.tenlop !== filterClass) {
+        return false;
+      }
+      if (studentSearch.trim()) {
+        const query = studentSearch.trim().toLowerCase();
+        const matchName = (s.hoten || '').toLowerCase().includes(query);
+        const matchId = (s.mahs || '').toLowerCase().includes(query);
+        if (!matchName && !matchId) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const classComp = compareClassNames(a.tenlop || a.lop || '', b.tenlop || b.lop || '');
+      if (classComp !== 0) return classComp;
+      return compareMahs(a.mahs, b.mahs);
+    });
 
   // Toggle student selection for Dạng 1
   const toggleSelectStudent = (student) => {
@@ -515,14 +524,20 @@ export function ManageExtraClassStudents() {
     });
   };
 
-  // Filtered enrolled students list
-  const filteredEnrolled = enrolledStudents.filter(s => {
-    if (!enrolledSearch.trim()) return true;
-    const q = enrolledSearch.trim().toLowerCase();
-    return (s.hoten || '').toLowerCase().includes(q) || 
-           (s.mahs || '').toLowerCase().includes(q) || 
-           (s.tenlop || '').toLowerCase().includes(q);
-  });
+  // Filtered enrolled students list (sorted by class ascending, then by mahs)
+  const filteredEnrolled = enrolledStudents
+    .filter(s => {
+      if (!enrolledSearch.trim()) return true;
+      const q = enrolledSearch.trim().toLowerCase();
+      return (s.hoten || '').toLowerCase().includes(q) || 
+             (s.mahs || '').toLowerCase().includes(q) || 
+             (s.tenlop || '').toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      const classComp = compareClassNames(a.tenlop || a.lop || '', b.tenlop || b.lop || '');
+      if (classComp !== 0) return classComp;
+      return compareMahs(a.mahs, b.mahs);
+    });
 
   // Unique class names for filter
   const classOptions = classesList.map(c => ({ value: c.tenlop, label: c.tenlop }));
@@ -714,13 +729,13 @@ export function ManageExtraClassStudents() {
                     </div>
                   ) : (
                     <div className="students-selection-table-wrapper">
-                      <table className="modern-table">
+                      <table className="extra-students-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '44px', textAlign: 'center' }}>Chọn</th>
-                            <th style={{ width: '110px' }}>Mã HS</th>
+                            <th style={{ width: '48px', textAlign: 'center' }}>Chọn</th>
+                            <th style={{ width: '120px' }}>Mã HS</th>
                             <th>Họ và tên</th>
-                            <th style={{ width: '90px' }}>Lớp</th>
+                            <th style={{ width: '90px', textAlign: 'center' }}>Lớp</th>
                             <th style={{ width: '130px', textAlign: 'center' }}>Trạng thái</th>
                           </tr>
                         </thead>
@@ -745,7 +760,7 @@ export function ManageExtraClassStudents() {
                                 </td>
                                 <td className="font-semibold">{st.mahs}</td>
                                 <td>{st.hoten}</td>
-                                <td>
+                                <td style={{ textAlign: 'center' }}>
                                   <span className="class-badge-mini">{st.tenlop}</span>
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
@@ -869,23 +884,23 @@ export function ManageExtraClassStudents() {
                       </div>
 
                       <div className="students-selection-table-wrapper" style={{ maxHeight: '320px' }}>
-                        <table className="modern-table">
+                        <table className="extra-students-table">
                           <thead>
                             <tr>
-                              <th style={{ width: '50px' }}>STT</th>
+                              <th style={{ width: '56px', textAlign: 'center' }}>STT</th>
                               <th style={{ width: '130px' }}>Mã học sinh</th>
                               <th>Họ và tên</th>
-                              <th style={{ width: '100px' }}>Lớp</th>
+                              <th style={{ width: '100px', textAlign: 'center' }}>Lớp</th>
                               <th style={{ width: '140px', textAlign: 'center' }}>Trạng thái</th>
                             </tr>
                           </thead>
                           <tbody>
                             {excelPreview.map((item, idx) => (
                               <tr key={idx} className={item.isEnrolled ? 'enrolled-row' : !item.isValid ? 'error-row' : ''}>
-                                <td>{idx + 1}</td>
+                                <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                                 <td className="font-semibold">{item.mahs || '---'}</td>
                                 <td>{item.hoten || '---'}</td>
-                                <td>
+                                <td style={{ textAlign: 'center' }}>
                                   {item.tenlop ? <span className="class-badge-mini">{item.tenlop}</span> : '---'}
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
@@ -965,10 +980,10 @@ export function ManageExtraClassStudents() {
                   </div>
                 ) : (
                   <div className="students-selection-table-wrapper">
-                    <table className="modern-table">
+                    <table className="extra-students-table">
                       <thead>
                         <tr>
-                          <th style={{ width: '44px', textAlign: 'center' }}>
+                          <th style={{ width: '48px', textAlign: 'center' }}>
                             <input
                               type="checkbox"
                               checked={selectedEnrolledIds.size === filteredEnrolled.length && filteredEnrolled.length > 0}
@@ -982,10 +997,10 @@ export function ManageExtraClassStudents() {
                               className="custom-checkbox"
                             />
                           </th>
-                          <th style={{ width: '50px' }}>STT</th>
+                          <th style={{ width: '56px', textAlign: 'center' }}>STT</th>
                           <th style={{ width: '120px' }}>Mã HS</th>
                           <th>Họ và tên</th>
-                          <th style={{ width: '100px' }}>Lớp</th>
+                          <th style={{ width: '90px', textAlign: 'center' }}>Lớp</th>
                           <th style={{ width: '100px', textAlign: 'center' }}>Thao tác</th>
                         </tr>
                       </thead>
@@ -1000,10 +1015,10 @@ export function ManageExtraClassStudents() {
                                 className="custom-checkbox"
                               />
                             </td>
-                            <td>{idx + 1}</td>
+                            <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                             <td className="font-semibold">{st.mahs}</td>
                             <td>{st.hoten}</td>
-                            <td>
+                            <td style={{ textAlign: 'center' }}>
                               <span className="class-badge-mini">{st.tenlop}</span>
                             </td>
                             <td style={{ textAlign: 'center' }}>

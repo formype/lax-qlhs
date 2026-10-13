@@ -73,20 +73,20 @@ body.dark .attendance-table-container {
   overflow-x: auto;
 }
 
-.modern-table {
+.attendance-table-container .modern-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
 
-.modern-table th,
-.modern-table td {
+.attendance-table-container .modern-table th,
+.attendance-table-container .modern-table td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
   font-size: 0.8rem;
 }
 
-.modern-table th {
+.attendance-table-container .modern-table th {
   background-color: rgba(0, 0, 0, 0.02);
   font-weight: 600;
   font-size: 0.75rem;
@@ -95,19 +95,19 @@ body.dark .attendance-table-container {
   color: var(--text-muted);
 }
 
-body.dark .modern-table th {
+body.dark .attendance-table-container .modern-table th {
   background-color: rgba(255, 255, 255, 0.02);
 }
 
-.modern-table tr:last-child td {
+.attendance-table-container .modern-table tr:last-child td {
   border-bottom: none;
 }
 
-.modern-table tr:hover td {
+.attendance-table-container .modern-table tr:hover td {
   background-color: rgba(0, 0, 0, 0.01);
 }
 
-body.dark .modern-table tr:hover td {
+body.dark .attendance-table-container .modern-table tr:hover td {
   background-color: rgba(255, 255, 255, 0.01);
 }
 
@@ -117,19 +117,19 @@ body.dark .modern-table tr:hover td {
 }
 
 @media (max-width: 767px) {
-  .modern-table th,
-  .modern-table td {
+  .attendance-table-container .modern-table th,
+  .attendance-table-container .modern-table td {
     padding: 6px 4px; /* Reduce padding significantly */
     font-size: 0.7rem; /* Reduce font size */
   }
 
-  .modern-table th {
+  .attendance-table-container .modern-table th {
     font-size: 0.65rem;
     letter-spacing: 0;
   }
 
   /* Compact the time column */
-  .modern-table td:nth-child(3) {
+  .attendance-table-container .modern-table td:nth-child(3) {
     padding: 4px;
   }
 
@@ -142,3 +142,4 @@ body.dark .modern-table tr:hover td {
     font-size: 0.7rem;
   }
 }
+
