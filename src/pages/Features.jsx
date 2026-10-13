@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
-import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee, BookOpen, GraduationCap, Sparkles, UserCheck } from 'lucide-react';
+import { School, UserRoundPlus, CalendarCheck, FileWarning, UsersRound, ClipboardList, CheckSquare, BarChart2, Coffee, BookOpen, GraduationCap, Sparkles, UserCheck, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
 
@@ -100,6 +100,16 @@ const FEATURE_SECTIONS = [
         border: 'rgba(99, 102, 241, 0.2)',
         shadow: 'rgba(99, 102, 241, 0.15)',
         path: '/student-list'
+      },
+      {
+        label: 'Danh sách học sinh ngoại khóa',
+        icon: Users,
+        color: '#8b5cf6',
+        bg: 'rgba(139, 92, 246, 0.08)',
+        border: 'rgba(139, 92, 246, 0.2)',
+        shadow: 'rgba(139, 92, 246, 0.15)',
+        path: '/extra-class-student-list',
+        roles: ['admin', 'vip-admin', 'giamthi']
       },
       {
         label: 'Danh sách giáo viên',

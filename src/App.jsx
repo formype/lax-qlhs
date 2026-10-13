@@ -13,6 +13,7 @@ import { ManageExtraClassStudents } from './pages/ManageExtraClassStudents';
 import { ManageStudents } from './pages/ManageStudents';
 import { ManageTeachers } from './pages/ManageTeachers';
 import { TeacherList } from './pages/TeacherList';
+import { ExtraClassStudentList } from './pages/ExtraClassStudentList';
 import { Attendance } from './pages/Attendance';
 import { AttendanceSearch } from './pages/AttendanceSearch';
 import { StudentList } from './pages/StudentList';
@@ -231,6 +232,7 @@ function AppRoutes() {
         <Route path="/attendance-search" element={<ProtectedRoute><MainLayout><AttendanceSearch /></MainLayout></ProtectedRoute>} />
         <Route path="/boarding-attendance" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><BoardingAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/student-list" element={<ProtectedRoute><MainLayout><StudentList /></MainLayout></ProtectedRoute>} />
+        <Route path="/extra-class-student-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassStudentList /></MainLayout></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute><MainLayout><Statistics /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
