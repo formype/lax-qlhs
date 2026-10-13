@@ -814,6 +814,62 @@ export const removeMultipleStudentsFromExtraClass = async (docIds) => {
   }
 };
 
+export const transferExtraClassStudents = async (fromClassId, toClassId, toClassName, studentsList, updatedBy = 'Admin') => {
+  try {
+    if (!fromClassId || !toClassId || !studentsList || studentsList.length === 0) {
+      return { success: false, error: 'Dữ liệu chuyển lớp không hợp lệ.' };
+    }
+    if (fromClassId === toClassId) {
+      return { success: false, error: 'Lớp chuyển đến phải khác lớp hiện tại.' };
+    }
+
+    const chunkSize = 200; // each transfer performs 1 delete + 1 set = 2 ops, 200 * 2 = 400 < 500 limit
+    let transferredCount = 0;
+
+    for (let i = 0; i < studentsList.length; i += chunkSize) {
+      const chunk = studentsList.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+
+      chunk.forEach((st) => {
+        const cleanMahs = sanitizeText(st.mahs || '', 50).trim().toUpperCase();
+        if (!cleanMahs) return;
+
+        // Old document ref in fromClass
+        const oldDocId = st.id || `${fromClassId}_${cleanMahs.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+        const oldDocRef = doc(db, COLLECTIONS.EXTRA_CLASS_STUDENTS, oldDocId);
+        batch.delete(oldDocRef);
+
+        // New document ref in toClass
+        const newDocId = `${toClassId}_${cleanMahs.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+        const newDocRef = doc(db, COLLECTIONS.EXTRA_CLASS_STUDENTS, newDocId);
+
+        const newData = {
+          extraClassId: toClassId,
+          extraClassName: sanitizeText(toClassName, 100),
+          mahs: cleanMahs,
+          hoten: sanitizeText(st.hoten || '', 100),
+          tenlop: sanitizeText(st.tenlop || st.lop || '', 50),
+          studentId: st.studentId || null,
+          transferredFrom: sanitizeText(st.extraClassName || '', 100),
+          transferredAt: serverTimestamp(),
+          updatedBy: sanitizeText(updatedBy, 100),
+          createdAt: st.createdAt || serverTimestamp()
+        };
+
+        batch.set(newDocRef, newData, { merge: true });
+        transferredCount++;
+      });
+
+      await batch.commit();
+    }
+
+    return { success: true, count: transferredCount };
+  } catch (error) {
+    console.error("Error transferring extra class students:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
 // --- STUDENTS ---
 export const fetchStudents = async (filters = {}, forceRefresh = false) => {
   try {

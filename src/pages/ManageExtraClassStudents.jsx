@@ -10,7 +10,8 @@ import {
   fetchStudentsForExtraClass, 
   addStudentsToExtraClass, 
   removeStudentFromExtraClass,
-  removeMultipleStudentsFromExtraClass
+  removeMultipleStudentsFromExtraClass,
+  transferExtraClassStudents
 } from '../lib/firebase';
 import { 
   Users, 
@@ -26,7 +27,9 @@ import {
   Filter,
   CheckSquare,
   Square,
-  ArrowRight
+  ArrowRight,
+  ArrowRightLeft,
+  X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -52,6 +55,13 @@ export function ManageExtraClassStudents() {
   const [enrolledSearch, setEnrolledSearch] = useState('');
   const [selectedEnrolledIds, setSelectedEnrolledIds] = useState(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Chuyển lớp ngoại khóa state
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [studentsToTransfer, setStudentsToTransfer] = useState([]);
+  const [targetTransferClassId, setTargetTransferClassId] = useState('');
+  const [transferSaving, setTransferSaving] = useState(false);
+  const [transferError, setTransferError] = useState('');
 
   // Active input mode: 'manual' (Dạng 1) | 'excel' (Dạng 2)
   const [activeTab, setActiveTab] = useState('manual');
@@ -422,6 +432,73 @@ export function ManageExtraClassStudents() {
       } else {
         alert(res.error || 'Lỗi khi xóa học sinh.');
       }
+    }
+  };
+
+  // Chuyển 1 học sinh sang lớp ngoại khóa khác
+  const handleOpenTransferSingle = (student) => {
+    setStudentsToTransfer([student]);
+    setTargetTransferClassId('');
+    setTransferError('');
+    setIsTransferModalOpen(true);
+  };
+
+  // Chuyển nhiều học sinh sang lớp ngoại khóa khác
+  const handleOpenTransferMultiple = () => {
+    if (selectedEnrolledIds.size === 0) return;
+    const toMove = enrolledStudents.filter(s => selectedEnrolledIds.has(s.id));
+    setStudentsToTransfer(toMove);
+    setTargetTransferClassId('');
+    setTransferError('');
+    setIsTransferModalOpen(true);
+  };
+
+  // Đóng modal chuyển lớp
+  const handleCloseTransfer = () => {
+    if (transferSaving) return;
+    setIsTransferModalOpen(false);
+    setStudentsToTransfer([]);
+    setTargetTransferClassId('');
+    setTransferError('');
+  };
+
+  // Xác nhận thực hiện chuyển lớp
+  const handleConfirmTransfer = async () => {
+    if (!targetTransferClassId) {
+      setTransferError('Vui lòng chọn lớp ngoại khóa chuyển đến.');
+      return;
+    }
+    const targetCls = extraClasses.find(c => c.id === targetTransferClassId);
+    if (!targetCls) {
+      setTransferError('Lớp chuyển đến không hợp lệ.');
+      return;
+    }
+    if (studentsToTransfer.length === 0) {
+      setTransferError('Không có học sinh nào được chọn để chuyển.');
+      return;
+    }
+
+    setTransferSaving(true);
+    setTransferError('');
+    const targetClassName = targetCls.tenlopngoaikhoa || targetCls.name;
+    const res = await transferExtraClassStudents(
+      selectedClassId,
+      targetTransferClassId,
+      targetClassName,
+      studentsToTransfer,
+      user?.fullName || user?.username || 'Admin'
+    );
+    setTransferSaving(false);
+
+    if (res.success) {
+      setIsTransferModalOpen(false);
+      setStudentsToTransfer([]);
+      setSelectedEnrolledIds(new Set());
+      loadEnrolled(selectedClassId);
+      setManualSuccess(`✓ Đã chuyển thành công ${res.count} học sinh sang lớp "${targetClassName}"!`);
+      setTimeout(() => setManualSuccess(''), 4000);
+    } else {
+      setTransferError(res.error || 'Có lỗi xảy ra khi chuyển lớp.');
     }
   };
 
@@ -843,16 +920,27 @@ export function ManageExtraClassStudents() {
                   </div>
 
                   {selectedEnrolledIds.size > 0 && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleRemoveMultiple}
-                      disabled={isDeleting}
-                      style={{ color: '#ef4444', borderColor: '#ef4444' }}
-                    >
-                      <Trash2 size={14} style={{ marginRight: '4px' }} />
-                      Xóa {selectedEnrolledIds.size} học sinh đã chọn
-                    </Button>
+                    <div className="flex-row items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleOpenTransferMultiple}
+                        className="transfer-batch-btn"
+                        style={{ background: '#8b5cf6', color: '#fff' }}
+                      >
+                        <ArrowRightLeft size={14} style={{ marginRight: '4px' }} />
+                        Chuyển {selectedEnrolledIds.size} HS sang lớp khác
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleRemoveMultiple}
+                        disabled={isDeleting}
+                        style={{ color: '#ef4444', borderColor: '#ef4444' }}
+                      >
+                        <Trash2 size={14} style={{ marginRight: '4px' }} />
+                        Xóa {selectedEnrolledIds.size} HS đã chọn
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -898,7 +986,7 @@ export function ManageExtraClassStudents() {
                           <th style={{ width: '120px' }}>Mã HS</th>
                           <th>Họ và tên</th>
                           <th style={{ width: '100px' }}>Lớp</th>
-                          <th style={{ width: '80px', textAlign: 'center' }}>Xóa</th>
+                          <th style={{ width: '100px', textAlign: 'center' }}>Thao tác</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -919,14 +1007,24 @@ export function ManageExtraClassStudents() {
                               <span className="class-badge-mini">{st.tenlop}</span>
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                className="delete-row-btn"
-                                onClick={() => handleRemoveSingle(st)}
-                                title="Xóa khỏi lớp ngoại khóa"
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              <div className="table-actions-cell">
+                                <button
+                                  type="button"
+                                  className="transfer-row-btn"
+                                  onClick={() => handleOpenTransferSingle(st)}
+                                  title="Chuyển sang lớp ngoại khóa khác"
+                                >
+                                  <ArrowRightLeft size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="delete-row-btn"
+                                  onClick={() => handleRemoveSingle(st)}
+                                  title="Xóa khỏi lớp ngoại khóa"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -939,6 +1037,114 @@ export function ManageExtraClassStudents() {
           </>
         )}
       </div>
+
+      {/* Modal Chuyển Lớp Ngoại Khóa */}
+      {isTransferModalOpen && (
+        <div className="modal-overlay" onClick={handleCloseTransfer}>
+          <div className="modal-content transfer-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <div className="flex-row items-center gap-2">
+                <div className="transfer-icon-badge">
+                  <ArrowRightLeft size={18} color="#8b5cf6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold m-0" style={{ color: 'var(--text-color)' }}>
+                    Chuyển lớp ngoại khóa
+                  </h3>
+                  <p className="text-xs text-muted m-0">
+                    Đang chọn {studentsToTransfer.length} học sinh để chuyển
+                  </p>
+                </div>
+              </div>
+              <button type="button" className="close-modal-btn" onClick={handleCloseTransfer} disabled={transferSaving}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body py-4">
+              {transferError && (
+                <div className="extra-alert error-alert mb-3">
+                  <AlertCircle size={16} />
+                  <span>{transferError}</span>
+                </div>
+              )}
+
+              {/* Lộ trình chuyển: Lớp hiện tại -> Lớp mới */}
+              <div className="transfer-route-box mb-3">
+                <div className="route-class-node">
+                  <span className="route-node-label">Lớp hiện tại</span>
+                  <strong className="route-node-value">{selectedClass?.tenlopngoaikhoa || selectedClass?.name}</strong>
+                </div>
+                <div className="route-arrow-icon">
+                  <ArrowRight size={20} color="#8b5cf6" />
+                </div>
+                <div className="route-class-node">
+                  <span className="route-node-label">Lớp chuyển đến</span>
+                  <strong className="route-node-value" style={{ color: '#8b5cf6' }}>
+                    {targetTransferClassId 
+                      ? (extraClasses.find(c => c.id === targetTransferClassId)?.tenlopngoaikhoa || extraClasses.find(c => c.id === targetTransferClassId)?.name)
+                      : 'Chưa chọn'}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Dropdown chọn lớp chuyển đến */}
+              <div className="input-group mb-3 full-width">
+                <label className="input-label required-label font-semibold">Chọn lớp ngoại khóa chuyển đến</label>
+                {extraClasses.filter(c => c.id !== selectedClassId).length === 0 ? (
+                  <div className="text-sm text-danger p-2 bg-light rounded">
+                    Chưa có lớp ngoại khóa khác trong hệ thống để chuyển đến. Hãy tạo thêm lớp ngoại khóa mới trước.
+                  </div>
+                ) : (
+                  <Select
+                    value={targetTransferClassId}
+                    onChange={(e) => setTargetTransferClassId(e.target.value)}
+                    options={[
+                      { value: '', label: '-- Chọn lớp ngoại khóa chuyển đến --' },
+                      ...extraClasses
+                        .filter(c => c.id !== selectedClassId)
+                        .map(c => ({
+                          value: c.id,
+                          label: c.tenlopngoaikhoa || c.name
+                        }))
+                    ]}
+                  />
+                )}
+              </div>
+
+              {/* Danh sách học sinh chuyển */}
+              <div className="transfer-students-preview">
+                <label className="input-label font-semibold mb-2" style={{ display: 'block' }}>
+                  Danh sách học sinh sẽ chuyển ({studentsToTransfer.length}):
+                </label>
+                <div className="transfer-chips-scroll">
+                  {studentsToTransfer.map((st) => (
+                    <div key={st.id || st.mahs} className="transfer-student-chip">
+                      <span className="chip-mahs">{st.mahs}</span>
+                      <span className="chip-name">{st.hoten}</span>
+                      {st.tenlop && <span className="chip-lop">({st.tenlop})</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer flex-row justify-end gap-2 pt-3 border-t">
+              <Button variant="secondary" onClick={handleCloseTransfer} disabled={transferSaving}>
+                Hủy
+              </Button>
+              <Button
+                onClick={handleConfirmTransfer}
+                disabled={transferSaving || !targetTransferClassId || studentsToTransfer.length === 0}
+                style={{ background: '#8b5cf6', color: '#fff' }}
+              >
+                <ArrowRightLeft size={16} style={{ marginRight: '6px' }} />
+                {transferSaving ? 'Đang chuyển...' : `Xác nhận chuyển ${studentsToTransfer.length} học sinh`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
