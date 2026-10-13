@@ -1,70 +1,397 @@
 .extra-tracking-content {
   padding: 16px;
-  max-width: 1050px;
+  max-width: 1100px;
   margin: 0 auto;
   width: 100%;
 }
 
-.extra-tracking-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+/* Chuyển đổi chế độ xem (View Mode Pill Switcher) */
+.view-mode-toggle-card {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
 }
 
-.subject-badge-modern {
-  background: rgba(139, 92, 246, 0.12) !important;
-  color: #8b5cf6 !important;
-  border: 1px solid rgba(139, 92, 246, 0.25) !important;
+.mode-pill-group {
+  display: inline-flex;
+  background: var(--bg-hover, #f1f5f9);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  gap: 4px;
+}
+
+body.dark .mode-pill-group {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.mode-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 0.875rem;
   font-weight: 600;
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 0.8rem;
-  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-body.dark .subject-badge-modern {
-  background: rgba(139, 92, 246, 0.22) !important;
-  color: #a78bfa !important;
-  border-color: rgba(139, 92, 246, 0.35) !important;
+.mode-pill-btn:hover {
+  color: var(--text-color, #0f172a);
 }
 
-.extra-tracking-table th {
+body.dark .mode-pill-btn:hover {
+  color: #f8fafc;
+}
+
+.mode-pill-btn.active {
+  background: #8b5cf6;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+/* Matrix Controls Row */
+.matrix-controls-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.matrix-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.matrix-search-box .search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted, #94a3b8);
+  pointer-events: none;
+}
+
+.matrix-search-box .input-field {
+  padding-left: 34px !important;
+  padding-right: 30px !important;
+  margin-bottom: 0 !important;
+  height: 42px;
+}
+
+.matrix-search-box .clear-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+/* Matrix Summary Chips & Export Button */
+.matrix-summary-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.summary-badge-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  font-size: 0.85rem;
+  color: var(--text-color, #334155);
+}
+
+body.dark .summary-badge-item {
+  background: var(--bg-card, #1e293b);
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.summary-badge-item.badge-absent {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+}
+
+body.dark .summary-badge-item.badge-absent {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+}
+
+.export-matrix-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25) !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  gap: 6px !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.export-matrix-btn:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 5px 14px rgba(16, 185, 129, 0.35) !important;
+}
+
+/* ========================================================================= */
+/* BẢNG MA TRẬN SPREADSHEET (CHUẨN FORM GIỐNG HÌNH ẢNH MẪU 100%)             */
+/* ========================================================================= */
+.matrix-table-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+body.dark .matrix-table-card {
+  background: var(--bg-card, #1e293b);
+  border-color: #334155;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.matrix-table-container {
+  overflow-x: auto;
+  max-height: 560px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.matrix-spreadsheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  background: var(--card-bg, #ffffff);
+}
+
+body.dark .matrix-spreadsheet-table {
+  background: var(--bg-card, #1e293b);
+}
+
+/* Sticky Headers */
+.matrix-spreadsheet-table thead th {
   position: sticky;
   top: 0;
-  background-color: var(--card-bg, #ffffff) !important;
-  z-index: 10 !important;
-  padding: 12px 14px;
-  text-align: left;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
   font-weight: 700;
-  font-size: 0.8rem;
-  color: var(--text-color, #1e293b) !important;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid var(--border-color, #cbd5e1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #cbd5e1 !important;
+  text-align: center;
+  vertical-align: middle;
+  padding: 8px 6px;
+  z-index: 15;
   background-clip: padding-box;
 }
 
-body.dark .extra-tracking-table th {
-  background-color: var(--bg-card, #1e293b) !important;
+body.dark .matrix-spreadsheet-table thead th {
+  background-color: #1e293b !important;
   color: #f8fafc !important;
-  border-bottom-color: #475569;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  border-color: #475569 !important;
 }
 
-.extra-tracking-table td {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+/* Sticky row 2 headers */
+.matrix-spreadsheet-table thead tr:nth-child(2) th {
+  top: 36px;
+}
+
+/* Cột STT, HỌ TÊN HỌC SINH, LỚP cố định bên trái (Sticky left) */
+.matrix-th-stt,
+.matrix-td-stt {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  text-align: center;
+  background-color: var(--card-bg, #ffffff) !important;
+}
+
+.matrix-th-name,
+.matrix-td-name {
+  position: sticky;
+  left: 48px;
+  z-index: 10;
+  width: 200px;
+  min-width: 200px;
+  max-width: 240px;
+  text-align: left;
+  background-color: var(--card-bg, #ffffff) !important;
+}
+
+.matrix-th-class,
+.matrix-td-class {
+  position: sticky;
+  left: 248px;
+  z-index: 10;
+  width: 65px;
+  min-width: 65px;
+  max-width: 65px;
+  text-align: center;
+  border-right: 2px solid #94a3b8 !important;
+  background-color: var(--card-bg, #ffffff) !important;
+}
+
+/* Dark mode cho sticky left columns */
+body.dark .matrix-th-stt,
+body.dark .matrix-td-stt,
+body.dark .matrix-th-name,
+body.dark .matrix-td-name,
+body.dark .matrix-th-class,
+body.dark .matrix-td-class {
+  background-color: #1e293b !important;
+}
+
+/* Intersection sticky góc trên bên trái */
+.matrix-spreadsheet-table thead th.matrix-th-stt,
+.matrix-spreadsheet-table thead th.matrix-th-name,
+.matrix-spreadsheet-table thead th.matrix-th-class {
+  z-index: 30 !important;
+  background-color: #f1f5f9 !important;
+}
+
+body.dark .matrix-spreadsheet-table thead th.matrix-th-stt,
+body.dark .matrix-spreadsheet-table thead th.matrix-th-name,
+body.dark .matrix-spreadsheet-table thead th.matrix-th-class {
+  background-color: #0f172a !important;
+}
+
+.matrix-th-tuan {
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.matrix-th-date {
+  font-size: 0.75rem;
+  font-family: monospace, sans-serif;
+  width: 72px;
+  min-width: 72px;
+  padding: 6px 4px !important;
+  white-space: nowrap;
+}
+
+.matrix-th-total,
+.matrix-td-total {
+  width: 70px;
+  min-width: 70px;
+  text-align: center;
+  border-left: 2px solid #cbd5e1 !important;
+}
+
+body.dark .matrix-th-total,
+body.dark .matrix-td-total {
+  border-left-color: #475569 !important;
+}
+
+/* Body cells */
+.matrix-spreadsheet-table tbody td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 8px;
   vertical-align: middle;
+  color: var(--text-color, #1e293b);
+  background-color: var(--card-bg, #ffffff);
 }
 
-body.dark .extra-tracking-table td {
-  border-bottom-color: #334155;
+body.dark .matrix-spreadsheet-table tbody td {
+  border-color: #334155;
+  color: #f8fafc;
+  background-color: var(--bg-card, #1e293b);
 }
 
-@media (max-width: 640px) {
-  .extra-tracking-filter-grid {
+.matrix-spreadsheet-table tbody tr:hover td {
+  background-color: rgba(139, 92, 246, 0.04);
+}
+
+body.dark .matrix-spreadsheet-table tbody tr:hover td {
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+.matrix-td-stt {
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.student-name {
+  font-weight: 600;
+  color: var(--text-color, #0f172a);
+}
+
+body.dark .student-name {
+  color: #f8fafc;
+}
+
+.matrix-td-class {
+  font-weight: 700;
+  color: #0284c7;
+}
+
+body.dark .matrix-td-class {
+  color: #38bdf8;
+}
+
+/* Ô ĐIỂM DANH: VẮNG MẶT ('v') MÀU HỒNG NHẠT CHỮ ĐỎ IN ĐẬM GIỐNG HÌNH */
+.matrix-td-cell {
+  text-align: center;
+  font-weight: 700;
+  transition: background-color 0.15s ease;
+}
+
+.matrix-td-cell.cell-absent {
+  background-color: #fecdd3 !important; /* Màu hồng nhạt đúng theo ảnh */
+  color: #dc2626 !important; /* Chữ v in đỏ đậm */
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+body.dark .matrix-td-cell.cell-absent {
+  background-color: rgba(239, 68, 68, 0.3) !important;
+  color: #fca5a5 !important;
+}
+
+.matrix-td-cell.cell-empty {
+  color: transparent;
+}
+
+.matrix-td-total {
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+}
+
+.matrix-td-total.has-absent {
+  color: #dc2626;
+  font-weight: 800;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+body.dark .matrix-td-total.has-absent {
+  color: #f87171;
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .matrix-controls-row {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
