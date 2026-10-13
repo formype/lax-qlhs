@@ -9,6 +9,7 @@ import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { ManageClasses } from './pages/ManageClasses';
 import { ManageExtraClasses } from './pages/ManageExtraClasses';
+import { ManageExtraClassStudents } from './pages/ManageExtraClassStudents';
 import { ManageStudents } from './pages/ManageStudents';
 import { ManageTeachers } from './pages/ManageTeachers';
 import { TeacherList } from './pages/TeacherList';
@@ -66,7 +67,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!isAdmin && (
       location.pathname === '/classes' || 
       location.pathname === '/students' ||
-      location.pathname === '/extra-classes'
+      location.pathname === '/extra-classes' ||
+      location.pathname === '/extra-class-students'
   )) {
     alert("Bạn không có quyền truy cập chức năng này!");
     return <Navigate to="/" replace />;
@@ -218,6 +220,7 @@ function AppRoutes() {
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><ManageClasses /></MainLayout></ProtectedRoute>} />
         <Route path="/extra-classes" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><ManageExtraClasses /></MainLayout></ProtectedRoute>} />
+        <Route path="/extra-class-students" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><ManageExtraClassStudents /></MainLayout></ProtectedRoute>} />
         <Route path="/students" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><ManageStudents /></MainLayout></ProtectedRoute>} />
         <Route path="/teachers" element={<ProtectedRoute allowedRoles={['vip-admin']}><MainLayout><ManageTeachers /></MainLayout></ProtectedRoute>} />
         <Route path="/teacher-list" element={<ProtectedRoute allowedRoles={['vip-admin']}><MainLayout><TeacherList /></MainLayout></ProtectedRoute>} />

@@ -41,6 +41,7 @@ export const COLLECTIONS = {
   TEACHERS: 'teachers',
   CLASSES: 'classes',
   EXTRA_CLASSES: 'extraClasses',
+  EXTRA_CLASS_STUDENTS: 'extraClassStudents',
   VIOLATIONS: 'violations',
   CONFIG: 'config',
   VIOLATION_RULES: 'violationRules',
@@ -715,6 +716,100 @@ export const deleteExtraClass = async (id) => {
     return { success: true };
   } catch (error) {
     console.error("Error deleting extra class:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+// --- EXTRA CLASS STUDENTS (HỌC SINH LỚP NGOẠI KHÓA) ---
+export const fetchStudentsForExtraClass = async (extraClassId) => {
+  try {
+    if (!extraClassId) return [];
+    const q = query(
+      collection(db, COLLECTIONS.EXTRA_CLASS_STUDENTS), 
+      where('extraClassId', '==', extraClassId)
+    );
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    return list.sort((a, b) => (a.hoten || '').localeCompare(b.hoten || ''));
+  } catch (error) {
+    console.error("Error fetching extra class students:", error);
+    return [];
+  }
+};
+
+export const addStudentsToExtraClass = async (extraClassId, extraClassName, studentsList, createdBy = 'Admin') => {
+  try {
+    if (!extraClassId || !studentsList || studentsList.length === 0) {
+      return { success: false, error: 'Dữ liệu không hợp lệ.' };
+    }
+
+    const chunkSize = 450;
+    let addedCount = 0;
+
+    for (let i = 0; i < studentsList.length; i += chunkSize) {
+      const chunk = studentsList.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+
+      chunk.forEach((st) => {
+        const cleanMahs = sanitizeText(st.mahs || '', 50).trim().toUpperCase();
+        if (!cleanMahs) return;
+        
+        // Doc ID format ensures no duplicates for the same student in this extra class
+        const safeDocId = `${extraClassId}_${cleanMahs.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+        const docRef = doc(db, COLLECTIONS.EXTRA_CLASS_STUDENTS, safeDocId);
+
+        const data = {
+          extraClassId,
+          extraClassName: sanitizeText(extraClassName, 100),
+          mahs: cleanMahs,
+          hoten: sanitizeText(st.hoten || '', 100),
+          tenlop: sanitizeText(st.tenlop || st.lop || st.className || '', 50),
+          studentId: st.studentId || st.id || null,
+          createdBy: sanitizeText(createdBy, 100),
+          createdAt: serverTimestamp()
+        };
+
+        batch.set(docRef, data, { merge: true });
+        addedCount++;
+      });
+
+      await batch.commit();
+    }
+
+    return { success: true, count: addedCount };
+  } catch (error) {
+    console.error("Error adding students to extra class:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const removeStudentFromExtraClass = async (docId) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.EXTRA_CLASS_STUDENTS, docId));
+    return { success: true };
+  } catch (error) {
+    console.error("Error removing student from extra class:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const removeMultipleStudentsFromExtraClass = async (docIds) => {
+  try {
+    const chunkSize = 450;
+    for (let i = 0; i < docIds.length; i += chunkSize) {
+      const chunk = docIds.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach(id => {
+        batch.delete(doc(db, COLLECTIONS.EXTRA_CLASS_STUDENTS, id));
+      });
+      await batch.commit();
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error batch removing students from extra class:", error);
     return { success: false, error: error.message || error.toString() };
   }
 };
@@ -1416,6 +1511,7 @@ export const deleteAllData = async () => {
       COLLECTIONS.STUDENTS,
       COLLECTIONS.CLASSES,
       COLLECTIONS.EXTRA_CLASSES,
+      COLLECTIONS.EXTRA_CLASS_STUDENTS,
       COLLECTIONS.VIOLATIONS,
       COLLECTIONS.ATTENDANCE,
       COLLECTIONS.NOTIFICATIONS,
@@ -1453,6 +1549,7 @@ export const importDatabase = async (backupData) => {
       { name: COLLECTIONS.STUDENTS, data: backupData.students || [] },
       { name: COLLECTIONS.CLASSES, data: backupData.classes || [] },
       { name: COLLECTIONS.EXTRA_CLASSES, data: backupData.extraClasses || backupData.extra_classes || [] },
+      { name: COLLECTIONS.EXTRA_CLASS_STUDENTS, data: backupData.extraClassStudents || backupData.extra_class_students || [] },
       { name: COLLECTIONS.VIOLATIONS, data: backupData.violations || [] },
       { name: COLLECTIONS.ATTENDANCE, data: backupData.attendance || [] },
       { name: COLLECTIONS.NOTIFICATIONS, data: backupData.notifications || [] },
