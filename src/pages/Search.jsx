@@ -62,7 +62,7 @@ export function Search() {
   const [loading, setLoading] = useState(true);
 
   // Filters state
-  const [timeFilterType, setTimeFilterType] = useState('all'); // all, day, week, month, semester
+  const [timeFilterType, setTimeFilterType] = useState('week'); // all, day, week, month, semester
   const [timeValueDay, setTimeValueDay] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [timeValueWeek, setTimeValueWeek] = useState('1');
   const [timeValueMonth, setTimeValueMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -108,6 +108,24 @@ export function Search() {
       setClasses(cData);
       setViolationTypes(tData);
       setSettings(sData);
+
+      if (sData) {
+        const today = new Date();
+        const s1Start = parse(sData.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+        const s2Start = parse(sData.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
+        const s1Weeks = sData.semester1Weeks || 18;
+        let currentWeek = 1;
+        if (today >= s2Start) {
+          const diffTime = today.getTime() - s2Start.getTime();
+          currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1 + s1Weeks;
+        } else if (today >= s1Start) {
+          const diffTime = today.getTime() - s1Start.getTime();
+          currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1;
+        } else {
+          currentWeek = 1;
+        }
+        setTimeValueWeek(currentWeek.toString());
+      }
 
       if (isGiaovienOnly) {
          const myClass = cData.find(c => c.homeroomTeacherId === user?.id);

@@ -49,7 +49,7 @@ export function DailyLogList() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const [timeFilterType, setTimeFilterType] = useState('all'); // all, day, week, month
+  const [timeFilterType, setTimeFilterType] = useState('week'); // all, day, week, month
   const [timeValueDay, setTimeValueDay] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [timeValueWeek, setTimeValueWeek] = useState('1');
   const [timeValueMonth, setTimeValueMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -79,6 +79,25 @@ export function DailyLogList() {
     
     setAllLogs(fetchedLogs);
     setSettings(sData);
+
+    if (sData) {
+      const today = new Date();
+      const s1Start = parse(sData.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+      const s2Start = parse(sData.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
+      const s1Weeks = parseInt(sData.semester1Weeks || 18, 10);
+      let currentWeek = 1;
+      if (today >= s2Start) {
+        const diffTime = today.getTime() - s2Start.getTime();
+        currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1 + s1Weeks;
+      } else if (today >= s1Start) {
+        const diffTime = today.getTime() - s1Start.getTime();
+        currentWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1;
+      } else {
+        currentWeek = 1;
+      }
+      setTimeValueWeek(currentWeek.toString());
+    }
+
     setLoading(false);
   };
 
@@ -89,7 +108,7 @@ export function DailyLogList() {
   const logs = React.useMemo(() => {
     if (!settings) return [];
     const s1Start = parse(settings.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
-    const s1Weeks = parseInt(settings.semester1Weeks || 18);
+    const s1Weeks = parseInt(settings.semester1Weeks || 18, 10);
     const s2Start = parse(settings.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
 
     return allLogs.filter(v => {
@@ -135,10 +154,29 @@ export function DailyLogList() {
     fetchData();
   };
 
-  const weekOptions = settings ? Array.from({ length: settings.semester1Weeks + settings.semester2Weeks }, (_, i) => ({
-    value: String(i + 1),
-    label: `Tuần ${i + 1}`
-  })) : [];
+  const weekOptions = React.useMemo(() => {
+    if (!settings) return [];
+    const s1Start = parse(settings.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+    const s2Start = parse(settings.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
+    const s1Weeks = parseInt(settings.semester1Weeks || 18, 10);
+    const s2Weeks = parseInt(settings.semester2Weeks || 17, 10);
+    const totalWeeks = s1Weeks + s2Weeks;
+
+    return Array.from({ length: totalWeeks }, (_, i) => {
+      const isHK1 = i < s1Weeks;
+      const hk = isHK1 ? 'HK1' : 'HK2';
+      const weekIndexInHK = isHK1 ? i : i - s1Weeks;
+      const baseDate = isHK1 ? s1Start : s2Start;
+      
+      const weekStart = new Date(baseDate);
+      weekStart.setDate(weekStart.getDate() + (weekIndexInHK * 7));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 5);
+      
+      const label = `Tuần ${i + 1} - ${hk} (${format(weekStart, 'dd/MM/yyyy')} - ${format(weekEnd, 'dd/MM/yyyy')})`;
+      return { value: (i + 1).toString(), label };
+    });
+  }, [settings]);
 
   useEffect(() => {
     setCurrentPage(1);
