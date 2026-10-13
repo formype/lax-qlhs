@@ -196,6 +196,16 @@ const FEATURE_SECTIONS = [
         shadow: 'rgba(245, 158, 11, 0.15)',
         path: '/extra-class-student-list',
         roles: ['admin', 'vip-admin', 'giamthi']
+      },
+      {
+        label: 'Theo dõi ngoại khóa',
+        icon: CalendarCheck,
+        color: '#ec4899',
+        bg: 'rgba(236, 72, 153, 0.08)',
+        border: 'rgba(236, 72, 153, 0.2)',
+        shadow: 'rgba(236, 72, 153, 0.15)',
+        path: '/extra-class-tracking',
+        roles: ['admin', 'vip-admin', 'giamthi']
       }
     ]
   }

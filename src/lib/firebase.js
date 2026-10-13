@@ -1466,6 +1466,41 @@ export const getExtraClassAttendance = async (date, extraClassId) => {
   }
 };
 
+export const getExtraClassAttendanceHistory = async (days = 60) => {
+  try {
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    const dateStr = fromDate.toISOString().split('T')[0];
+
+    try {
+      const q = query(
+        collection(db, COLLECTIONS.EXTRA_CLASS_ATTENDANCE),
+        where('date', '>=', dateStr),
+        orderBy('date', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      const data = [];
+      querySnapshot.forEach((doc) => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+      return data;
+    } catch (indexError) {
+      const snap = await getDocs(collection(db, COLLECTIONS.EXTRA_CLASS_ATTENDANCE));
+      const data = [];
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (!dateStr || (d.date && d.date >= dateStr)) {
+          data.push({ id: doc.id, ...d });
+        }
+      });
+      return data.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }
+  } catch (error) {
+    console.error("Error fetching extra class attendance history:", error);
+    return [];
+  }
+};
+
 export const getAttendanceByDate = async (date) => {
   try {
     const q = query(collection(db, COLLECTIONS.ATTENDANCE), where('date', '==', date));
