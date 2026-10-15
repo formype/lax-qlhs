@@ -22,6 +22,7 @@ import { StudentList } from './pages/StudentList';
 import { BoardingAttendance } from './pages/BoardingAttendance';
 import { DailyLog } from './pages/DailyLog';
 import { DailyLogList } from './pages/DailyLogList';
+import { ClassSanitation } from './pages/ClassSanitation';
 import { Statistics } from './pages/Statistics';
 import { AccountSettings } from './pages/AccountSettings';
 import { ManageAccounts } from './pages/ManageAccounts';
@@ -67,7 +68,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!isAdmin && !isGiamthi && (
       location.pathname === '/add' || 
       location.pathname === '/attendance' ||
-      location.pathname === '/extra-class-attendance'
+      location.pathname === '/extra-class-attendance' ||
+      location.pathname === '/class-sanitation'
   )) {
     alert("Giáo viên không có quyền truy cập chức năng này!");
     return <Navigate to="/" replace />;
@@ -246,6 +248,7 @@ function AppRoutes() {
         <Route path="/student-list" element={<ProtectedRoute><MainLayout><StudentList /></MainLayout></ProtectedRoute>} />
         <Route path="/extra-class-student-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassStudentList /></MainLayout></ProtectedRoute>} />
         <Route path="/extra-class-tracking" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassTracking /></MainLayout></ProtectedRoute>} />
+        <Route path="/class-sanitation" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ClassSanitation /></MainLayout></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute><MainLayout><Statistics /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

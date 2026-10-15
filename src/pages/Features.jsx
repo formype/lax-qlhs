@@ -208,6 +208,22 @@ const FEATURE_SECTIONS = [
         roles: ['admin', 'vip-admin', 'giamthi']
       }
     ]
+  },
+  {
+    title: 'Liên đội',
+    icon: '🚩',
+    items: [
+      {
+        label: 'Chấm vệ sinh lớp',
+        icon: Sparkles,
+        color: '#06b6d4',
+        bg: 'rgba(6, 182, 212, 0.08)',
+        border: 'rgba(6, 182, 212, 0.2)',
+        shadow: 'rgba(6, 182, 212, 0.15)',
+        path: '/class-sanitation',
+        roles: ['admin', 'vip-admin', 'giamthi']
+      }
+    ]
   }
 ];
 
@@ -233,6 +249,10 @@ export function Features() {
             return null;
           }
 
+          if (section.title === 'Liên đội' && !isAdmin && !isGiamthi) {
+            return null;
+          }
+
           return (
             <div key={section.title} className="feature-section">
               <div className="feature-section-header">
@@ -252,7 +272,8 @@ export function Features() {
                   if (!isAdmin && !isGiamthi && (
                     item.path === '/add' || 
                     item.path === '/attendance' ||
-                    item.path === '/extra-class-attendance'
+                    item.path === '/extra-class-attendance' ||
+                    item.path === '/class-sanitation'
                   )) {
                     return null;
                   }

@@ -50,7 +50,8 @@ export const COLLECTIONS = {
   EXTRA_CLASS_ATTENDANCE: 'extraClassAttendance',
   NOTIFICATIONS: 'notifications',
   DAILY_LOGS: 'dailyLogs',
-  SYSTEM_CONFIG: 'system_config'
+  SYSTEM_CONFIG: 'system_config',
+  CLASS_SANITATION: 'classSanitation'
 };
 
 // --- CACHE SYSTEM (Để tiết kiệm Firebase Read) ---
@@ -1539,6 +1540,100 @@ export const getAttendanceHistory = async (days = 30) => {
   }
 };
 
+// --- CLASS SANITATION (CHẤM VỆ SINH LỚP) ---
+export const saveClassSanitation = async (date, session, records, user) => {
+  try {
+    const cleanDate = sanitizeDate(date) || date;
+    const cleanSession = (session === 'Chiều' || session === 'afternoon') ? 'Chiều' : 'Sáng';
+    const batch = writeBatch(db);
+    
+    const classList = Array.isArray(records) ? records : Object.values(records);
+    
+    classList.forEach((rec) => {
+      if (!rec.className) return;
+      const cleanClassName = sanitizeText(rec.className, 50);
+      const safeClassName = cleanClassName.replace(/\//g, '-');
+      const docId = `${safeClassName}_${cleanDate}_${cleanSession}`;
+      const docRef = doc(db, COLLECTIONS.CLASS_SANITATION, docId);
+      
+      const payload = {
+        className: cleanClassName,
+        date: cleanDate,
+        session: cleanSession,
+        score: typeof rec.score === 'number' ? rec.score : 10,
+        rating: rec.rating || (rec.score >= 9 ? 'Tốt' : rec.score >= 7 ? 'Khá' : rec.score >= 5 ? 'Trung bình' : 'Chưa đạt'),
+        violations: Array.isArray(rec.violations) ? rec.violations : [],
+        note: sanitizeText(rec.note || '', 500),
+        gradedBy: user?.fullName || user?.username || 'Giám thị',
+        gradedById: user?.id || null,
+        updatedAt: serverTimestamp()
+      };
+      batch.set(docRef, payload, { merge: true });
+    });
+    
+    await batch.commit();
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving class sanitation:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const fetchClassSanitationByDate = async (date, session) => {
+  try {
+    const cleanDate = sanitizeDate(date) || date;
+    const cleanSession = (session === 'Chiều' || session === 'afternoon') ? 'Chiều' : 'Sáng';
+    const q = query(
+      collection(db, COLLECTIONS.CLASS_SANITATION),
+      where('date', '==', cleanDate),
+      where('session', '==', cleanSession)
+    );
+    const snap = await getDocs(q);
+    const result = {};
+    snap.forEach((doc) => {
+      const data = doc.data();
+      result[data.className] = { id: doc.id, ...data };
+    });
+    return result;
+  } catch (error) {
+    console.error("Error fetching class sanitation:", error);
+    return {};
+  }
+};
+
+export const fetchClassSanitationHistory = async (days = 30) => {
+  try {
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    const dateStr = fromDate.toISOString().split('T')[0];
+
+    const q = query(
+      collection(db, COLLECTIONS.CLASS_SANITATION),
+      where('date', '>=', dateStr),
+      orderBy('date', 'desc')
+    );
+    const snap = await getDocs(q);
+    const result = [];
+    snap.forEach((doc) => {
+      result.push({ id: doc.id, ...doc.data() });
+    });
+    return result;
+  } catch (error) {
+    console.error("Error fetching sanitation history:", error);
+    return [];
+  }
+};
+
+export const deleteClassSanitation = async (docId) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.CLASS_SANITATION, docId));
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting class sanitation:", error);
+    return { success: false, error };
+  }
+};
+
 // --- VIOLATION TYPES ---
 export const fetchViolationTypes = async (forceRefresh = false) => {
   try {
@@ -1682,7 +1777,8 @@ export const exportDatabase = async () => {
       attendance: [],
       settings: [],
       notifications: [],
-      daily_logs: []
+      daily_logs: [],
+      class_sanitation: []
     };
     
     // Fetch all collections except users
@@ -1707,6 +1803,9 @@ export const exportDatabase = async () => {
     const dailyLogsSnap = await getDocs(collection(db, COLLECTIONS.DAILY_LOGS));
     dailyLogsSnap.forEach(doc => data.daily_logs.push({ id: doc.id, ...doc.data() }));
 
+    const sanitationSnap = await getDocs(collection(db, COLLECTIONS.CLASS_SANITATION));
+    sanitationSnap.forEach(doc => data.class_sanitation.push({ id: doc.id, ...doc.data() }));
+
     return data;
   } catch (error) {
     console.error("Lỗi khi xuất dữ liệu:", error);
@@ -1724,7 +1823,8 @@ export const deleteAllData = async () => {
       COLLECTIONS.VIOLATIONS,
       COLLECTIONS.ATTENDANCE,
       COLLECTIONS.NOTIFICATIONS,
-      COLLECTIONS.DAILY_LOGS
+      COLLECTIONS.DAILY_LOGS,
+      COLLECTIONS.CLASS_SANITATION
     ];
 
     for (const col of collectionsToClear) {
@@ -1763,6 +1863,7 @@ export const importDatabase = async (backupData) => {
       { name: COLLECTIONS.ATTENDANCE, data: backupData.attendance || [] },
       { name: COLLECTIONS.NOTIFICATIONS, data: backupData.notifications || [] },
       { name: COLLECTIONS.DAILY_LOGS, data: backupData.daily_logs || [] },
+      { name: COLLECTIONS.CLASS_SANITATION, data: backupData.class_sanitation || [] },
       { name: 'settings', data: backupData.settings || [] }
     ];
 
