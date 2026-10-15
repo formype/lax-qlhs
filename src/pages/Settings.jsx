@@ -3,15 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { LogOut, User as UserIcon, Database, Moon, Users, BookOpen, Calendar, Save, RefreshCw, DownloadCloud, UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
+import { LogOut, User as UserIcon, Database, Moon, Users, BookOpen, Calendar, Save, RefreshCw, DownloadCloud, UploadCloud, Trash2, AlertTriangle, Wrench } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchSystemSettings, updateSystemSettings, exportDatabase, importDatabase, deleteAllData } from '../lib/firebase';
+import { fetchSystemSettings, updateSystemSettings, exportDatabase, importDatabase, deleteAllData, updateSystemConfig } from '../lib/firebase';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import './Settings.css';
 
 export function Settings() {
-  const { user, logout } = useAuth();
+  const { user, logout, isMaintenanceMode } = useAuth();
   const navigate = useNavigate();
   const [academicSettings, setAcademicSettings] = React.useState({
     semester1StartDate: '2026-09-07',
@@ -145,6 +145,35 @@ export function Settings() {
       alert("Đã lưu cấu hình năm học thành công!");
     } else {
       alert("Có lỗi xảy ra khi lưu cấu hình.");
+    }
+  };
+
+  const handleToggleMaintenance = async () => {
+    if (!user?.role?.includes('vip-admin')) {
+      alert("Chỉ tài khoản thuộc nhóm VIP Admin mới có thể sử dụng tính năng này!");
+      return;
+    }
+
+    const nextState = !isMaintenanceMode;
+    const confirmMessage = nextState
+      ? "Bạn có chắc chắn muốn BẬT chế độ bảo trì hệ thống?\n\nKhi bật, tất cả tài khoản Giáo viên, Giám thị, Quản trị viên (Admin) khi truy cập thì trang Tổng quan chỉ hiển thị thông báo: 'Hệ thống đang được bảo trì, vui lòng quay lại sau.'"
+      : "Bạn có chắc chắn muốn TẮT chế độ bảo trì và mở lại quyền truy cập cho tất cả các tài khoản?";
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      setIsProcessing(true);
+      const res = await updateSystemConfig({ maintenanceMode: nextState });
+      if (res.success) {
+        alert(nextState ? "Đã BẬT chế độ bảo trì ứng dụng thành công!" : "Đã TẮT chế độ bảo trì ứng dụng thành công!");
+      } else {
+        alert("Lỗi khi cập nhật trạng thái bảo trì: " + (res.error?.message || res.error));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi: " + err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -289,6 +318,31 @@ export function Settings() {
               </div>
             </CardBody>
           </Card>
+
+          {user?.role?.includes('vip-admin') && (
+            <Card className="settings-item" onClick={isProcessing ? undefined : handleToggleMaintenance} style={{ cursor: isProcessing ? 'wait' : 'pointer' }}>
+              <CardBody className="flex-between">
+                <div className="flex-row gap-3">
+                  <Wrench size={20} style={{ color: isMaintenanceMode ? 'var(--danger, #ef4444)' : 'var(--text-muted)' }} />
+                  <div>
+                    <span style={{ fontWeight: 500, color: isMaintenanceMode ? 'var(--danger, #ef4444)' : 'inherit' }}>Bảo trì ứng dụng</span>
+                    <p className="text-xs text-muted" style={{ margin: 0, marginTop: '2px' }}>
+                      {isMaintenanceMode ? 'Đang bật (Tất cả tài khoản khác bị tạm dừng)' : 'Đang tắt (Hệ thống hoạt động bình thường)'}
+                    </p>
+                  </div>
+                </div>
+                <div className={`toggle-switch ${isMaintenanceMode ? 'active' : ''}`} style={{ 
+                  width: '44px', height: '24px', background: isMaintenanceMode ? 'var(--danger, #ef4444)' : 'var(--border-color)', 
+                  borderRadius: '12px', position: 'relative', transition: 'background 0.3s'
+                }}>
+                  <div className="toggle-knob" style={{ 
+                    width: '20px', height: '20px', background: 'white', borderRadius: '50%', 
+                    position: 'absolute', top: '2px', left: isMaintenanceMode ? '22px' : '2px', transition: 'left 0.3s' 
+                  }}></div>
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
           {user && (user.role?.includes('admin') || user.role?.includes('vip-admin')) && (
             <>

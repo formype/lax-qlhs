@@ -36,11 +36,16 @@ import { X } from 'lucide-react';
 import './App.css';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user } = useAuth();
+  const { user, isMaintenanceMode } = useAuth();
   const location = useLocation();
 
   if (!user) {
     return <Navigate to="/login" />;
+  }
+
+  // Chế độ bảo trì: Tất cả tài khoản không phải vip-admin chỉ được ở trang / (Dashboard)
+  if (isMaintenanceMode && !user.role?.includes('vip-admin') && location.pathname !== '/') {
+    return <Navigate to="/" replace />;
   }
 
   if (user.blockedPages && user.blockedPages.includes(location.pathname)) {
@@ -82,12 +87,15 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 const MainLayout = ({ children }) => {
+  const { user, isMaintenanceMode } = useAuth();
+  const hideNav = isMaintenanceMode && !user?.role?.includes('vip-admin');
+
   return (
     <>
       <div className="main-content">
         {children}
       </div>
-      <BottomNav />
+      {!hideNav && <BottomNav />}
     </>
   );
 };

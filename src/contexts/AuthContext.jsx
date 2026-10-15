@@ -19,11 +19,36 @@ if (!localSessionId) {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [systemConfig, setSystemConfig] = useState({
+    latestVersion: '1.0.0',
+    downloadLink: '',
+    maintenanceMode: false
+  });
   
   const isAppActiveRef = useRef(true);
   const currentRemoteSessionIdRef = useRef(null);
   const unsubscribeRef = useRef(null);
   const userRefState = useRef(null);
+
+  useEffect(() => {
+    const configDocRef = doc(db, 'settings', 'system_config');
+    const unsubscribeConfig = onSnapshot(configDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setSystemConfig({
+          latestVersion: data.latestVersion || '1.0.0',
+          downloadLink: data.downloadLink || '',
+          maintenanceMode: Boolean(data.maintenanceMode)
+        });
+      }
+    }, (err) => {
+      console.error("Lỗi khi theo dõi cấu hình hệ thống:", err);
+    });
+
+    return () => {
+      unsubscribeConfig();
+    };
+  }, []);
 
   // Keep ref synced with state to avoid stale closure in event listeners
   useEffect(() => {
@@ -144,8 +169,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const isMaintenanceMode = Boolean(systemConfig.maintenanceMode);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateContextUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      logout, 
+      updateContextUser,
+      systemConfig,
+      isMaintenanceMode
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

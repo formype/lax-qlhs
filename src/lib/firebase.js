@@ -1651,12 +1651,12 @@ export const getSystemConfig = async () => {
     const docRef = doc(db, 'settings', 'system_config');
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data();
+      return { latestVersion: '1.0.0', downloadLink: '', maintenanceMode: false, ...docSnap.data() };
     }
-    return { latestVersion: '1.0.0', downloadLink: '' };
+    return { latestVersion: '1.0.0', downloadLink: '', maintenanceMode: false };
   } catch (error) {
     console.error("Error getting system config:", error);
-    return { latestVersion: '1.0.0', downloadLink: '' };
+    return { latestVersion: '1.0.0', downloadLink: '', maintenanceMode: false };
   }
 };
 

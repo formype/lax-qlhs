@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 import { getRecentViolations, getAttendanceByDate, fetchStudents } from '../lib/firebase';
 import { format, isToday, isThisWeek, parseISO } from 'date-fns';
-import { AlertCircle, Clock, ShieldAlert, TrendingUp, CheckCircle, UserCheck, UserX } from 'lucide-react';
+import { AlertCircle, Clock, ShieldAlert, TrendingUp, CheckCircle, UserCheck, UserX, Wrench } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { APP_VERSION } from '../config';
 import './Dashboard.css';
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const { user, logout, isMaintenanceMode } = useAuth();
+  const navigate = useNavigate();
   const [violations, setViolations] = useState([]);
   const [attendanceStats, setAttendanceStats] = useState({ 
     present: 0, 
@@ -21,7 +24,14 @@ export function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
 
+  const isVipAdmin = user?.role?.includes('vip-admin');
+
   useEffect(() => {
+    if (isMaintenanceMode && !isVipAdmin) {
+      setLoading(false);
+      return;
+    }
+
     const fetchStats = async () => {
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const [data, attendanceData, studentsData] = await Promise.all([
@@ -94,7 +104,73 @@ export function Dashboard() {
       setLoading(false);
     };
     fetchStats();
-  }, [user]);
+  }, [user, isMaintenanceMode, isVipAdmin]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  if (isMaintenanceMode && !isVipAdmin) {
+    return (
+      <>
+        <Header title="Tổng quan" />
+        <div className="dashboard-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '65vh', textAlign: 'center', padding: '24px 16px' }}>
+          <div style={{
+            width: '88px',
+            height: '88px',
+            borderRadius: '50%',
+            background: 'rgba(239, 68, 68, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '20px',
+            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.15)'
+          }}>
+            <Wrench size={42} color="var(--danger, #ef4444)" />
+          </div>
+
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 12px',
+            background: 'rgba(239, 68, 68, 0.12)',
+            borderRadius: '20px',
+            color: 'var(--danger, #ef4444)',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            marginBottom: '16px'
+          }}>
+            <AlertCircle size={15} />
+            <span>Thông báo bảo trì</span>
+          </div>
+
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-color)' }}>
+            Hệ thống đang được bảo trì, vui lòng quay lại sau.
+          </h2>
+
+          <p className="text-muted" style={{ maxWidth: '360px', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '28px' }}>
+            Hệ thống quản lý học sinh hiện đang được tiến hành nâng cấp hoặc bảo trì kỹ thuật. Quý thầy cô và cán bộ vui lòng quay lại sau ít phút.
+          </p>
+
+          <div className="flex-col gap-2" style={{ width: '100%', maxWidth: '240px' }}>
+            <Button variant="secondary" fullWidth onClick={() => window.location.reload()}>
+              Kiểm tra lại
+            </Button>
+            <Button variant="ghost" fullWidth onClick={handleLogout} style={{ color: 'var(--text-muted)' }}>
+              Đăng xuất
+            </Button>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: 'auto', paddingTop: '40px', color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: '1.6' }}>
+            <p style={{ marginBottom: '4px' }}>Version: {APP_VERSION}</p>
+            <p style={{ margin: 0 }}>© 2026 THCS Lê Anh Xuân</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const isGlobalView = user?.role?.some(r => ['admin', 'vip-admin', 'giamthi'].includes(r));
   const isAdmin = user?.role?.some(r => ['admin', 'vip-admin'].includes(r));
@@ -124,6 +200,34 @@ export function Dashboard() {
     <>
       <Header title="Tổng quan" />
       <div className="dashboard-content">
+        {isMaintenanceMode && isVipAdmin && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Wrench size={20} color="var(--danger, #ef4444)" />
+              <div>
+                <strong style={{ color: 'var(--danger, #ef4444)', fontSize: '0.9rem', display: 'block' }}>Hệ thống đang ở chế độ bảo trì</strong>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Các tài khoản giáo viên, giám thị, admin hiện đang bị tạm dừng và chỉ thấy thông báo bảo trì.
+                </span>
+              </div>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => navigate('/settings')} style={{ whiteSpace: 'nowrap' }}>
+              Vào Cài đặt
+            </Button>
+          </div>
+        )}
+
         {user && (
           <div className="welcome-banner">
             <span className="welcome-text">Xin chào, <strong>{user.fullName || user.username}</strong> 👋</span>
