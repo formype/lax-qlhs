@@ -18,9 +18,11 @@ import {
   User,
   Eye,
   Award,
-  BookOpen,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Trash2,
+  Check,
+  BookOpen
 } from 'lucide-react';
 import { format, parse, parseISO } from 'date-fns';
 import { 
@@ -29,7 +31,8 @@ import {
   fetchClassSanitationByWeek, 
   fetchAllViolations,
   saveWeeklyEmulation,
-  fetchWeeklyEmulation
+  fetchWeeklyEmulation,
+  deleteWeeklyEmulation
 } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import ExcelJS from 'exceljs';
@@ -81,9 +84,12 @@ export function WeeklyEmulation() {
 
   // Custom penalties for unlisted violations: { [violationId]: number }
   const [customPenalties, setCustomPenalties] = useState({});
+  const [isUnlistedConfirmed, setIsUnlistedConfirmed] = useState(false);
 
   // Detail Modal
   const [detailClass, setDetailClass] = useState(null);
+
+  const isVipAdmin = user?.role?.includes('vip-admin');
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -134,7 +140,7 @@ export function WeeklyEmulation() {
   useEffect(() => {
     const loadWeekData = async () => {
       if (!selectedWeek) return;
-      setLoadingWeekData(true);
+      setLoadingWeek(true);
       try {
         const [sanitation, savedEmulation] = await Promise.all([
           fetchClassSanitationByWeek(selectedWeek),
@@ -147,16 +153,18 @@ export function WeeklyEmulation() {
           setExcelData(savedEmulation.data.excelData || {});
           setExcelFileName(savedEmulation.data.excelFileName || 'Dữ liệu đã lưu trước đó');
           setCustomPenalties(savedEmulation.data.customPenalties || {});
+          setIsUnlistedConfirmed(!!savedEmulation.data.unlistedConfirmed);
         } else {
           // If no saved emulation for this week, clear previous week's excel draft
           setExcelData({});
           setExcelFileName('');
           setCustomPenalties({});
+          setIsUnlistedConfirmed(false);
         }
       } catch (err) {
         console.error("Lỗi tải dữ liệu tuần:", err);
       } finally {
-        setLoadingWeekData(false);
+        setLoadingWeek(false);
       }
     };
     loadWeekData();
@@ -324,61 +332,6 @@ export function WeeklyEmulation() {
     }
   };
 
-  // Quick load sample template from public/thiduatuan.xlsx
-  const handleLoadSampleExcel = async () => {
-    try {
-      const res = await fetch('/thiduatuan.xlsx');
-      if (!res.ok) throw new Error("Không thể tải file mẫu");
-      const blob = await res.blob();
-      const buffer = await blob.arrayBuffer();
-
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
-      const worksheet = workbook.worksheets[0];
-
-      let colClassName = -1;
-      let colHocTap = -1;
-      let colKyLuat = -1;
-      let colVeSinh = -1;
-
-      const headerRow = worksheet.getRow(1);
-      headerRow.eachCell((cell, colNumber) => {
-        const text = (cell.text || '').toLowerCase().trim();
-        if (text.includes('lớp') || text.includes('tên lớp')) colClassName = colNumber;
-        else if (text.includes('học tập')) colHocTap = colNumber;
-        else if (text.includes('kỷ luật')) colKyLuat = colNumber;
-        else if (text.includes('vệ sinh')) colVeSinh = colNumber;
-      });
-
-      const parsed = {};
-      for (let r = 2; r <= worksheet.rowCount; r++) {
-        const row = worksheet.getRow(r);
-        const clsName = String(row.getCell(colClassName).value || '').trim();
-        if (!clsName) continue;
-
-        const ht = parseFloat(row.getCell(colHocTap).value) || 0;
-        const kl = parseFloat(row.getCell(colKyLuat).value) || 0;
-        const vs = parseFloat(row.getCell(colVeSinh).value) || 0;
-        const total = Math.round((ht + kl + vs) * 100) / 100;
-
-        parsed[clsName] = {
-          className: clsName,
-          diemHocTap: ht,
-          diemKyLuat: kl,
-          diemVeSinh: vs,
-          totalHocTap: total
-        };
-      }
-
-      setExcelData(parsed);
-      setExcelFileName('thiduatuan.xlsx (Mẫu)');
-      showToast(`Đã nạp ${Object.keys(parsed).length} lớp từ file mẫu thiduatuan.xlsx!`);
-    } catch (err) {
-      console.error(err);
-      alert("Lỗi khi nạp file mẫu: " + err.message);
-    }
-  };
-
   // Download template
   const handleDownloadTemplate = () => {
     const link = document.createElement('a');
@@ -507,6 +460,7 @@ export function WeeklyEmulation() {
         excelData,
         excelFileName,
         customPenalties,
+        unlistedConfirmed: isUnlistedConfirmed,
         savedAt: new Date().toISOString()
       };
 
@@ -519,6 +473,38 @@ export function WeeklyEmulation() {
     } catch (err) {
       console.error(err);
       alert("Đã xảy ra lỗi: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Delete weekly emulation calculation (Only vip-admin can execute)
+  const handleDeleteCalculation = async () => {
+    if (!isVipAdmin) {
+      alert("Chỉ có tài khoản Administrator - Tài khoản quản trị cao nhất mới có thể sử dụng tính năng này!");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Bạn có chắc chắn muốn xóa toàn bộ kết quả thi đua của ${selectedWeekLabel}?\n\nDữ liệu điểm sổ đầu bài và các thiết lập điểm trừ của tuần này sẽ bị xóa khỏi hệ thống.`
+    );
+    if (!confirmDelete) return;
+
+    setSaving(true);
+    try {
+      const res = await deleteWeeklyEmulation(selectedWeek);
+      if (res.success) {
+        setExcelData({});
+        setExcelFileName('');
+        setCustomPenalties({});
+        setIsUnlistedConfirmed(false);
+        showToast(`Đã xóa kết quả thi đua ${selectedWeekLabel} thành công!`);
+      } else {
+        alert("Lỗi khi xóa kết quả thi đua: " + res.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi khi xóa: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -715,6 +701,16 @@ export function WeeklyEmulation() {
                 </Button>
 
                 <Button 
+                  variant="danger" 
+                  onClick={handleDeleteCalculation}
+                  disabled={saving || loadingWeek}
+                  title="Xóa toàn bộ kết quả thi đua đã lưu của tuần này"
+                >
+                  <Trash2 size={15} style={{ marginRight: '6px' }} />
+                  Xóa kết quả thi đua
+                </Button>
+
+                <Button 
                   variant="secondary" 
                   onClick={handleExportExcel}
                   disabled={classes.length === 0}
@@ -730,10 +726,10 @@ export function WeeklyEmulation() {
               <div className="flex-between align-center flex-wrap gap-2">
                 <div>
                   <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
-                    1. Nạp điểm Học tập (File thiduatuan.xlsx)
+                    1. Nạp điểm Sổ đầu bài online
                   </h4>
                   <p className="text-xs text-muted" style={{ margin: '4px 0 0' }}>
-                    Điểm học tập của lớp = Điểm HT + Điểm KL + Điểm VS trong file sổ đầu bài.
+                    Điểm học tập của lớp = Điểm HT + Điểm KL + Điểm VS trong file sổ đầu bài online.
                   </p>
                 </div>
 
@@ -751,15 +747,6 @@ export function WeeklyEmulation() {
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload size={14} style={{ marginRight: '4px' }} /> Chọn file Excel
-                  </Button>
-
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={handleLoadSampleExcel}
-                    title="Nạp ngay dữ liệu từ file thiduatuan.xlsx có sẵn"
-                  >
-                    <BookOpen size={14} style={{ marginRight: '4px' }} /> Nạp thiduatuan.xlsx mẫu
                   </Button>
 
                   <Button 
@@ -788,7 +775,7 @@ export function WeeklyEmulation() {
                 <div className="excel-status-banner warning">
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <AlertTriangle size={16} />
-                    <strong>Chưa có dữ liệu học tập:</strong> Vui lòng chọn file Excel hoặc bấm "Nạp thiduatuan.xlsx mẫu".
+                    <strong>Chưa có dữ liệu học tập:</strong> Vui lòng chọn file Excel để nạp điểm sổ đầu bài online.
                   </span>
                 </div>
               )}
@@ -798,58 +785,98 @@ export function WeeklyEmulation() {
 
         {/* STEP 2: UNLISTED VIOLATIONS RESOLUTION (IF ANY) */}
         {unlistedViolations.length > 0 && (
-          <div className="unlisted-violations-box">
-            <div className="unlisted-violations-title">
-              <ShieldAlert size={18} />
-              <span>Phát hiện {unlistedViolations.length} vi phạm phát sinh chưa có mức trừ điểm cố định:</span>
-            </div>
-            <p className="text-xs text-muted" style={{ margin: 0 }}>
-              Hệ thống đã nhận diện các vi phạm dưới đây không nằm trong 16 quy định trừ điểm mặc định (hoặc lỗi "Khác"). Vui lòng xác nhận số điểm trừ tương ứng:
-            </p>
+          !isUnlistedConfirmed ? (
+            <div className="unlisted-violations-box">
+              <div className="unlisted-violations-title">
+                <ShieldAlert size={18} />
+                <span>Phát hiện {unlistedViolations.length} vi phạm phát sinh chưa có mức trừ điểm cố định:</span>
+              </div>
+              <p className="text-xs text-muted" style={{ margin: 0 }}>
+                Hệ thống đã nhận diện các vi phạm dưới đây không nằm trong 16 quy định trừ điểm mặc định (hoặc lỗi "Khác"). Vui lòng kiểm tra, nhập số điểm trừ tương ứng và bấm Xác nhận:
+              </p>
 
-            <table className="unlisted-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '80px' }}>Lớp</th>
-                  <th>Học sinh</th>
-                  <th>Ngày vi phạm</th>
-                  <th>Lỗi vi phạm & Nội dung</th>
-                  <th style={{ width: '130px', textAlign: 'center' }}>Số điểm trừ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {unlistedViolations.map(v => {
-                  const currentPenalty = customPenalties[v.id] !== undefined ? customPenalties[v.id] : (v.diemtru || 1);
-                  return (
-                    <tr key={v.id}>
-                      <td><strong>{v.tenlop}</strong></td>
-                      <td>{v.hoten} {v.mahs ? `(${v.mahs})` : ''}</td>
-                      <td>{v.ngayvipham ? format(parseISO(v.ngayvipham), 'dd/MM/yyyy') : '-'}</td>
-                      <td>
-                        <strong className="text-danger">{v.loaivipham || 'Khác'}</strong>
-                        {v.noidung && <span className="text-muted"> — {v.noidung}</span>}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <input 
-                            type="number"
-                            min="0"
-                            max="20"
-                            step="0.5"
-                            className="sanitation-note-input"
-                            style={{ width: '65px', textAlign: 'center', padding: '4px 6px' }}
-                            value={currentPenalty}
-                            onChange={e => handleCustomPenaltyChange(v.id, e.target.value)}
-                          />
-                          <span className="text-xs font-semibold text-danger">điểm</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+              <table className="unlisted-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '80px' }}>Lớp</th>
+                    <th>Học sinh</th>
+                    <th>Ngày vi phạm</th>
+                    <th>Lỗi vi phạm & Nội dung</th>
+                    <th style={{ width: '130px', textAlign: 'center' }}>Số điểm trừ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unlistedViolations.map(v => {
+                    const currentPenalty = customPenalties[v.id] !== undefined ? customPenalties[v.id] : (v.diemtru || 1);
+                    return (
+                      <tr key={v.id}>
+                        <td><strong>{v.tenlop}</strong></td>
+                        <td>{v.hoten} {v.mahs ? `(${v.mahs})` : ''}</td>
+                        <td>{v.ngayvipham ? format(parseISO(v.ngayvipham), 'dd/MM/yyyy') : '-'}</td>
+                        <td>
+                          <strong className="text-danger">{v.loaivipham || 'Khác'}</strong>
+                          {v.noidung && <span className="text-muted"> — {v.noidung}</span>}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <input 
+                              type="number"
+                              min="0"
+                              max="20"
+                              step="0.5"
+                              className="sanitation-note-input"
+                              style={{ width: '65px', textAlign: 'center', padding: '4px 6px' }}
+                              value={currentPenalty}
+                              onChange={e => handleCustomPenaltyChange(v.id, e.target.value)}
+                            />
+                            <span className="text-xs font-semibold text-danger">điểm</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <Button 
+                  variant="primary" 
+                  size="sm"
+                  onClick={() => {
+                    setIsUnlistedConfirmed(true);
+                    showToast("Đã xác nhận mức điểm trừ cho các vi phạm phát sinh!");
+                  }}
+                >
+                  <Check size={15} style={{ marginRight: '6px' }} /> Xác nhận
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '10px',
+              color: '#059669',
+              fontSize: '0.86rem'
+            }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={16} color="#059669" />
+                <span><strong>Đã xác nhận mức điểm trừ</strong> cho {unlistedViolations.length} vi phạm phát sinh trong tuần</span>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsUnlistedConfirmed(false)}
+                style={{ fontSize: '0.8rem', color: '#059669', padding: '4px 8px', height: 'auto' }}
+              >
+                Xem lại / Chỉnh sửa
+              </Button>
+            </div>
+          )
         )}
 
         {/* STEP 3: GRADE TABS & EMULATION RANKING TABLE */}
@@ -859,7 +886,7 @@ export function WeeklyEmulation() {
               className={`grade-tab-btn ${selectedGrade === 'all' ? 'active' : ''}`}
               onClick={() => setSelectedGrade('all')}
             >
-              Tất cả các khối ({emulationResults.length})
+              Tất cả ({emulationResults.length})
             </button>
             {['6', '7', '8', '9'].map(g => {
               const count = emulationResults.filter(item => item.grade === g).length;

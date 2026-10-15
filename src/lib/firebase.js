@@ -1718,6 +1718,18 @@ export const fetchWeeklyEmulation = async (week) => {
   }
 };
 
+export const deleteWeeklyEmulation = async (week) => {
+  try {
+    const weekStr = String(week);
+    const docRef = doc(db, COLLECTIONS.WEEKLY_EMULATION, `week_${weekStr}`);
+    await deleteDoc(docRef);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting weekly emulation:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
 export const fetchAllViolations = async () => {
   try {
     const q = query(collection(db, COLLECTIONS.VIOLATIONS), orderBy('createdAt', 'desc'));
