@@ -395,12 +395,25 @@ export function WeeklyEmulation() {
     }));
   };
 
+  // Extract clean grade number: '6', '7', '8', '9'
+  const getCleanGrade = (c) => {
+    if (c.khoi) {
+      const match = String(c.khoi).match(/\d+/);
+      if (match) return match[0];
+    }
+    if (c.tenlop) {
+      const match = String(c.tenlop).match(/^(\d+)/);
+      if (match) return match[1];
+    }
+    return 'Khác';
+  };
+
   // Compute Full Emulation Results for all classes
   const emulationResults = useMemo(() => {
     // 1. Calculate raw scores for all classes
     const list = classes.map(c => {
       const clsName = c.tenlop;
-      const grade = c.khoi || (clsName.split('/')[0]) || 'Khác';
+      const grade = getCleanGrade(c);
 
       // 1. Học tập (từ Excel)
       const excelItem = excelData[clsName];
@@ -848,15 +861,18 @@ export function WeeklyEmulation() {
             >
               Tất cả các khối ({emulationResults.length})
             </button>
-            {['6', '7', '8', '9'].map(g => (
-              <button
-                key={g}
-                className={`grade-tab-btn ${selectedGrade === g ? 'active' : ''}`}
-                onClick={() => setSelectedGrade(g)}
-              >
-                Khối {g}
-              </button>
-            ))}
+            {['6', '7', '8', '9'].map(g => {
+              const count = emulationResults.filter(item => item.grade === g).length;
+              return (
+                <button
+                  key={g}
+                  className={`grade-tab-btn ${selectedGrade === g ? 'active' : ''}`}
+                  onClick={() => setSelectedGrade(g)}
+                >
+                  Khối {g} ({count})
+                </button>
+              );
+            })}
           </div>
 
           <div className="text-xs text-muted">
