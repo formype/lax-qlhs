@@ -491,20 +491,23 @@ export function WeeklyEmulationTracking() {
                     Đã có kết quả thi đua ({Object.keys(excelData).length} lớp có điểm SĐB)
                   </span>
                 ) : (
-                  <span style={{
+                  <div style={{
                     display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
+                    alignItems: 'flex-start',
+                    gap: '8px',
                     fontSize: '0.85rem',
                     color: '#d97706',
                     background: 'rgba(245, 158, 11, 0.1)',
-                    padding: '6px 12px',
+                    padding: '8px 12px',
                     borderRadius: '8px',
-                    fontWeight: 600
+                    lineHeight: 1.4
                   }}>
-                    <Info size={15} color="#d97706" />
-                    Tuần này Ban thi đua chưa lưu điểm Sổ đầu bài online
-                  </span>
+                    <Info size={16} color="#d97706" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontWeight: 600 }}>Điểm thi đua của các lớp chưa bao gồm điểm sổ đầu bài online.</div>
+                      <div style={{ fontSize: '0.8rem', color: '#b45309' }}>Điểm thi đua hiện tại sẽ thay đổi theo ghi nhận của từng buổi học trong tuần</div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
