@@ -7,7 +7,11 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Input';
 import { DayPicker, MonthPicker } from '../components/ui/DatePicker';
 import { Card, CardBody } from '../components/ui/Card';
-import { ExternalLink, Trash2, Calendar, Clock, User } from 'lucide-react';
+import { ExternalLink, Trash2, Calendar, Clock, User, FileText, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import './Search.css'; // Re-use search css
 
 const ProofImagePreview = ({ url, labelText }) => {
@@ -185,6 +189,185 @@ export function DailyLogList() {
   const totalPages = Math.ceil(logs.length / itemsPerPage);
   const paginatedLogs = logs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const exportPDF = async () => {
+    if (logs.length === 0) return;
+
+    const fetchFont = async (url) => {
+      const response = await fetch(url);
+      const buffer = await response.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    };
+
+    const regularBase64 = await fetchFont('/fonts/Tinos-Regular.ttf');
+    const boldBase64 = await fetchFont('/fonts/Tinos-Bold.ttf');
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    
+    doc.addFileToVFS('Tinos-Regular.ttf', regularBase64);
+    doc.addFont('Tinos-Regular.ttf', 'Tinos', 'normal');
+    doc.addFileToVFS('Tinos-Bold.ttf', boldBase64);
+    doc.addFont('Tinos-Bold.ttf', 'Tinos', 'bold');
+
+    doc.setFont('Tinos', 'bold');
+    doc.setFontSize(12);
+    
+    doc.text("ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG", 14, 15);
+    doc.text("TRƯỜNG THCS LÊ ANH XUÂN", 14, 21);
+    
+    const pageWidth = doc.internal.pageSize.getWidth();
+    doc.text("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", pageWidth - 14, 15, { align: 'right' });
+    doc.text("Độc lập - Tự do - Hạnh phúc", pageWidth - 14, 21, { align: 'right' });
+
+    doc.setFontSize(15);
+    doc.text("DANH SÁCH GHI NHẬN HÀNG NGÀY", pageWidth / 2, 33, { align: 'center' });
+
+    const tableColumn = ["STT", "Ngày", "Buổi", "Nội dung ghi nhận", "Người ghi nhận"];
+    const tableRows = logs.map((log, index) => {
+      const dateStr = log.ngay ? format(parseISO(log.ngay), 'dd/MM/yyyy') : '';
+      const creator = (log.createdById && usersMap[log.createdById]) || (log.createdBy !== 'Unknown' ? log.createdBy : 'Người dùng');
+      return [
+        (index + 1).toString(),
+        dateStr,
+        log.buoi || '',
+        log.noidung || '',
+        creator
+      ];
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 42,
+      styles: { font: 'Tinos', fontSize: 11, lineWidth: 0.1, lineColor: [0, 0, 0] },
+      headStyles: { font: 'Tinos', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 20, halign: 'center' },
+        3: { cellWidth: 85 },
+        4: { cellWidth: 40 }
+      }
+    });
+
+    doc.save(`DanhSachGhiNhan_${format(new Date(), 'ddMMyyyy')}.pdf`);
+  };
+
+  const exportExcel = async () => {
+    if (logs.length === 0) return;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('DanhSachGhiNhan');
+
+    worksheet.pageSetup.orientation = 'portrait';
+    worksheet.pageSetup.paperSize = 9; // A4
+
+    worksheet.columns = [
+      { width: 8 },  // A: STT
+      { width: 15 }, // B: Ngày
+      { width: 12 }, // C: Buổi
+      { width: 55 }, // D: Nội dung ghi nhận
+      { width: 25 }, // E: Người ghi nhận
+      { width: 20 }  // F: Thời gian tạo
+    ];
+
+    // Row 1
+    worksheet.mergeCells('A1:C1');
+    const cellA1 = worksheet.getCell('A1');
+    cellA1.value = "ỦY BAN NHÂN DÂN PHƯỜNG MINH PHỤNG";
+    cellA1.font = { name: 'Times New Roman', size: 12, bold: false };
+    cellA1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('D1:F1');
+    const cellD1 = worksheet.getCell('D1');
+    cellD1.value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
+    cellD1.font = { name: 'Times New Roman', size: 12, bold: true };
+    cellD1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Row 2
+    worksheet.mergeCells('A2:C2');
+    const cellA2 = worksheet.getCell('A2');
+    cellA2.value = "TRƯỜNG THCS LÊ ANH XUÂN";
+    cellA2.font = { name: 'Times New Roman', size: 12, bold: true, underline: true };
+    cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('D2:F2');
+    const cellD2 = worksheet.getCell('D2');
+    cellD2.value = "Độc lập - Tự do - Hạnh phúc";
+    cellD2.font = { name: 'Times New Roman', size: 12, bold: true, underline: true };
+    cellD2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Row 4: Title
+    worksheet.mergeCells('A4:F4');
+    const cellA4 = worksheet.getCell('A4');
+    cellA4.value = "DANH SÁCH GHI NHẬN HÀNG NGÀY";
+    cellA4.font = { name: 'Times New Roman', size: 15, bold: true };
+    cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Row 6: Headers
+    const headers = ["STT", "Ngày", "Buổi", "Nội dung ghi nhận", "Người ghi nhận", "Thời gian tạo"];
+    const headerRow = worksheet.getRow(6);
+    headerRow.values = headers;
+    headerRow.font = { name: 'Times New Roman', size: 12, bold: true };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+    headers.forEach((_, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+
+    // Row 7+: Data
+    logs.forEach((log, index) => {
+      const dateStr = log.ngay ? format(parseISO(log.ngay), 'dd/MM/yyyy') : '';
+      const creator = (log.createdById && usersMap[log.createdById]) || (log.createdBy !== 'Unknown' ? log.createdBy : 'Người dùng');
+      let createdTimeStr = '';
+      if (log.createdAt) {
+        const cDate = log.createdAt.toDate ? log.createdAt.toDate() : new Date(log.createdAt.seconds * 1000);
+        createdTimeStr = format(cDate, 'HH:mm dd/MM/yyyy');
+      }
+
+      const rowData = [
+        index + 1,
+        dateStr,
+        log.buoi || '',
+        log.noidung || '',
+        creator,
+        createdTimeStr
+      ];
+      const row = worksheet.addRow(rowData);
+      row.font = { name: 'Times New Roman', size: 12 };
+
+      row.eachCell((cell, colNumber) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+        if (colNumber === 1 || colNumber === 2 || colNumber === 3 || colNumber === 6) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (colNumber === 4) {
+          cell.alignment = { vertical: 'middle', wrapText: true };
+        } else {
+          cell.alignment = { vertical: 'middle' };
+        }
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `DanhSachGhiNhan_${format(new Date(), 'ddMMyyyy')}.xlsx`);
+  };
+
   return (
     <div className="search-page pb-20">
       <Header title="Danh sách ghi nhận" />
@@ -208,9 +391,9 @@ export function DailyLogList() {
                   />
                   {timeFilterType === 'day' && (
                     <DayPicker 
-                      value={timeValueDay} 
-                      onChange={val => setTimeValueDay(val)}
-                    />
+                    value={timeValueDay} 
+                    onChange={val => setTimeValueDay(val)}
+                  />
                   )}
                   {timeFilterType === 'week' && <Select value={timeValueWeek} onChange={e => setTimeValueWeek(e.target.value)} options={weekOptions} style={{ maxWidth: '100%', flex: 1 }} />}
                   {timeFilterType === 'month' && (
@@ -240,6 +423,14 @@ export function DailyLogList() {
 
         <div className="export-actions flex-between mt-3 mb-3">
           <span className="text-muted text-sm font-semibold">Tìm thấy {logs.length} kết quả</span>
+          <div className="flex-row gap-2">
+            <Button variant="secondary" size="sm" onClick={exportPDF} disabled={logs.length === 0}>
+              <FileText size={15} style={{ marginRight: '6px' }} /> Xuất PDF
+            </Button>
+            <Button variant="secondary" size="sm" onClick={exportExcel} disabled={logs.length === 0}>
+              <Download size={15} style={{ marginRight: '6px' }} /> Xuất Excel
+            </Button>
+          </div>
         </div>
 
         <div className="search-results-grid">
