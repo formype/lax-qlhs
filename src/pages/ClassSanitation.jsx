@@ -249,6 +249,17 @@ export function ClassSanitation() {
     }));
   };
 
+  // Change custom violation text and penalty
+  const handleCustomViolationChange = (className, field, value) => {
+    setDraftForms(prev => ({
+      ...prev,
+      [className]: {
+        ...(prev[className] || { selectedViolations: [] }),
+        [field]: value
+      }
+    }));
+  };
+
   // Format deduction timestamp for audit
   const formatDeductionTime = (d) => {
     if (d.createdAt) {
@@ -271,25 +282,40 @@ export function ClassSanitation() {
 
   // Save deduction for a single class
   const handleSaveClass = async (className) => {
-    const draft = draftForms[className] || { selectedViolations: [], note: '' };
-    const selectedViolations = draft.selectedViolations || [];
+    const draft = draftForms[className] || { selectedViolations: [], otherViolation: '', otherPenalty: '', note: '' };
+    const selectedViolations = [...(draft.selectedViolations || [])];
 
-    if (selectedViolations.length === 0) {
-      alert(`Vui lòng chọn ít nhất 1 lỗi vi phạm để trừ điểm lớp ${className}.`);
-      return;
-    }
-
-    const pointsToDeduct = selectedViolations.reduce((sum, vLabel) => {
+    const standardPenalty = selectedViolations.reduce((sum, vLabel) => {
       const v = COMMON_VIOLATIONS.find(item => item.label === vLabel);
       return sum + (v ? v.penalty : 0);
     }, 0);
+
+    const customText = (draft.otherViolation || '').trim();
+    const customPenalty = parseFloat(draft.otherPenalty) || 0;
+
+    if (customText && customPenalty > 0) {
+      selectedViolations.push(`${customText} (-${customPenalty}đ)`);
+    } else if (customText && customPenalty <= 0) {
+      alert(`Vui lòng nhập số điểm trừ cho lỗi phát sinh "${customText}".`);
+      return;
+    } else if (!customText && customPenalty > 0) {
+      alert(`Vui lòng nhập tên lỗi vi phạm phát sinh tương ứng với ${customPenalty} điểm trừ.`);
+      return;
+    }
+
+    const totalPointsToDeduct = standardPenalty + (customText ? customPenalty : 0);
+
+    if (totalPointsToDeduct <= 0 || selectedViolations.length === 0) {
+      alert(`Vui lòng chọn ít nhất 1 lỗi vi phạm hoặc nhập lỗi phát sinh khác cùng số điểm trừ để trừ điểm lớp ${className}.`);
+      return;
+    }
 
     setSavingClass(className);
     try {
       const deductionData = {
         week: selectedWeek,
         className: className,
-        pointsDeducted: pointsToDeduct,
+        pointsDeducted: totalPointsToDeduct,
         violations: selectedViolations,
         note: draft.note || '',
         gradedBy: user?.fullName || user?.username || 'Giám thị',
@@ -310,10 +336,10 @@ export function ClassSanitation() {
         // Reset draft for this class
         setDraftForms(prev => ({
           ...prev,
-          [className]: { selectedViolations: [], note: '' }
+          [className]: { selectedViolations: [], otherViolation: '', otherPenalty: '', note: '' }
         }));
 
-        showToast(`Đã lưu trừ ${pointsToDeduct} điểm cho lớp ${className}!`);
+        showToast(`Đã lưu trừ ${totalPointsToDeduct} điểm cho lớp ${className}!`);
       } else {
         alert("Lỗi khi lưu trừ điểm: " + res.error);
       }
@@ -593,16 +619,22 @@ export function ClassSanitation() {
           <div className="sanitation-list">
             {filteredClasses.map(c => {
               const { score, totalDeducted, list } = getClassScoreInfo(c.tenlop);
-              const draft = draftForms[c.tenlop] || { selectedViolations: [], note: '' };
+              const draft = draftForms[c.tenlop] || { selectedViolations: [], otherViolation: '', otherPenalty: '', note: '' };
               const selectedViolations = draft.selectedViolations || [];
 
-              const pendingPenalty = selectedViolations.reduce((sum, vLabel) => {
+              const standardPenalty = selectedViolations.reduce((sum, vLabel) => {
                 const v = COMMON_VIOLATIONS.find(item => item.label === vLabel);
                 return sum + (v ? v.penalty : 0);
               }, 0);
 
-              const previewScore = Math.max(0, score - pendingPenalty);
+              const customText = (draft.otherViolation || '').trim();
+              const customPenalty = parseFloat(draft.otherPenalty) || 0;
+              const hasValidCustom = customText !== '' && customPenalty > 0;
+              const totalPendingPenalty = standardPenalty + (hasValidCustom ? customPenalty : 0);
+
+              const previewScore = Math.max(0, score - totalPendingPenalty);
               const isSaving = savingClass === c.tenlop;
+              const canSave = selectedViolations.length > 0 || hasValidCustom;
 
               return (
                 <div 
@@ -703,6 +735,38 @@ export function ClassSanitation() {
                       </div>
                     </div>
 
+                    {/* Lỗi vi phạm phát sinh khác */}
+                    <div className="custom-violation-box">
+                      <span className="text-xs font-semibold text-muted">
+                        Vi phạm khác (nếu không có trong 7 lỗi gợi ý ở trên):
+                      </span>
+                      <div className="custom-violation-inputs">
+                        <input 
+                          type="text"
+                          className="sanitation-note-input"
+                          placeholder="Nhập tên lỗi phát sinh (vd: Vẽ bậy lên bàn, làm hỏng chậu hoa, làm đổ nước...)"
+                          value={draft.otherViolation || ''}
+                          onChange={e => handleCustomViolationChange(c.tenlop, 'otherViolation', e.target.value)}
+                          style={{ flex: 1, minWidth: '200px' }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="text-xs font-semibold text-danger">Trừ:</span>
+                          <input 
+                            type="number"
+                            min="0.5"
+                            max="20"
+                            step="0.5"
+                            className="sanitation-note-input"
+                            placeholder="Số điểm"
+                            value={draft.otherPenalty || ''}
+                            onChange={e => handleCustomViolationChange(c.tenlop, 'otherPenalty', e.target.value)}
+                            style={{ width: '85px', textAlign: 'center' }}
+                          />
+                          <span className="text-xs font-semibold text-muted">điểm</span>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Note input */}
                     <div>
                       <input 
@@ -717,20 +781,20 @@ export function ClassSanitation() {
                     {/* Per-class Action Area & Save Button */}
                     <div className="class-action-area">
                       <div className="points-deduct-preview">
-                        {selectedViolations.length > 0 ? (
+                        {totalPendingPenalty > 0 ? (
                           <span className="text-danger">
-                            Trừ lần này: -{pendingPenalty}đ ➔ Điểm sau khi lưu: <strong>{previewScore}/20đ</strong>
+                            Trừ lần này: -{totalPendingPenalty}đ ➔ Điểm sau khi lưu: <strong>{previewScore}/20đ</strong>
                           </span>
                         ) : (
                           <span className="text-muted" style={{ fontSize: '0.8rem' }}>
-                            Chưa chọn lỗi vi phạm mới
+                            Chưa chọn hoặc nhập lỗi vi phạm mới
                           </span>
                         )}
                       </div>
 
                       <Button 
                         size="sm"
-                        disabled={selectedViolations.length === 0 || isSaving}
+                        disabled={!canSave || isSaving}
                         onClick={() => handleSaveClass(c.tenlop)}
                       >
                         <Save size={14} style={{ marginRight: '5px' }} />

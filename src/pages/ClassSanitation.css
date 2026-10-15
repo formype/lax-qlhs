@@ -289,6 +289,29 @@ body.dark .violation-chip.selected {
   border-color: var(--primary-color, #0ea5e9);
 }
 
+/* Custom Violation Box */
+.custom-violation-box {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px dashed var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.dark .custom-violation-box {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: #334155;
+}
+
+.custom-violation-inputs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 /* Action Area for Class */
 .class-action-area {
   display: flex;
