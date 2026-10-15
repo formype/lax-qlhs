@@ -132,8 +132,8 @@ export function Dashboard() {
 
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
           
-          {/* STATS FOR ADMIN */}
-          {isAdmin && (
+          {/* STATS FOR ADMIN & GIAMTHI */}
+          {(isAdmin || isGiamthi) && (
             <>
               <Card className="stat-card">
                 <CardBody className="flex-col gap-2">
@@ -174,30 +174,6 @@ export function Dashboard() {
                       Lớp: {attendanceStats.unattendedClasses.join(', ')}
                     </div>
                   )}
-                </CardBody>
-              </Card>
-            </>
-          )}
-
-          {/* STATS FOR GIAMTHI */}
-          {isGiamthi && (
-            <>
-              <Card className="stat-card">
-                <CardBody className="flex-col gap-2">
-                  <div className="flex-row gap-2 text-muted">
-                    <UserCheck size={16} color="var(--primary-color)" />
-                    <span>Có mặt ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
-                  </div>
-                  <div className="stat-number" style={{ color: 'var(--primary-color)' }}>{loading ? '-' : attendanceStats.present}</div>
-                </CardBody>
-              </Card>
-              <Card className="stat-card">
-                <CardBody className="flex-col gap-2">
-                  <div className="flex-row gap-2 text-muted">
-                    <UserX size={16} color="var(--danger)" />
-                    <span>Vắng ({attendanceStats.session || 'Sáng'} - {format(new Date(), 'dd/MM/yyyy')})</span>
-                  </div>
-                  <div className="stat-number" style={{ color: 'var(--danger)' }}>{loading ? '-' : attendanceStats.absent}</div>
                 </CardBody>
               </Card>
             </>
