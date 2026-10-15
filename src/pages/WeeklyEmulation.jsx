@@ -1045,10 +1045,6 @@ export function WeeklyEmulation() {
               );
             })}
           </div>
-
-          <div className="text-xs text-muted">
-            * Xếp hạng theo từng khối • Cao điểm nhất đạt Hạng 1
-          </div>
         </div>
 
         {/* RANKING TABLE */}

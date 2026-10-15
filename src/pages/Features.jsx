@@ -16,7 +16,8 @@ import {
   Sparkles, 
   UserCheck, 
   Users,
-  Trophy
+  Trophy,
+  Award
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
@@ -196,7 +197,7 @@ const FEATURE_SECTIONS = [
         border: 'rgba(245, 158, 11, 0.2)',
         shadow: 'rgba(245, 158, 11, 0.15)',
         path: '/extra-class-student-list',
-        roles: ['admin', 'vip-admin', 'giamthi']
+        roles: ['admin', 'vip-admin', 'giamthi', 'giaovien']
       },
       {
         label: 'Theo dõi ngoại khóa',
@@ -233,6 +234,15 @@ const FEATURE_SECTIONS = [
         shadow: 'rgba(245, 158, 11, 0.15)',
         path: '/weekly-emulation',
         roles: ['admin', 'vip-admin']
+      },
+      {
+        label: 'Theo dõi thi đua tuần',
+        icon: Award,
+        color: '#10b981',
+        bg: 'rgba(16, 185, 129, 0.08)',
+        border: 'rgba(16, 185, 129, 0.2)',
+        shadow: 'rgba(16, 185, 129, 0.15)',
+        path: '/weekly-emulation-tracking'
       }
     ]
   }
@@ -256,11 +266,7 @@ export function Features() {
             return null;
           }
 
-          if (section.title === 'Ngoại khóa' && !isAdmin && !isGiamthi) {
-            return null;
-          }
-
-          if (section.title === 'Liên đội' && !isAdmin && !isGiamthi) {
+          if (section.title === 'Ngoại khóa' && !isAdmin && !isGiamthi && !isGiaovien) {
             return null;
           }
 

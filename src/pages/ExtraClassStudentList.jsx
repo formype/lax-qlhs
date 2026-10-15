@@ -26,10 +26,11 @@ export function ExtraClassStudentList() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Role permissions check: admin, vip-admin, giamthi
+  // Role permissions check: admin, vip-admin, giamthi, giaovien
   const isAuthorized = user?.role?.includes('admin') || 
                        user?.role?.includes('vip-admin') || 
-                       user?.role?.includes('giamthi');
+                       user?.role?.includes('giamthi') ||
+                       user?.role?.includes('giaovien');
 
   const [extraClasses, setExtraClasses] = useState([]);
   const [allStudents, setAllStudents] = useState([]);

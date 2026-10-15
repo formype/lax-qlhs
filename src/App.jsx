@@ -24,6 +24,7 @@ import { DailyLog } from './pages/DailyLog';
 import { DailyLogList } from './pages/DailyLogList';
 import { ClassSanitation } from './pages/ClassSanitation';
 import { WeeklyEmulation } from './pages/WeeklyEmulation';
+import { WeeklyEmulationTracking } from './pages/WeeklyEmulationTracking';
 import { Statistics } from './pages/Statistics';
 import { AccountSettings } from './pages/AccountSettings';
 import { ManageAccounts } from './pages/ManageAccounts';
@@ -248,10 +249,11 @@ function AppRoutes() {
         <Route path="/attendance-search" element={<ProtectedRoute><MainLayout><AttendanceSearch /></MainLayout></ProtectedRoute>} />
         <Route path="/boarding-attendance" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><BoardingAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/student-list" element={<ProtectedRoute><MainLayout><StudentList /></MainLayout></ProtectedRoute>} />
-        <Route path="/extra-class-student-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassStudentList /></MainLayout></ProtectedRoute>} />
+        <Route path="/extra-class-student-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi', 'giaovien']}><MainLayout><ExtraClassStudentList /></MainLayout></ProtectedRoute>} />
         <Route path="/extra-class-tracking" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassTracking /></MainLayout></ProtectedRoute>} />
         <Route path="/class-sanitation" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ClassSanitation /></MainLayout></ProtectedRoute>} />
         <Route path="/weekly-emulation" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><WeeklyEmulation /></MainLayout></ProtectedRoute>} />
+        <Route path="/weekly-emulation-tracking" element={<ProtectedRoute><MainLayout><WeeklyEmulationTracking /></MainLayout></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute><MainLayout><Statistics /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
