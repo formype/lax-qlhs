@@ -27,14 +27,13 @@ import { saveAs } from 'file-saver';
 import './ClassSanitation.css';
 
 const COMMON_VIOLATIONS = [
-  { id: 'quet_lop', label: 'Chưa quét lớp', penalty: 2 },
-  { id: 'do_rac', label: 'Chưa đổ rác', penalty: 2 },
-  { id: 'ban_ghe', label: 'Bàn ghế lộn xộn', penalty: 1 },
-  { id: 'lau_bang', label: 'Chưa lau bảng', penalty: 1 },
-  { id: 'hanh_lang', label: 'Hành lang bẩn', penalty: 2 },
-  { id: 'tat_dien', label: 'Quên tắt quạt/đèn', penalty: 2 },
-  { id: 'cua_so', label: 'Cửa sổ bẩn', penalty: 1 },
-  { id: 'ban_gv', label: 'Bàn GV chưa lau', penalty: 1 }
+  { id: 'don_ghe', label: 'Không dọn ghế sau giờ xếp hàng', penalty: 2 },
+  { id: 'don_rac', label: 'Không dọn rác sau giờ xếp hàng', penalty: 2 },
+  { id: 'do_an_uong', label: 'Mang đồ ăn, nước ngọt lên lớp', penalty: 3 },
+  { id: 've_sinh_do', label: 'Vệ sinh lớp dơ', penalty: 2 },
+  { id: 'xa_rac', label: 'Xả rác trên hành lang, lớp học', penalty: 2 },
+  { id: 'tat_dien', label: 'Quên tắt đèn/quạt', penalty: 2 },
+  { id: 'hanh_lang_do', label: 'Hành lang lớp dơ', penalty: 1 }
 ];
 
 export function ClassSanitation() {
