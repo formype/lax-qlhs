@@ -15,7 +15,8 @@ import {
   GraduationCap, 
   Sparkles, 
   UserCheck, 
-  Users 
+  Users,
+  Trophy
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Features.css';
@@ -222,6 +223,16 @@ const FEATURE_SECTIONS = [
         shadow: 'rgba(6, 182, 212, 0.15)',
         path: '/class-sanitation',
         roles: ['admin', 'vip-admin', 'giamthi']
+      },
+      {
+        label: 'Tính thi đua tuần',
+        icon: Trophy,
+        color: '#f59e0b',
+        bg: 'rgba(245, 158, 11, 0.08)',
+        border: 'rgba(245, 158, 11, 0.2)',
+        shadow: 'rgba(245, 158, 11, 0.15)',
+        path: '/weekly-emulation',
+        roles: ['admin', 'vip-admin']
       }
     ]
   }
@@ -286,7 +297,8 @@ export function Features() {
                     item.path === '/classes' || 
                     item.path === '/students' ||
                     item.path === '/extra-classes' ||
-                    item.path === '/extra-class-students'
+                    item.path === '/extra-class-students' ||
+                    item.path === '/weekly-emulation'
                   )) {
                     return null;
                   }

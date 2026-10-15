@@ -1,0 +1,288 @@
+.weekly-emulation-page {
+  padding-bottom: 90px;
+}
+
+.weekly-emulation-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.emulation-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+/* Upload & Data Box */
+.emulation-upload-box {
+  border: 2px dashed var(--border-color, #cbd5e1);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--background, #f8fafc);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.2s;
+}
+
+.emulation-upload-box:hover {
+  border-color: var(--primary-color, #0ea5e9);
+}
+
+body.dark .emulation-upload-box {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: #334155;
+}
+
+.excel-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.excel-status-banner.success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.excel-status-banner.warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Unlisted Violations Box */
+.unlisted-violations-box {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.unlisted-violations-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #dc2626;
+  margin-bottom: 8px;
+}
+
+.unlisted-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+  margin-top: 8px;
+  background: var(--card-bg, #fff);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.unlisted-table th {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.unlisted-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  vertical-align: middle;
+}
+
+/* Grade Tabs */
+.emulation-grade-tabs {
+  display: flex;
+  background: var(--background, #f1f5f9);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+body.dark .emulation-grade-tabs {
+  background: #1e293b;
+}
+
+.grade-tab-btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.grade-tab-btn.active {
+  background: var(--card-bg, #fff);
+  color: var(--primary-color, #0ea5e9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+body.dark .grade-tab-btn.active {
+  background: #0f172a;
+  color: #38bdf8;
+}
+
+/* Emulation Ranking Table */
+.emulation-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.emulation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.emulation-table th {
+  background: var(--background, #f8fafc);
+  color: var(--text-muted, #475569);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  white-space: nowrap;
+}
+
+.emulation-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  vertical-align: middle;
+}
+
+.emulation-table tr:hover {
+  background: rgba(0, 0, 0, 0.015);
+}
+
+body.dark .emulation-table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Rank Badges */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+.rank-badge.rank-1 {
+  background: linear-gradient(135deg, #fef08a 0%, #facc15 100%);
+  color: #854d0e;
+  box-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);
+}
+
+.rank-badge.rank-2 {
+  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  color: #334155;
+  box-shadow: 0 2px 6px rgba(148, 163, 184, 0.3);
+}
+
+.rank-badge.rank-3 {
+  background: linear-gradient(135deg, #fed7aa 0%, #fb923c 100%);
+  color: #7c2d12;
+  box-shadow: 0 2px 6px rgba(251, 146, 60, 0.3);
+}
+
+.rank-badge.rank-other {
+  background: var(--background, #f1f5f9);
+  color: var(--text-muted, #64748b);
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.total-score-pill {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0284c7;
+  background: rgba(14, 165, 233, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+/* Modal Details */
+.emulation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.emulation-modal {
+  background: var(--card-bg, #fff);
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.emulation-modal-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.emulation-modal-body {
+  padding: 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.emulation-detail-section {
+  background: var(--background, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.emulation-detail-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -23,6 +23,7 @@ import { BoardingAttendance } from './pages/BoardingAttendance';
 import { DailyLog } from './pages/DailyLog';
 import { DailyLogList } from './pages/DailyLogList';
 import { ClassSanitation } from './pages/ClassSanitation';
+import { WeeklyEmulation } from './pages/WeeklyEmulation';
 import { Statistics } from './pages/Statistics';
 import { AccountSettings } from './pages/AccountSettings';
 import { ManageAccounts } from './pages/ManageAccounts';
@@ -79,7 +80,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       location.pathname === '/classes' || 
       location.pathname === '/students' ||
       location.pathname === '/extra-classes' ||
-      location.pathname === '/extra-class-students'
+      location.pathname === '/extra-class-students' ||
+      location.pathname === '/weekly-emulation'
   )) {
     alert("Bạn không có quyền truy cập chức năng này!");
     return <Navigate to="/" replace />;
@@ -249,6 +251,7 @@ function AppRoutes() {
         <Route path="/extra-class-student-list" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassStudentList /></MainLayout></ProtectedRoute>} />
         <Route path="/extra-class-tracking" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ExtraClassTracking /></MainLayout></ProtectedRoute>} />
         <Route path="/class-sanitation" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin', 'giamthi']}><MainLayout><ClassSanitation /></MainLayout></ProtectedRoute>} />
+        <Route path="/weekly-emulation" element={<ProtectedRoute allowedRoles={['admin', 'vip-admin']}><MainLayout><WeeklyEmulation /></MainLayout></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute><MainLayout><Statistics /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

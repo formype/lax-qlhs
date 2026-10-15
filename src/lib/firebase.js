@@ -51,7 +51,8 @@ export const COLLECTIONS = {
   NOTIFICATIONS: 'notifications',
   DAILY_LOGS: 'dailyLogs',
   SYSTEM_CONFIG: 'system_config',
-  CLASS_SANITATION: 'classSanitation'
+  CLASS_SANITATION: 'classSanitation',
+  WEEKLY_EMULATION: 'weeklyEmulations'
 };
 
 // --- CACHE SYSTEM (Để tiết kiệm Firebase Read) ---
@@ -1684,6 +1685,65 @@ export const fetchClassSanitationByWeek = async (week) => {
   }
 };
 
+// --- WEEKLY EMULATION (TÍNH THI ĐUA TUẦN) ---
+export const saveWeeklyEmulation = async (week, data, user) => {
+  try {
+    const weekStr = String(week);
+    const docRef = doc(db, COLLECTIONS.WEEKLY_EMULATION, `week_${weekStr}`);
+    await setDoc(docRef, {
+      week: weekStr,
+      data,
+      updatedAt: serverTimestamp(),
+      updatedBy: user?.fullName || user?.username || 'Hệ thống'
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving weekly emulation:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const fetchWeeklyEmulation = async (week) => {
+  try {
+    const weekStr = String(week);
+    const docRef = doc(db, COLLECTIONS.WEEKLY_EMULATION, `week_${weekStr}`);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching weekly emulation:", error);
+    return null;
+  }
+};
+
+export const fetchAllViolations = async () => {
+  try {
+    const q = query(collection(db, COLLECTIONS.VIOLATIONS), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const data = [];
+    querySnapshot.forEach((doc) => {
+      data.push({ id: doc.id, ...doc.data() });
+    });
+    return data;
+  } catch (e) {
+    console.error("Error fetching all violations:", e);
+    // Fallback if index issues
+    try {
+      const snap = await getDocs(collection(db, COLLECTIONS.VIOLATIONS));
+      const data = [];
+      snap.forEach((doc) => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+      return data;
+    } catch (err2) {
+      console.error("Error in fallback fetchAllViolations:", err2);
+      return [];
+    }
+  }
+};
+
 // --- VIOLATION TYPES ---
 export const fetchViolationTypes = async (forceRefresh = false) => {
   try {
@@ -1856,6 +1916,10 @@ export const exportDatabase = async () => {
     const sanitationSnap = await getDocs(collection(db, COLLECTIONS.CLASS_SANITATION));
     sanitationSnap.forEach(doc => data.class_sanitation.push({ id: doc.id, ...doc.data() }));
 
+    data.weekly_emulation = [];
+    const emulationSnap = await getDocs(collection(db, COLLECTIONS.WEEKLY_EMULATION));
+    emulationSnap.forEach(doc => data.weekly_emulation.push({ id: doc.id, ...doc.data() }));
+
     return data;
   } catch (error) {
     console.error("Lỗi khi xuất dữ liệu:", error);
@@ -1874,7 +1938,8 @@ export const deleteAllData = async () => {
       COLLECTIONS.ATTENDANCE,
       COLLECTIONS.NOTIFICATIONS,
       COLLECTIONS.DAILY_LOGS,
-      COLLECTIONS.CLASS_SANITATION
+      COLLECTIONS.CLASS_SANITATION,
+      COLLECTIONS.WEEKLY_EMULATION
     ];
 
     for (const col of collectionsToClear) {
@@ -1914,6 +1979,7 @@ export const importDatabase = async (backupData) => {
       { name: COLLECTIONS.NOTIFICATIONS, data: backupData.notifications || [] },
       { name: COLLECTIONS.DAILY_LOGS, data: backupData.daily_logs || [] },
       { name: COLLECTIONS.CLASS_SANITATION, data: backupData.class_sanitation || [] },
+      { name: COLLECTIONS.WEEKLY_EMULATION, data: backupData.weekly_emulation || [] },
       { name: 'settings', data: backupData.settings || [] }
     ];
 
