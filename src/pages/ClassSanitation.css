@@ -11,15 +11,15 @@
 
 .sanitation-filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .sanitation-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .sanitation-stat-card {
@@ -81,13 +81,14 @@ body.dark .sanitation-tab-btn.active {
   color: #38bdf8;
 }
 
+/* Class Card */
 .sanitation-class-card {
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 14px;
   background: var(--card-bg, #fff);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .sanitation-class-card.has-violations {
@@ -95,16 +96,16 @@ body.dark .sanitation-tab-btn.active {
 }
 
 .sanitation-class-header {
-  padding: 12px 14px;
+  padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(0, 0, 0, 0.015);
+  background: rgba(0, 0, 0, 0.02);
   border-bottom: 1px solid var(--border-color, #f1f5f9);
 }
 
 .sanitation-class-name {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -115,11 +116,11 @@ body.dark .sanitation-tab-btn.active {
 .sanitation-score-pill {
   font-size: 0.85rem;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 20px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .sanitation-score-10 {
@@ -147,73 +148,93 @@ body.dark .sanitation-tab-btn.active {
 }
 
 .sanitation-card-body {
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-.sanitation-score-control {
+/* History Box */
+.deduction-history-box {
+  background: rgba(239, 68, 68, 0.04);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.deduction-history-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #b91c1c;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
+  gap: 6px;
+}
+
+.deduction-history-list {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.score-stepper {
+.deduction-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #f1f5f9);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  gap: 8px;
+}
+
+.deduction-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.deduction-item-header {
   display: flex;
   align-items: center;
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: 8px;
-  background: var(--background, #f8fafc);
-  overflow: hidden;
-}
-
-.stepper-btn {
-  padding: 6px 12px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--text-color, #0f172a);
-}
-
-.stepper-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.stepper-value {
-  min-width: 44px;
-  text-align: center;
-  font-weight: 800;
-  font-size: 1.05rem;
-  color: var(--text-color, #0f172a);
-}
-
-.quick-scores-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.quick-score-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background: var(--card-bg, #fff);
-  border-radius: 6px;
-  font-size: 0.75rem;
+  gap: 8px;
   font-weight: 600;
-  cursor: pointer;
+}
+
+.deduction-badge {
+  background: #fee2e2;
+  color: #dc2626;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.deduction-item-meta {
   color: var(--text-muted, #64748b);
-  transition: all 0.15s ease;
+  font-size: 0.75rem;
 }
 
-.quick-score-btn.active {
-  background: var(--primary-color, #0ea5e9);
-  color: white;
-  border-color: var(--primary-color, #0ea5e9);
+.deduction-delete-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.deduction-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Violation Chips */
 .violation-chips-group {
   display: flex;
   flex-wrap: wrap;
@@ -221,9 +242,9 @@ body.dark .sanitation-tab-btn.active {
 }
 
 .violation-chip {
-  padding: 5px 9px;
+  padding: 6px 10px;
   border-radius: 16px;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--border-color, #e2e8f0);
@@ -255,10 +276,10 @@ body.dark .violation-chip.selected {
 
 .sanitation-note-input {
   width: 100%;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--border-color, #cbd5e1);
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   background: var(--background, #fff);
   color: var(--text-color, #0f172a);
 }
@@ -268,13 +289,20 @@ body.dark .violation-chip.selected {
   border-color: var(--primary-color, #0ea5e9);
 }
 
-.sanitation-card-footer {
+/* Action Area for Class */
+.class-action-area {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 4px;
-  font-size: 0.75rem;
-  color: var(--text-muted, #64748b);
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color, #f1f5f9);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.points-deduct-preview {
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 /* Summary table */
@@ -302,9 +330,22 @@ body.dark .violation-chip.selected {
 .sanitation-table td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-color, #e2e8f0);
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .sanitation-table tr:hover {
   background: rgba(0, 0, 0, 0.015);
+}
+
+.summary-log-entry {
+  font-size: 0.78rem;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border-color, #e2e8f0);
+}
+
+.summary-log-entry:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }

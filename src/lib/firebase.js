@@ -1634,6 +1634,56 @@ export const deleteClassSanitation = async (docId) => {
   }
 };
 
+export const addClassSanitationDeduction = async (data) => {
+  try {
+    const cleanData = {
+      week: String(data.week || '1'),
+      className: sanitizeText(data.className || '', 50),
+      pointsDeducted: Math.max(0, parseFloat(data.pointsDeducted) || 0),
+      violations: Array.isArray(data.violations) ? data.violations : [],
+      note: sanitizeText(data.note || '', 500),
+      gradedBy: sanitizeText(data.gradedBy || 'Giám thị', 100),
+      gradedById: data.gradedById || null,
+      date: data.date || format(new Date(), 'yyyy-MM-dd'),
+      createdAt: serverTimestamp()
+    };
+    const docRef = await addDoc(collection(db, COLLECTIONS.CLASS_SANITATION), cleanData);
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    console.error("Error adding class sanitation deduction:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const deleteClassSanitationDeduction = async (id) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.CLASS_SANITATION, id));
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting sanitation deduction:", error);
+    return { success: false, error: error.message || error.toString() };
+  }
+};
+
+export const fetchClassSanitationByWeek = async (week) => {
+  try {
+    const weekStr = String(week);
+    const q = query(
+      collection(db, COLLECTIONS.CLASS_SANITATION),
+      where('week', '==', weekStr)
+    );
+    const snap = await getDocs(q);
+    const deductions = [];
+    snap.forEach((d) => {
+      deductions.push({ id: d.id, ...d.data() });
+    });
+    return deductions;
+  } catch (error) {
+    console.error("Error fetching class sanitation by week:", error);
+    return [];
+  }
+};
+
 // --- VIOLATION TYPES ---
 export const fetchViolationTypes = async (forceRefresh = false) => {
   try {

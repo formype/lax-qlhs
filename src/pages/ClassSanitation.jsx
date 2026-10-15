@@ -3,24 +3,29 @@ import { Header } from '../components/layout/Header';
 import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Input';
-import { DayPicker } from '../components/ui/DatePicker';
 import { 
   Sparkles, 
-  CheckCircle, 
-  AlertTriangle, 
   Save, 
-  Download, 
-  RotateCcw, 
-  Search, 
-  Filter, 
+  Trash2, 
   ClipboardCheck, 
   Award, 
   Check, 
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertCircle,
+  Calendar,
+  Clock,
+  User,
+  History
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { fetchClasses, saveClassSanitation, fetchClassSanitationByDate } from '../lib/firebase';
+import { format, parse, parseISO } from 'date-fns';
+import { 
+  fetchClasses, 
+  fetchSystemSettings, 
+  fetchClassSanitationByWeek, 
+  addClassSanitationDeduction, 
+  deleteClassSanitationDeduction 
+} from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -39,72 +44,123 @@ const COMMON_VIOLATIONS = [
 export function ClassSanitation() {
   const { user } = useAuth();
   const [classes, setClasses] = useState([]);
-  const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingData, setLoadingData] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingWeekData, setLoadingWeekData] = useState(false);
+  const [savingClass, setSavingClass] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
-  // Filters
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [session, setSession] = useState(new Date().getHours() < 12 ? 'Sáng' : 'Chiều');
+  // Filters & Tabs
+  const [selectedWeek, setSelectedWeek] = useState('1');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('grading'); // 'grading' | 'summary'
 
-  // Records state: { [className]: { score: 10, violations: [], note: '', isModified: false } }
-  const [records, setRecords] = useState({});
+  // Deductions for currently selected week: array of { id, week, className, pointsDeducted, violations, note, gradedBy, gradedById, date, createdAt }
+  const [deductions, setDeductions] = useState([]);
 
-  useEffect(() => {
-    const loadClassesList = async () => {
-      setLoadingClasses(true);
-      const data = await fetchClasses();
-      setClasses(data);
-      setLoadingClasses(false);
-    };
-    loadClassesList();
-  }, []);
+  // Draft state per class for adding new deduction: { [className]: { selectedViolations: [], note: '' } }
+  const [draftForms, setDraftForms] = useState({});
 
-  // Fetch sanitation records whenever date or session changes
+  // Notification / toast feedback
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
+  // 1. Initial Load: classes and settings
   useEffect(() => {
-    const loadData = async () => {
-      if (!date || !session) return;
-      setLoadingData(true);
+    const initData = async () => {
+      setLoading(true);
       try {
-        const existingData = await fetchClassSanitationByDate(date, session);
-        const initialRecords = {};
-        
-        // Populate existing data or create blank record
-        classes.forEach(c => {
-          if (existingData && existingData[c.tenlop]) {
-            const item = existingData[c.tenlop];
-            initialRecords[c.tenlop] = {
-              className: c.tenlop,
-              score: typeof item.score === 'number' ? item.score : 20,
-              violations: item.violations || [],
-              note: item.note || '',
-              gradedBy: item.gradedBy || '',
-              hasSavedData: true
-            };
-          } else {
-            initialRecords[c.tenlop] = {
-              className: c.tenlop,
-              score: 20,
-              violations: [],
-              note: '',
-              hasSavedData: false
-            };
+        const [classesData, sData] = await Promise.all([
+          fetchClasses(),
+          fetchSystemSettings()
+        ]);
+        setClasses(classesData || []);
+        setSettings(sData);
+
+        // Calculate current week
+        if (sData) {
+          const today = new Date();
+          const s1Start = parse(sData.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+          const s2Start = parse(sData.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
+          const s1Weeks = sData.semester1Weeks || 18;
+          let currWeek = 1;
+          if (today >= s2Start) {
+            const diffTime = today.getTime() - s2Start.getTime();
+            currWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1 + s1Weeks;
+          } else if (today >= s1Start) {
+            const diffTime = today.getTime() - s1Start.getTime();
+            currWeek = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1;
           }
-        });
-        setRecords(initialRecords);
+          if (currWeek < 1) currWeek = 1;
+          setSelectedWeek(String(currWeek));
+        }
       } catch (err) {
-        console.error("Lỗi khi tải dữ liệu chấm vệ sinh:", err);
+        console.error("Lỗi khởi tạo trang chấm vệ sinh:", err);
       } finally {
-        setLoadingData(false);
+        setLoading(false);
       }
     };
+    initData();
+  }, []);
 
-    if (classes.length > 0) {
-      loadData();
+  // 2. Fetch deductions whenever selectedWeek changes
+  useEffect(() => {
+    const loadWeekDeductions = async () => {
+      if (!selectedWeek) return;
+      setLoadingWeekData(true);
+      try {
+        const data = await fetchClassSanitationByWeek(selectedWeek);
+        setDeductions(data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu chấm vệ sinh theo tuần:", err);
+      } finally {
+        setLoadingWeekData(false);
+      }
+    };
+    loadWeekDeductions();
+  }, [selectedWeek]);
+
+  // Generate week options for dropdown
+  const weekOptions = useMemo(() => {
+    if (!settings) {
+      return Array.from({ length: 35 }, (_, i) => ({
+        value: String(i + 1),
+        label: `Tuần ${i + 1}`
+      }));
     }
-  }, [date, session, classes]);
+    const s1Start = parse(settings.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+    const s2Start = parse(settings.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
+    const s1Weeks = settings.semester1Weeks || 18;
+    const s2Weeks = settings.semester2Weeks || 17;
+    const totalWeeks = s1Weeks + s2Weeks;
+
+    return Array.from({ length: totalWeeks }, (_, i) => {
+      const isHK1 = i < s1Weeks;
+      const hk = isHK1 ? 'HK1' : 'HK2';
+      const weekIndexInHK = isHK1 ? i : i - s1Weeks;
+      const baseDate = isHK1 ? s1Start : s2Start;
+      
+      const weekStart = new Date(baseDate);
+      weekStart.setDate(weekStart.getDate() + (weekIndexInHK * 7));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 5);
+      
+      const label = `Tuần ${i + 1} - ${hk} (${format(weekStart, 'dd/MM/yyyy')} - ${format(weekEnd, 'dd/MM/yyyy')})`;
+      return { value: String(i + 1), label };
+    });
+  }, [settings]);
+
+  // Selected week label for titles
+  const selectedWeekLabel = useMemo(() => {
+    const found = weekOptions.find(w => w.value === selectedWeek);
+    return found ? found.label : `Tuần ${selectedWeek}`;
+  }, [weekOptions, selectedWeek]);
 
   // Filtered classes by grade
   const filteredClasses = useMemo(() => {
@@ -114,151 +170,212 @@ export function ClassSanitation() {
     });
   }, [classes, gradeFilter]);
 
+  // Group deductions by class: { [className]: [ deduction1, deduction2, ... ] }
+  const deductionsByClass = useMemo(() => {
+    const map = {};
+    deductions.forEach(d => {
+      if (!map[d.className]) map[d.className] = [];
+      map[d.className].push(d);
+    });
+    // Sort each class's deductions newest first
+    Object.keys(map).forEach(cls => {
+      map[cls].sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+    });
+    return map;
+  }, [deductions]);
+
+  // Helper to compute class score in selected week: max(0, 20 - totalDeducted)
+  const getClassScoreInfo = (className) => {
+    const list = deductionsByClass[className] || [];
+    const totalDeducted = list.reduce((sum, d) => sum + (parseFloat(d.pointsDeducted) || 0), 0);
+    const score = Math.max(0, 20 - totalDeducted);
+    return {
+      score,
+      totalDeducted,
+      deductionsCount: list.length,
+      list
+    };
+  };
+
   // Stats calculation
   const stats = useMemo(() => {
-    let total = filteredClasses.length;
-    let graded = 0;
+    const total = filteredClasses.length;
     let fullScore = 0;
     let penalized = 0;
     let totalScore = 0;
 
     filteredClasses.forEach(c => {
-      const r = records[c.tenlop];
-      if (r && r.hasSavedData) {
-        graded++;
-        totalScore += r.score;
-        if (r.score === 20) fullScore++;
-        else penalized++;
-      }
+      const { score } = getClassScoreInfo(c.tenlop);
+      totalScore += score;
+      if (score === 20) fullScore++;
+      else penalized++;
     });
 
-    const avg = graded > 0 ? (totalScore / graded).toFixed(1) : '-';
-    return { total, graded, fullScore, penalized, avg };
-  }, [filteredClasses, records]);
+    const avg = total > 0 ? (totalScore / total).toFixed(1) : '20.0';
+    return { total, fullScore, penalized, avg };
+  }, [filteredClasses, deductionsByClass]);
 
-  // Toggle violation for a class
+  // Toggle violation selection for a class
   const handleToggleViolation = (className, violation) => {
-    setRecords(prev => {
-      const current = prev[className] || { className, score: 20, violations: [], note: '' };
-      const exists = current.violations.includes(violation.label);
-      const newViolations = exists 
-        ? current.violations.filter(v => v !== violation.label)
-        : [...current.violations, violation.label];
+    setDraftForms(prev => {
+      const current = prev[className] || { selectedViolations: [], note: '' };
+      const exists = current.selectedViolations.includes(violation.label);
+      const nextViolations = exists 
+        ? current.selectedViolations.filter(v => v !== violation.label)
+        : [...current.selectedViolations, violation.label];
       
-      // Auto calculate score based on default 20 minus total penalties
-      const totalPenalty = newViolations.reduce((sum, vLabel) => {
-        const item = COMMON_VIOLATIONS.find(v => v.label === vLabel);
-        return sum + (item ? item.penalty : 1);
-      }, 0);
-
-      const calculatedScore = Math.max(0, 20 - totalPenalty);
-
       return {
         ...prev,
         [className]: {
           ...current,
-          violations: newViolations,
-          score: calculatedScore,
-          isModified: true
+          selectedViolations: nextViolations
         }
       };
     });
   };
 
-  // Change score manually
-  const handleScoreChange = (className, newScore) => {
-    const validScore = Math.min(20, Math.max(0, parseFloat(newScore) || 0));
-    setRecords(prev => ({
-      ...prev,
-      [className]: {
-        ...(prev[className] || { className, violations: [], note: '' }),
-        score: validScore,
-        isModified: true
-      }
-    }));
-  };
-
-  // Change note
+  // Change draft note for a class
   const handleNoteChange = (className, note) => {
-    setRecords(prev => ({
+    setDraftForms(prev => ({
       ...prev,
       [className]: {
-        ...(prev[className] || { className, score: 20, violations: [] }),
-        note,
-        isModified: true
+        ...(prev[className] || { selectedViolations: [] }),
+        note
       }
     }));
   };
 
-  // Quick mark all 20 points
-  const handleMarkAllPerfect = () => {
-    if (!window.confirm(`Đánh dấu tất cả các lớp trong khối đang chọn đạt 20 điểm (Tốt)?`)) return;
-    setRecords(prev => {
-      const updated = { ...prev };
-      filteredClasses.forEach(c => {
-        updated[c.tenlop] = {
-          ...(updated[c.tenlop] || { className: c.tenlop }),
-          score: 20,
-          violations: [],
-          isModified: true
-        };
-      });
-      return updated;
-    });
+  // Format deduction timestamp for audit
+  const formatDeductionTime = (d) => {
+    if (d.createdAt) {
+      if (typeof d.createdAt.toDate === 'function') {
+        return format(d.createdAt.toDate(), 'HH:mm dd/MM/yyyy');
+      }
+      if (d.createdAt.seconds) {
+        return format(new Date(d.createdAt.seconds * 1000), 'HH:mm dd/MM/yyyy');
+      }
+    }
+    if (d.date) {
+      try {
+        return format(parseISO(d.date), 'dd/MM/yyyy');
+      } catch {
+        return d.date;
+      }
+    }
+    return 'Vừa xong';
   };
 
-  // Save all classes
-  const handleSaveAll = async () => {
-    setSaving(true);
-    try {
-      const recordsToSave = filteredClasses.map(c => {
-        const r = records[c.tenlop] || { className: c.tenlop, score: 20, violations: [], note: '' };
-        return {
-          className: c.tenlop,
-          score: r.score,
-          violations: r.violations,
-          note: r.note
-        };
-      });
+  // Save deduction for a single class
+  const handleSaveClass = async (className) => {
+    const draft = draftForms[className] || { selectedViolations: [], note: '' };
+    const selectedViolations = draft.selectedViolations || [];
 
-      const res = await saveClassSanitation(date, session, recordsToSave, user);
+    if (selectedViolations.length === 0) {
+      alert(`Vui lòng chọn ít nhất 1 lỗi vi phạm để trừ điểm lớp ${className}.`);
+      return;
+    }
+
+    const pointsToDeduct = selectedViolations.reduce((sum, vLabel) => {
+      const v = COMMON_VIOLATIONS.find(item => item.label === vLabel);
+      return sum + (v ? v.penalty : 0);
+    }, 0);
+
+    setSavingClass(className);
+    try {
+      const deductionData = {
+        week: selectedWeek,
+        className: className,
+        pointsDeducted: pointsToDeduct,
+        violations: selectedViolations,
+        note: draft.note || '',
+        gradedBy: user?.fullName || user?.username || 'Giám thị',
+        gradedById: user?.id || null,
+        date: format(new Date(), 'yyyy-MM-dd')
+      };
+
+      const res = await addClassSanitationDeduction(deductionData);
       if (res.success) {
-        alert("Lưu kết quả chấm vệ sinh thành công!");
-        // Mark all as saved
-        setRecords(prev => {
-          const updated = { ...prev };
-          filteredClasses.forEach(c => {
-            if (updated[c.tenlop]) {
-              updated[c.tenlop].hasSavedData = true;
-              updated[c.tenlop].isModified = false;
-            }
-          });
-          return updated;
-        });
+        // Optimistically add to deductions list
+        const newRecord = {
+          id: res.id,
+          ...deductionData,
+          createdAt: { seconds: Math.floor(Date.now() / 1000) }
+        };
+        setDeductions(prev => [newRecord, ...prev]);
+
+        // Reset draft for this class
+        setDraftForms(prev => ({
+          ...prev,
+          [className]: { selectedViolations: [], note: '' }
+        }));
+
+        showToast(`Đã lưu trừ ${pointsToDeduct} điểm cho lớp ${className}!`);
       } else {
-        alert("Có lỗi xảy ra khi lưu: " + res.error);
+        alert("Lỗi khi lưu trừ điểm: " + res.error);
       }
-    } catch (e) {
-      console.error(e);
-      alert("Đã xảy ra lỗi: " + e.message);
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi: " + err.message);
     } finally {
-      setSaving(false);
+      setSavingClass(null);
     }
   };
 
-  // Export to Excel
+  // Delete a specific deduction record
+  const handleDeleteDeduction = async (d) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa lần trừ ${d.pointsDeducted}đ của lớp ${d.className}?`)) {
+      return;
+    }
+
+    setDeletingId(d.id);
+    try {
+      const res = await deleteClassSanitationDeduction(d.id);
+      if (res.success) {
+        setDeductions(prev => prev.filter(item => item.id !== d.id));
+        showToast(`Đã xóa lần trừ điểm của lớp ${d.className}`);
+      } else {
+        alert("Lỗi khi xóa: " + res.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi: " + err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Score styling badges
+  const getScoreBadgeClass = (score) => {
+    if (score >= 19) return 'sanitation-score-10';
+    if (score >= 15) return 'sanitation-score-high';
+    if (score >= 10) return 'sanitation-score-med';
+    return 'sanitation-score-low';
+  };
+
+  const getScoreRatingText = (score) => {
+    if (score >= 18) return 'Tốt';
+    if (score >= 14) return 'Khá';
+    if (score >= 10) return 'Đạt';
+    return 'Chưa đạt';
+  };
+
+  // Export to Excel for weekly summary
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('ChamVeSinh');
+    const worksheet = workbook.addWorksheet(`Tuan_${selectedWeek}`);
 
     worksheet.columns = [
       { width: 8 },  // STT
       { width: 14 }, // Lớp
-      { width: 12 }, // Điểm
+      { width: 14 }, // Điểm tổng kết
       { width: 16 }, // Xếp loại
-      { width: 35 }, // Lỗi trừ điểm
-      { width: 30 }, // Ghi chú
-      { width: 20 }  // Người chấm
+      { width: 16 }, // Tổng điểm trừ
+      { width: 50 }, // Chi tiết các lần trừ điểm
+      { width: 25 }  // GVCN
     ];
 
     // Header 1: School Name & Country
@@ -290,13 +407,12 @@ export function ClassSanitation() {
     // Title
     worksheet.mergeCells('A4:G4');
     const cellA4 = worksheet.getCell('A4');
-    const formattedDate = format(parseISO(date), 'dd/MM/yyyy');
-    cellA4.value = `BẢNG CHẤM ĐIỂM VỆ SINH CÁC LỚP (${session.toUpperCase()} - NGÀY ${formattedDate})`;
+    cellA4.value = `BẢNG TỔNG HỢP ĐIỂM VỆ SINH CÁC LỚP - ${selectedWeekLabel.toUpperCase()}`;
     cellA4.font = { name: 'Times New Roman', size: 14, bold: true };
     cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Table Header
-    const headers = ["STT", "Lớp", "Điểm", "Xếp loại", "Các lỗi vi phạm", "Ghi chú cụ thể", "Người chấm"];
+    const headers = ["STT", "Lớp", "Điểm (Thang 20)", "Xếp loại", "Tổng điểm trừ", "Chi tiết các lần trừ điểm (Tài khoản - Thời gian - Số điểm - Lỗi)", "GVCN"];
     const headerRow = worksheet.getRow(6);
     headerRow.values = headers;
     headerRow.font = { name: 'Times New Roman', size: 12, bold: true };
@@ -319,18 +435,27 @@ export function ClassSanitation() {
 
     // Rows
     filteredClasses.forEach((c, idx) => {
-      const r = records[c.tenlop] || { score: 20, violations: [], note: '' };
-      const rating = r.score >= 18 ? 'Tốt' : r.score >= 14 ? 'Khá' : r.score >= 10 ? 'Trung bình' : 'Chưa đạt';
-      const violationsStr = r.violations?.join(', ') || 'Không vi phạm';
+      const { score, totalDeducted, list } = getClassScoreInfo(c.tenlop);
+      const rating = getScoreRatingText(score);
+
+      let detailsStr = "Không vi phạm (Đạt trọn vẹn 20đ)";
+      if (list.length > 0) {
+        detailsStr = list.map((d, dIdx) => {
+          const timeStr = formatDeductionTime(d);
+          const vStr = d.violations?.join(', ') || 'Vi phạm';
+          const noteStr = d.note ? ` [Ghi chú: ${d.note}]` : '';
+          return `${dIdx + 1}. [${timeStr}] ${d.gradedBy} trừ ${d.pointsDeducted}đ: ${vStr}${noteStr}`;
+        }).join('\n');
+      }
 
       const row = worksheet.addRow([
         idx + 1,
         c.tenlop,
-        r.score,
+        score,
         rating,
-        violationsStr,
-        r.note || '',
-        r.gradedBy || user?.fullName || 'Giám thị'
+        totalDeducted > 0 ? `-${totalDeducted}đ` : '0đ',
+        detailsStr,
+        c.homeroomTeacherName || ''
       ]);
 
       row.font = { name: 'Times New Roman', size: 12 };
@@ -341,7 +466,7 @@ export function ClassSanitation() {
           bottom: { style: 'thin' },
           right: { style: 'thin' }
         };
-        if (colNumber === 1 || colNumber === 2 || colNumber === 3 || colNumber === 4) {
+        if ([1, 2, 3, 4, 5].includes(colNumber)) {
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         } else {
           cell.alignment = { vertical: 'middle', wrapText: true };
@@ -351,26 +476,34 @@ export function ClassSanitation() {
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `BangChamVeSinh_${session}_${format(parseISO(date), 'ddMMyyyy')}.xlsx`);
-  };
-
-  const getScoreBadgeClass = (score) => {
-    if (score >= 19) return 'sanitation-score-10';
-    if (score >= 16) return 'sanitation-score-high';
-    if (score >= 12) return 'sanitation-score-med';
-    return 'sanitation-score-low';
-  };
-
-  const getScoreRatingText = (score) => {
-    if (score >= 18) return 'Tốt';
-    if (score >= 14) return 'Khá';
-    if (score >= 10) return 'Đạt';
-    return 'Chưa đạt';
+    saveAs(blob, `BangTongHop_VeSinh_Tuan_${selectedWeek}.xlsx`);
   };
 
   return (
     <div className="sanitation-page">
       <Header title="Chấm vệ sinh lớp" />
+
+      {/* Floating feedback toast */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 9999,
+          background: '#0f172a',
+          color: '#fff',
+          padding: '10px 18px',
+          borderRadius: '10px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+          fontSize: '0.88rem',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <Check size={16} color="#10b981" /> {toastMessage}
+        </div>
+      )}
 
       <div className="sanitation-content">
         {/* FILTERS CARD */}
@@ -378,19 +511,14 @@ export function ClassSanitation() {
           <CardBody>
             <div className="sanitation-filters">
               <div>
-                <label className="text-xs font-semibold text-muted mb-1 block">Ngày chấm</label>
-                <DayPicker value={date} onChange={setDate} />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-muted mb-1 block">Buổi học</label>
+                <label className="text-xs font-semibold text-muted mb-1 block">
+                  <Calendar size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-1px' }} />
+                  Tuần học
+                </label>
                 <Select
-                  value={session}
-                  onChange={e => setSession(e.target.value)}
-                  options={[
-                    { value: 'Sáng', label: 'Buổi sáng' },
-                    { value: 'Chiều', label: 'Buổi chiều' }
-                  ]}
+                  value={selectedWeek}
+                  onChange={e => setSelectedWeek(e.target.value)}
+                  options={weekOptions}
                 />
               </div>
 
@@ -426,74 +554,62 @@ export function ClassSanitation() {
               </div>
               <div className="sanitation-stat-card">
                 <span className="sanitation-stat-value" style={{ color: '#8b5cf6' }}>{stats.avg}</span>
-                <span className="sanitation-stat-label">Điểm TB</span>
+                <span className="sanitation-stat-label">Điểm TB tuần</span>
               </div>
             </div>
           </CardBody>
         </Card>
 
-        {/* TABS & BULK ACTIONS */}
+        {/* TABS & ACTIONS */}
         <div className="flex-between gap-2 flex-wrap">
           <div className="sanitation-tabs">
             <button 
               className={`sanitation-tab-btn ${activeTab === 'grading' ? 'active' : ''}`}
               onClick={() => setActiveTab('grading')}
             >
-              <ClipboardCheck size={16} /> Chấm điểm ({filteredClasses.length})
+              <ClipboardCheck size={16} /> Chấm điểm ({filteredClasses.length} lớp)
             </button>
             <button 
               className={`sanitation-tab-btn ${activeTab === 'summary' ? 'active' : ''}`}
               onClick={() => setActiveTab('summary')}
             >
-              <Award size={16} /> Bảng tổng hợp
+              <Award size={16} /> Bảng tổng hợp tuần
             </button>
           </div>
 
-          <div className="flex-row gap-2">
-            {activeTab === 'grading' ? (
-              <>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={handleMarkAllPerfect}
-                  title="Gán 20 điểm cho tất cả các lớp đang hiển thị"
-                >
-                  <Sparkles size={15} style={{ marginRight: '4px' }} /> Đạt 20đ hết
-                </Button>
-                <Button 
-                  size="sm" 
-                  onClick={handleSaveAll}
-                  disabled={saving || loadingData}
-                >
-                  <Save size={15} style={{ marginRight: '4px' }} /> {saving ? 'Đang lưu...' : 'Lưu tất cả'}
-                </Button>
-              </>
-            ) : (
-              <Button variant="secondary" size="sm" onClick={handleExportExcel}>
-                <FileSpreadsheet size={15} style={{ marginRight: '4px' }} /> Xuất Excel
-              </Button>
-            )}
+          <div>
+            <Button variant="secondary" size="sm" onClick={handleExportExcel}>
+              <FileSpreadsheet size={15} style={{ marginRight: '4px' }} /> Xuất Excel tuần
+            </Button>
           </div>
         </div>
 
-        {/* CONTENT TABS */}
-        {loadingClasses || loadingData ? (
+        {/* TAB 1: GRADING CARDS */}
+        {loading || loadingWeekData ? (
           <p className="text-center text-muted py-8">Đang tải danh sách lớp và dữ liệu chấm...</p>
         ) : filteredClasses.length === 0 ? (
           <p className="text-center text-muted py-8">Không tìm thấy lớp học nào phù hợp.</p>
         ) : activeTab === 'grading' ? (
-          /* GRADING TAB */
           <div className="sanitation-list">
             {filteredClasses.map(c => {
-              const rec = records[c.tenlop] || { score: 20, violations: [], note: '' };
-              const score = typeof rec.score === 'number' ? rec.score : 20;
-              const hasViolations = rec.violations && rec.violations.length > 0;
+              const { score, totalDeducted, list } = getClassScoreInfo(c.tenlop);
+              const draft = draftForms[c.tenlop] || { selectedViolations: [], note: '' };
+              const selectedViolations = draft.selectedViolations || [];
+
+              const pendingPenalty = selectedViolations.reduce((sum, vLabel) => {
+                const v = COMMON_VIOLATIONS.find(item => item.label === vLabel);
+                return sum + (v ? v.penalty : 0);
+              }, 0);
+
+              const previewScore = Math.max(0, score - pendingPenalty);
+              const isSaving = savingClass === c.tenlop;
 
               return (
                 <div 
                   key={c.id || c.tenlop} 
-                  className={`sanitation-class-card ${hasViolations ? 'has-violations' : ''}`}
+                  className={`sanitation-class-card ${totalDeducted > 0 ? 'has-violations' : ''}`}
                 >
+                  {/* Card Header */}
                   <div className="sanitation-class-header">
                     <div className="sanitation-class-name">
                       <span>{c.tenlop}</span>
@@ -504,54 +620,74 @@ export function ClassSanitation() {
                       )}
                     </div>
                     <div className={`sanitation-score-pill ${getScoreBadgeClass(score)}`}>
-                      <span>{score} điểm</span>
+                      <span>{score}/20 điểm</span>
                       <span>• {getScoreRatingText(score)}</span>
+                      {totalDeducted > 0 && (
+                        <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+                          (-{totalDeducted}đ tuần này)
+                        </span>
+                      )}
                     </div>
                   </div>
 
+                  {/* Card Body */}
                   <div className="sanitation-card-body">
-                    {/* Score Control */}
-                    <div className="flex-between align-center flex-wrap gap-2">
-                      <div className="sanitation-score-control">
-                        <span className="text-xs font-semibold text-muted">Điều chỉnh điểm:</span>
-                        <div className="score-stepper">
-                          <button 
-                            className="stepper-btn" 
-                            onClick={() => handleScoreChange(c.tenlop, score - 0.5)}
-                          >
-                            -
-                          </button>
-                          <span className="stepper-value">{score}</span>
-                          <button 
-                            className="stepper-btn" 
-                            onClick={() => handleScoreChange(c.tenlop, score + 0.5)}
-                          >
-                            +
-                          </button>
+                    {/* Previous Deductions History in this Week */}
+                    {list.length > 0 && (
+                      <div className="deduction-history-box">
+                        <div className="deduction-history-title">
+                          <History size={14} />
+                          <span>Lịch sử trừ điểm tuần này ({list.length} lần ghi nhận):</span>
+                        </div>
+                        <div className="deduction-history-list">
+                          {list.map((d) => (
+                            <div key={d.id} className="deduction-item">
+                              <div className="deduction-item-info">
+                                <div className="deduction-item-header">
+                                  <span className="deduction-badge">-{d.pointsDeducted}đ</span>
+                                  <span>{d.violations?.join(', ') || 'Vi phạm vệ sinh'}</span>
+                                </div>
+                                <div className="deduction-item-meta">
+                                  <span>
+                                    <Clock size={11} style={{ display: 'inline', marginRight: '3px', verticalAlign: '-1px' }} />
+                                    {formatDeductionTime(d)}
+                                  </span>
+                                  <span style={{ margin: '0 6px' }}>•</span>
+                                  <span>
+                                    <User size={11} style={{ display: 'inline', marginRight: '3px', verticalAlign: '-1px' }} />
+                                    {d.gradedBy || 'Giám thị'}
+                                  </span>
+                                  {d.note && (
+                                    <>
+                                      <span style={{ margin: '0 6px' }}>•</span>
+                                      <span style={{ fontStyle: 'italic' }}>Ghi chú: {d.note}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="deduction-delete-btn"
+                                title="Xóa lần trừ điểm này"
+                                disabled={deletingId === d.id}
+                                onClick={() => handleDeleteDeduction(d)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       </div>
+                    )}
 
-                      <div className="quick-scores-row">
-                        {[20, 18, 16, 14, 10].map(pts => (
-                          <button
-                            key={pts}
-                            className={`quick-score-btn ${score === pts ? 'active' : ''}`}
-                            onClick={() => handleScoreChange(c.tenlop, pts)}
-                          >
-                            {pts}đ
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Common Violations / Checklist */}
+                    {/* New Deduction Checklist */}
                     <div>
                       <span className="text-xs font-semibold text-muted mb-2 block">
-                        Các lỗi trừ điểm (chạm để chọn/bỏ):
+                        Chọn lỗi vi phạm để trừ điểm lần này:
                       </span>
                       <div className="violation-chips-group">
                         {COMMON_VIOLATIONS.map(v => {
-                          const isSelected = rec.violations?.includes(v.label);
+                          const isSelected = selectedViolations.includes(v.label);
                           return (
                             <button
                               key={v.id}
@@ -572,49 +708,53 @@ export function ClassSanitation() {
                       <input 
                         type="text"
                         className="sanitation-note-input"
-                        placeholder="Ghi chú thêm (vd: còn rác ở hộc bàn, lau bảng chưa sạch...)"
-                        value={rec.note || ''}
+                        placeholder="Ghi chú cụ thể (vd: học sinh vi phạm, vị trí rác, bàn ghế chưa ngay ngắn...)"
+                        value={draft.note || ''}
                         onChange={e => handleNoteChange(c.tenlop, e.target.value)}
                       />
                     </div>
 
-                    <div className="sanitation-card-footer">
-                      <span>
-                        {rec.hasSavedData ? (
-                          <span className="text-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            <Check size={12} /> Đã lưu
+                    {/* Per-class Action Area & Save Button */}
+                    <div className="class-action-area">
+                      <div className="points-deduct-preview">
+                        {selectedViolations.length > 0 ? (
+                          <span className="text-danger">
+                            Trừ lần này: -{pendingPenalty}đ ➔ Điểm sau khi lưu: <strong>{previewScore}/20đ</strong>
                           </span>
-                        ) : rec.isModified ? (
-                          <span className="text-warning">Chưa lưu thay đổi</span>
                         ) : (
-                          <span className="text-muted">Chưa chấm</span>
+                          <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                            Chưa chọn lỗi vi phạm mới
+                          </span>
                         )}
-                      </span>
+                      </div>
 
-                      {rec.gradedBy && (
-                        <span className="text-muted">Người chấm: {rec.gradedBy}</span>
-                      )}
+                      <Button 
+                        size="sm"
+                        disabled={selectedViolations.length === 0 || isSaving}
+                        onClick={() => handleSaveClass(c.tenlop)}
+                      >
+                        <Save size={14} style={{ marginRight: '5px' }} />
+                        {isSaving ? 'Đang lưu...' : `Lưu trừ điểm lớp ${c.tenlop}`}
+                      </Button>
                     </div>
                   </div>
                 </div>
               );
             })}
-
-            <div className="mt-4 mb-4">
-              <Button fullWidth onClick={handleSaveAll} disabled={saving}>
-                <Save size={16} style={{ marginRight: '6px' }} />
-                {saving ? 'Đang lưu dữ liệu...' : 'Lưu kết quả chấm vệ sinh tất cả các lớp'}
-              </Button>
-            </div>
           </div>
         ) : (
-          /* SUMMARY TAB */
+          /* TAB 2: WEEKLY SUMMARY */
           <Card>
             <CardBody>
-              <div className="flex-between align-center mb-3">
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
-                  Bảng tổng hợp điểm vệ sinh ({session} - {format(parseISO(date), 'dd/MM/yyyy')})
-                </h4>
+              <div className="flex-between align-center mb-3 flex-wrap gap-2">
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                    Bảng tổng hợp điểm vệ sinh ({selectedWeekLabel})
+                  </h4>
+                  <p className="text-xs text-muted mt-1" style={{ margin: 0 }}>
+                    Thang điểm chuẩn 20 điểm / tuần • Điểm không âm (tối thiểu 0 điểm)
+                  </p>
+                </div>
                 <Button variant="secondary" size="sm" onClick={handleExportExcel}>
                   <FileSpreadsheet size={15} style={{ marginRight: '4px' }} /> Xuất Excel
                 </Button>
@@ -624,37 +764,59 @@ export function ClassSanitation() {
                 <table className="sanitation-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '40px', textAlign: 'center' }}>STT</th>
-                      <th>Lớp</th>
-                      <th style={{ textAlign: 'center' }}>Điểm</th>
-                      <th style={{ textAlign: 'center' }}>Xếp loại</th>
-                      <th>Lỗi vi phạm</th>
-                      <th>Ghi chú</th>
+                      <th style={{ width: '45px', textAlign: 'center' }}>STT</th>
+                      <th style={{ width: '90px' }}>Lớp</th>
+                      <th style={{ width: '100px', textAlign: 'center' }}>Điểm tuần</th>
+                      <th style={{ width: '100px', textAlign: 'center' }}>Xếp loại</th>
+                      <th style={{ width: '110px', textAlign: 'center' }}>Tổng điểm trừ</th>
+                      <th>Chi tiết các lần trừ điểm trong tuần (Tài khoản - Thời gian - Số điểm - Lỗi)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredClasses.map((c, index) => {
-                      const rec = records[c.tenlop] || { score: 20, violations: [], note: '' };
-                      const score = typeof rec.score === 'number' ? rec.score : 20;
+                      const { score, totalDeducted, list } = getClassScoreInfo(c.tenlop);
                       return (
                         <tr key={c.id || c.tenlop}>
                           <td style={{ textAlign: 'center' }}>{index + 1}</td>
                           <td>
                             <strong>{c.tenlop}</strong>
+                            {c.homeroomTeacherName && (
+                              <div className="text-xs text-muted">{c.homeroomTeacherName}</div>
+                            )}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             <span className={`sanitation-score-pill ${getScoreBadgeClass(score)}`}>
-                              {score}
+                              {score}/20
                             </span>
                           </td>
                           <td style={{ textAlign: 'center', fontWeight: 600 }}>
                             {getScoreRatingText(score)}
                           </td>
-                          <td style={{ color: rec.violations?.length > 0 ? '#ef4444' : 'var(--text-muted)' }}>
-                            {rec.violations?.length > 0 ? rec.violations.join(', ') : 'Sạch sẽ'}
+                          <td style={{ textAlign: 'center', fontWeight: 700, color: totalDeducted > 0 ? '#dc2626' : '#10b981' }}>
+                            {totalDeducted > 0 ? `-${totalDeducted}đ` : '0đ'}
                           </td>
-                          <td className="text-muted" style={{ fontSize: '0.8rem' }}>
-                            {rec.note || '-'}
+                          <td>
+                            {list.length === 0 ? (
+                              <span className="text-success" style={{ fontSize: '0.8rem' }}>
+                                ✓ Không vi phạm (Đạt trọn vẹn 20đ)
+                              </span>
+                            ) : (
+                              <div>
+                                {list.map((d, dIdx) => (
+                                  <div key={d.id || dIdx} className="summary-log-entry">
+                                    <span style={{ fontWeight: 600, color: '#dc2626' }}>
+                                      -{d.pointsDeducted}đ
+                                    </span>
+                                    {' '}• <strong>{d.gradedBy || 'Giám thị'}</strong>
+                                    {' '}({formatDeductionTime(d)}):
+                                    {' '}<span style={{ color: 'var(--text-color)' }}>{d.violations?.join(', ')}</span>
+                                    {d.note && (
+                                      <span className="text-muted"> — Ghi chú: {d.note}</span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
