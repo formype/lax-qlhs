@@ -78,7 +78,7 @@ export function ClassSanitation() {
             const item = existingData[c.tenlop];
             initialRecords[c.tenlop] = {
               className: c.tenlop,
-              score: typeof item.score === 'number' ? item.score : 10,
+              score: typeof item.score === 'number' ? item.score : 20,
               violations: item.violations || [],
               note: item.note || '',
               gradedBy: item.gradedBy || '',
@@ -87,7 +87,7 @@ export function ClassSanitation() {
           } else {
             initialRecords[c.tenlop] = {
               className: c.tenlop,
-              score: 10,
+              score: 20,
               violations: [],
               note: '',
               hasSavedData: false
@@ -128,7 +128,7 @@ export function ClassSanitation() {
       if (r && r.hasSavedData) {
         graded++;
         totalScore += r.score;
-        if (r.score === 10) fullScore++;
+        if (r.score === 20) fullScore++;
         else penalized++;
       }
     });
@@ -140,19 +140,19 @@ export function ClassSanitation() {
   // Toggle violation for a class
   const handleToggleViolation = (className, violation) => {
     setRecords(prev => {
-      const current = prev[className] || { className, score: 10, violations: [], note: '' };
+      const current = prev[className] || { className, score: 20, violations: [], note: '' };
       const exists = current.violations.includes(violation.label);
       const newViolations = exists 
         ? current.violations.filter(v => v !== violation.label)
         : [...current.violations, violation.label];
       
-      // Auto calculate score based on default 10 minus total penalties
+      // Auto calculate score based on default 20 minus total penalties
       const totalPenalty = newViolations.reduce((sum, vLabel) => {
         const item = COMMON_VIOLATIONS.find(v => v.label === vLabel);
         return sum + (item ? item.penalty : 1);
       }, 0);
 
-      const calculatedScore = Math.max(0, 10 - totalPenalty);
+      const calculatedScore = Math.max(0, 20 - totalPenalty);
 
       return {
         ...prev,
@@ -168,7 +168,7 @@ export function ClassSanitation() {
 
   // Change score manually
   const handleScoreChange = (className, newScore) => {
-    const validScore = Math.min(10, Math.max(0, parseFloat(newScore) || 0));
+    const validScore = Math.min(20, Math.max(0, parseFloat(newScore) || 0));
     setRecords(prev => ({
       ...prev,
       [className]: {
@@ -184,22 +184,22 @@ export function ClassSanitation() {
     setRecords(prev => ({
       ...prev,
       [className]: {
-        ...(prev[className] || { className, score: 10, violations: [] }),
+        ...(prev[className] || { className, score: 20, violations: [] }),
         note,
         isModified: true
       }
     }));
   };
 
-  // Quick mark all 10 points
+  // Quick mark all 20 points
   const handleMarkAllPerfect = () => {
-    if (!window.confirm(`Đánh dấu tất cả các lớp trong khối đang chọn đạt 10 điểm (Tốt)?`)) return;
+    if (!window.confirm(`Đánh dấu tất cả các lớp trong khối đang chọn đạt 20 điểm (Tốt)?`)) return;
     setRecords(prev => {
       const updated = { ...prev };
       filteredClasses.forEach(c => {
         updated[c.tenlop] = {
           ...(updated[c.tenlop] || { className: c.tenlop }),
-          score: 10,
+          score: 20,
           violations: [],
           isModified: true
         };
@@ -213,7 +213,7 @@ export function ClassSanitation() {
     setSaving(true);
     try {
       const recordsToSave = filteredClasses.map(c => {
-        const r = records[c.tenlop] || { className: c.tenlop, score: 10, violations: [], note: '' };
+        const r = records[c.tenlop] || { className: c.tenlop, score: 20, violations: [], note: '' };
         return {
           className: c.tenlop,
           score: r.score,
@@ -320,8 +320,8 @@ export function ClassSanitation() {
 
     // Rows
     filteredClasses.forEach((c, idx) => {
-      const r = records[c.tenlop] || { score: 10, violations: [], note: '' };
-      const rating = r.score >= 9 ? 'Tốt' : r.score >= 7 ? 'Khá' : r.score >= 5 ? 'Trung bình' : 'Chưa đạt';
+      const r = records[c.tenlop] || { score: 20, violations: [], note: '' };
+      const rating = r.score >= 18 ? 'Tốt' : r.score >= 14 ? 'Khá' : r.score >= 10 ? 'Trung bình' : 'Chưa đạt';
       const violationsStr = r.violations?.join(', ') || 'Không vi phạm';
 
       const row = worksheet.addRow([
@@ -356,16 +356,16 @@ export function ClassSanitation() {
   };
 
   const getScoreBadgeClass = (score) => {
-    if (score >= 9.5) return 'sanitation-score-10';
-    if (score >= 8) return 'sanitation-score-high';
-    if (score >= 6) return 'sanitation-score-med';
+    if (score >= 19) return 'sanitation-score-10';
+    if (score >= 16) return 'sanitation-score-high';
+    if (score >= 12) return 'sanitation-score-med';
     return 'sanitation-score-low';
   };
 
   const getScoreRatingText = (score) => {
-    if (score >= 9) return 'Tốt';
-    if (score >= 7) return 'Khá';
-    if (score >= 5) return 'Đạt';
+    if (score >= 18) return 'Tốt';
+    if (score >= 14) return 'Khá';
+    if (score >= 10) return 'Đạt';
     return 'Chưa đạt';
   };
 
@@ -419,7 +419,7 @@ export function ClassSanitation() {
               </div>
               <div className="sanitation-stat-card">
                 <span className="sanitation-stat-value text-success">{stats.fullScore}</span>
-                <span className="sanitation-stat-label">Lớp đạt 10đ</span>
+                <span className="sanitation-stat-label">Lớp đạt 20đ</span>
               </div>
               <div className="sanitation-stat-card">
                 <span className="sanitation-stat-value text-danger">{stats.penalized}</span>
@@ -457,9 +457,9 @@ export function ClassSanitation() {
                   variant="secondary" 
                   size="sm" 
                   onClick={handleMarkAllPerfect}
-                  title="Gán 10 điểm cho tất cả các lớp đang hiển thị"
+                  title="Gán 20 điểm cho tất cả các lớp đang hiển thị"
                 >
-                  <Sparkles size={15} style={{ marginRight: '4px' }} /> Đạt 10đ hết
+                  <Sparkles size={15} style={{ marginRight: '4px' }} /> Đạt 20đ hết
                 </Button>
                 <Button 
                   size="sm" 
@@ -486,8 +486,8 @@ export function ClassSanitation() {
           /* GRADING TAB */
           <div className="sanitation-list">
             {filteredClasses.map(c => {
-              const rec = records[c.tenlop] || { score: 10, violations: [], note: '' };
-              const score = typeof rec.score === 'number' ? rec.score : 10;
+              const rec = records[c.tenlop] || { score: 20, violations: [], note: '' };
+              const score = typeof rec.score === 'number' ? rec.score : 20;
               const hasViolations = rec.violations && rec.violations.length > 0;
 
               return (
@@ -533,7 +533,7 @@ export function ClassSanitation() {
                       </div>
 
                       <div className="quick-scores-row">
-                        {[10, 9, 8, 7, 5].map(pts => (
+                        {[20, 18, 16, 14, 10].map(pts => (
                           <button
                             key={pts}
                             className={`quick-score-btn ${score === pts ? 'active' : ''}`}
@@ -635,8 +635,8 @@ export function ClassSanitation() {
                   </thead>
                   <tbody>
                     {filteredClasses.map((c, index) => {
-                      const rec = records[c.tenlop] || { score: 10, violations: [], note: '' };
-                      const score = typeof rec.score === 'number' ? rec.score : 10;
+                      const rec = records[c.tenlop] || { score: 20, violations: [], note: '' };
+                      const score = typeof rec.score === 'number' ? rec.score : 20;
                       return (
                         <tr key={c.id || c.tenlop}>
                           <td style={{ textAlign: 'center' }}>{index + 1}</td>
