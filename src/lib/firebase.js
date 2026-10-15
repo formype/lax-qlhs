@@ -1541,6 +1541,38 @@ export const getAttendanceHistory = async (days = 30) => {
   }
 };
 
+export const fetchAttendanceByDateRange = async (startDate, endDate) => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.ATTENDANCE),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate)
+    );
+    const querySnapshot = await getDocs(q);
+    const data = [];
+    querySnapshot.forEach((doc) => {
+      data.push({ id: doc.id, ...doc.data() });
+    });
+    return data;
+  } catch (e) {
+    console.error("Error fetching attendance by date range, falling back to client filter:", e);
+    try {
+      const snap = await getDocs(collection(db, COLLECTIONS.ATTENDANCE));
+      const fallbackData = [];
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (d.date && d.date >= startDate && d.date <= endDate) {
+          fallbackData.push({ id: doc.id, ...d });
+        }
+      });
+      return fallbackData;
+    } catch (err2) {
+      console.error("Error in fallback fetch attendance:", err2);
+      return [];
+    }
+  }
+};
+
 // --- CLASS SANITATION (CHẤM VỆ SINH LỚP) ---
 export const saveClassSanitation = async (date, session, records, user) => {
   try {

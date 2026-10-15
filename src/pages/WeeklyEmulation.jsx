@@ -30,6 +30,8 @@ import {
   fetchSystemSettings, 
   fetchClassSanitationByWeek, 
   fetchAllViolations,
+  fetchStudents,
+  fetchAttendanceByDateRange,
   saveWeeklyEmulation,
   fetchWeeklyEmulation,
   deleteWeeklyEmulation
@@ -68,6 +70,8 @@ export function WeeklyEmulation() {
   const [settings, setSettings] = useState(null);
   const [allViolations, setAllViolations] = useState([]);
   const [sanitationDeductions, setSanitationDeductions] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [weekAttendance, setWeekAttendance] = useState([]);
   
   const [loading, setLoading] = useState(true);
   const [loadingWeek, setLoadingWeek] = useState(false);
@@ -96,20 +100,70 @@ export function WeeklyEmulation() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // 1. Initial Load: classes, system settings, all violations
+  // Map studentId -> student data for quick lookup of hoten, mahs
+  const studentMap = useMemo(() => {
+    const map = {};
+    (students || []).forEach(s => {
+      map[s.id] = s;
+    });
+    return map;
+  }, [students]);
+
+  // Helper: Get date range and calendar info for a given week
+  const getWeekInfo = (weekNum, sData) => {
+    if (!sData || !weekNum) return null;
+    const s1Start = parse(sData.semester1StartDate || '2026-09-07', 'yyyy-MM-dd', new Date());
+    const s2Start = parse(sData.semester2StartDate || '2027-01-18', 'yyyy-MM-dd', new Date());
+    const s1Weeks = sData.semester1Weeks || 18;
+    const w = parseInt(weekNum, 10);
+    if (isNaN(w) || w < 1) return null;
+
+    const isHK1 = w <= s1Weeks;
+    const weekIndexInHK = isHK1 ? w - 1 : w - 1 - s1Weeks;
+    const baseDate = isHK1 ? s1Start : s2Start;
+
+    const weekStart = new Date(baseDate);
+    weekStart.setDate(weekStart.getDate() + (weekIndexInHK * 7));
+
+    // Friday: end of classes for the week
+    const fridayDate = new Date(weekStart);
+    fridayDate.setDate(weekStart.getDate() + 4);
+
+    // Saturday: 00:00:00 of Saturday - end of week boundary
+    const saturdayDate = new Date(weekStart);
+    saturdayDate.setDate(weekStart.getDate() + 5);
+    saturdayDate.setHours(0, 0, 0, 0);
+
+    // Sunday: end of 7-day range for querying attendance
+    const sundayDate = new Date(weekStart);
+    sundayDate.setDate(weekStart.getDate() + 6);
+
+    return {
+      weekStart,
+      fridayDate,
+      saturdayDate,
+      sundayDate,
+      startDateStr: format(weekStart, 'yyyy-MM-dd'),
+      endDateStr: format(sundayDate, 'yyyy-MM-dd')
+    };
+  };
+
+  // 1. Initial Load: classes, system settings, all violations, all students
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
       try {
-        const [cData, sData, vData] = await Promise.all([
+        const [cData, sData, vData, stData] = await Promise.all([
           fetchClasses(),
           fetchSystemSettings(),
-          fetchAllViolations()
+          fetchAllViolations(),
+          fetchStudents()
         ]);
 
         setClasses(cData || []);
         setSettings(sData);
         setAllViolations(vData || []);
+        setStudents(stData || []);
 
         if (sData) {
           const today = new Date();
@@ -136,18 +190,24 @@ export function WeeklyEmulation() {
     initData();
   }, []);
 
-  // 2. Fetch sanitation data and saved emulation when selectedWeek changes
+  // 2. Fetch sanitation data, attendance data and saved emulation when selectedWeek changes
   useEffect(() => {
     const loadWeekData = async () => {
-      if (!selectedWeek) return;
+      if (!selectedWeek || !settings) return;
       setLoadingWeek(true);
       try {
-        const [sanitation, savedEmulation] = await Promise.all([
+        const weekInfo = getWeekInfo(selectedWeek, settings);
+        const startDateStr = weekInfo ? weekInfo.startDateStr : '2026-09-07';
+        const endDateStr = weekInfo ? weekInfo.endDateStr : '2027-06-30';
+
+        const [sanitation, savedEmulation, attendanceDocs] = await Promise.all([
           fetchClassSanitationByWeek(selectedWeek),
-          fetchWeeklyEmulation(selectedWeek)
+          fetchWeeklyEmulation(selectedWeek),
+          fetchAttendanceByDateRange(startDateStr, endDateStr)
         ]);
 
         setSanitationDeductions(sanitation || []);
+        setWeekAttendance(attendanceDocs || []);
 
         if (savedEmulation && savedEmulation.data) {
           setExcelData(savedEmulation.data.excelData || {});
@@ -168,7 +228,7 @@ export function WeeklyEmulation() {
       }
     };
     loadWeekData();
-  }, [selectedWeek]);
+  }, [selectedWeek, settings]);
 
   // Week Options list
   const weekOptions = useMemo(() => {
@@ -373,12 +433,12 @@ export function WeeklyEmulation() {
       const hocTapScore = excelItem ? excelItem.totalHocTap : 0;
       const hasExcel = !!excelItem;
 
-      // 2. Kỷ luật (50đ - các lỗi vi phạm trong tuần)
+      // 2. Kỷ luật (50đ - các lỗi vi phạm trong tuần + chuyên cần vắng)
       const classViolations = weekViolations.filter(v => v.tenlop === clsName);
-      let totalDisciplineDeduction = 0;
+      let totalViolationDeduction = 0;
       const violationDetails = classViolations.map(v => {
         const pInfo = getViolationPenaltyInfo(v);
-        totalDisciplineDeduction += pInfo.penalty;
+        totalViolationDeduction += pInfo.penalty;
         return {
           id: v.id,
           mahs: v.mahs,
@@ -390,7 +450,69 @@ export function WeeklyEmulation() {
           isStandard: pInfo.isStandard
         };
       });
-      const kyLuatScore = Math.round((50 - totalDisciplineDeduction) * 100) / 100;
+
+      // Tra cứu chuyên cần của tuần đó:
+      const normClass = clsName.replace(/-/g, '/').trim().toLowerCase();
+      const classAttendanceDocs = weekAttendance.filter(att => {
+        const attCls = (att.className || '').replace(/-/g, '/').trim().toLowerCase();
+        return attCls === normClass;
+      });
+
+      let totalAttendanceDeduction = 0;
+      const attendanceDetails = [];
+
+      classAttendanceDocs.forEach(att => {
+        if (att.records && typeof att.records === 'object') {
+          Object.keys(att.records).forEach(studentId => {
+            const status = att.records[studentId];
+            if (status === 'absent_kp') {
+              // Vắng không phép: trừ 2 điểm mỗi lượt
+              totalAttendanceDeduction += 2;
+              const st = studentMap[studentId];
+              attendanceDetails.push({
+                id: `${att.id}_${studentId}`,
+                studentId,
+                hoten: st?.hoten || 'Học sinh',
+                mahs: st?.mahs || '',
+                date: att.date,
+                session: att.session || 'Sáng',
+                status: 'absent_kp',
+                statusLabel: 'Vắng không phép',
+                reason: 'Không phép',
+                penalty: 2
+              });
+            } else if (status === 'absent_p') {
+              // Vắng có phép:
+              // Nếu lý do là Bệnh -> không trừ điểm (0đ)
+              // Nếu lý do là Việc riêng (hoặc khác) -> trừ 0.5 điểm mỗi lượt
+              const rawReason = att.reasons?.[studentId] || 'Việc riêng';
+              const reasonLower = rawReason.trim().toLowerCase();
+              const isSick = reasonLower.includes('bệnh') || reasonLower.includes('benh');
+              const penalty = isSick ? 0 : 0.5;
+
+              totalAttendanceDeduction += penalty;
+              const st = studentMap[studentId];
+              attendanceDetails.push({
+                id: `${att.id}_${studentId}`,
+                studentId,
+                hoten: st?.hoten || 'Học sinh',
+                mahs: st?.mahs || '',
+                date: att.date,
+                session: att.session || 'Sáng',
+                status: 'absent_p',
+                statusLabel: isSick ? 'Vắng có phép (Bệnh)' : 'Vắng có phép (Việc riêng)',
+                reason: rawReason,
+                penalty
+              });
+            }
+          });
+        }
+      });
+
+      totalViolationDeduction = Math.round(totalViolationDeduction * 100) / 100;
+      totalAttendanceDeduction = Math.round(totalAttendanceDeduction * 100) / 100;
+      const totalDisciplineDeduction = Math.round((totalViolationDeduction + totalAttendanceDeduction) * 100) / 100;
+      const kyLuatScore = Math.max(0, Math.round((50 - totalDisciplineDeduction) * 100) / 100);
 
       // 3. Vệ sinh (20đ - các lần chấm vệ sinh bị trừ trong tuần)
       const classSanitation = sanitationDeductions.filter(d => d.className === clsName);
@@ -410,7 +532,10 @@ export function WeeklyEmulation() {
         hocTapScore,
         kyLuatScore,
         totalDisciplineDeduction,
+        totalViolationDeduction,
         violationDetails,
+        totalAttendanceDeduction,
+        attendanceDetails,
         veSinhScore,
         totalSanitationDeduction,
         sanitationDetails: classSanitation,
@@ -436,7 +561,7 @@ export function WeeklyEmulation() {
     });
 
     return list;
-  }, [classes, excelData, weekViolations, customPenalties, sanitationDeductions]);
+  }, [classes, excelData, weekViolations, customPenalties, sanitationDeductions, weekAttendance, studentMap]);
 
   // Filtered by selected grade tab
   const filteredResults = useMemo(() => {
@@ -454,6 +579,25 @@ export function WeeklyEmulation() {
 
   // Save weekly emulation calculation to Firebase
   const handleSaveCalculation = async () => {
+    // Cảnh báo nếu thời gian hiện tại chưa qua ngày thứ bảy của tuần học
+    const weekInfo = getWeekInfo(selectedWeek, settings);
+    if (weekInfo) {
+      const now = new Date();
+      if (now < weekInfo.saturdayDate) {
+        const fridayStr = format(weekInfo.fridayDate, 'dd/MM/yyyy');
+        const saturdayStr = format(weekInfo.saturdayDate, 'dd/MM/yyyy');
+        const confirmed = window.confirm(
+          `CẢNH BÁO: Chưa kết thúc tuần học!\n\n` +
+          `Tuần ${selectedWeek} đến hết ngày Thứ Sáu (${fridayStr}) mới kết thúc tuần học.\n` +
+          `Thời gian hiện tại chưa qua ngày Thứ Bảy (${saturdayStr}), việc tổng kết trước có thể khiến dữ liệu chuyên cần và vi phạm chưa được ghi nhận đầy đủ.\n\n` +
+          `Bạn có chắc chắn muốn lưu kết quả thi đua của Tuần ${selectedWeek} không?`
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -562,7 +706,7 @@ export function WeeklyEmulation() {
     // Subtitle formula explanation
     worksheet.mergeCells('A5:H5');
     const cellA5 = worksheet.getCell('A5');
-    cellA5.value = `Công thức: Điểm thi đua = Học tập (SĐB) + Kỷ luật (50đ - Vi phạm) + Vệ sinh (20đ - Chấm tuần)`;
+    cellA5.value = `Công thức: Điểm thi đua = Học tập (SĐB online) + Kỷ luật (50đ - Vi phạm - Chuyên cần) + Vệ sinh (20đ - Chấm tuần)`;
     cellA5.font = { name: 'Times New Roman', size: 11, italic: true };
     cellA5.alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -961,8 +1105,13 @@ export function WeeklyEmulation() {
                             {item.kyLuatScore.toFixed(2)}
                           </span>
                           {item.totalDisciplineDeduction > 0 && (
-                            <div className="text-xs text-danger">
-                              (-{item.totalDisciplineDeduction}đ vi phạm)
+                            <div className="text-xs text-danger" style={{ lineHeight: 1.25, marginTop: '2px' }}>
+                              {item.totalViolationDeduction > 0 && (
+                                <div>(-{item.totalViolationDeduction}đ vi phạm)</div>
+                              )}
+                              {item.totalAttendanceDeduction > 0 && (
+                                <div>(-{item.totalAttendanceDeduction}đ chuyên cần)</div>
+                              )}
                             </div>
                           )}
                         </td>
@@ -1059,7 +1208,7 @@ export function WeeklyEmulation() {
               <div className="emulation-detail-section">
                 <div className="emulation-detail-title">
                   <BookOpen size={16} className="text-primary" />
-                  <span>1. Điểm học tập (Sổ đầu bài từ file Excel):</span>
+                  <span>1. Điểm học tập (Sổ đầu bài online):</span>
                 </div>
                 {detailClass.excelDetails ? (
                   <div className="text-xs" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1081,41 +1230,84 @@ export function WeeklyEmulation() {
               <div className="emulation-detail-section">
                 <div className="emulation-detail-title">
                   <ShieldAlert size={16} className="text-danger" />
-                  <span>2. Điểm kỷ luật (50 điểm ban đầu - vi phạm học sinh):</span>
+                  <span>2. Điểm kỷ luật (50 điểm ban đầu - Vi phạm & Chuyên cần):</span>
                 </div>
-                {detailClass.violationDetails.length === 0 ? (
-                  <p className="text-xs text-success font-semibold" style={{ margin: 0 }}>
-                    ✓ Lớp không có học sinh nào bị ghi nhận vi phạm trong tuần này (Đạt trọn vẹn 50 điểm).
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div className="text-xs font-semibold text-danger">
-                      Bị trừ {detailClass.totalDisciplineDeduction} điểm từ {detailClass.violationDetails.length} lượt vi phạm:
-                    </div>
-                    {detailClass.violationDetails.map((v, idx) => (
-                      <div key={v.id || idx} style={{
-                        fontSize: '0.8rem',
-                        padding: '6px 8px',
-                        background: 'var(--card-bg, #fff)',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border-color)'
-                      }}>
-                        <span style={{ fontWeight: 700, color: '#dc2626' }}>-{v.penalty}đ</span>
-                        {' '}• <strong>{v.hoten}</strong> ({v.mahs || 'HS'}):
-                        {' '}<span style={{ color: '#b91c1c' }}>{v.loaivipham}</span>
-                        {v.noidung && <span className="text-muted"> ({v.noidung})</span>}
-                        {v.ngayvipham && (
-                          <span className="text-muted" style={{ marginLeft: '4px', fontSize: '0.75rem' }}>
-                            [{format(parseISO(v.ngayvipham), 'dd/MM')}]
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '4px', fontSize: '0.8rem', fontWeight: 700 }}>
-                      ➔ Điểm kỷ luật còn lại: 50 - {detailClass.totalDisciplineDeduction} = {detailClass.kyLuatScore.toFixed(2)} điểm
-                    </div>
+
+                {/* 2.1 Vi phạm học sinh */}
+                <div style={{ marginBottom: '10px' }}>
+                  <div className="text-xs font-semibold" style={{ color: '#b91c1c', marginBottom: '4px' }}>
+                    • Vi phạm nội quy ({detailClass.violationDetails.length} lượt - trừ {detailClass.totalViolationDeduction}đ):
                   </div>
-                )}
+                  {detailClass.violationDetails.length === 0 ? (
+                    <p className="text-xs text-success font-semibold" style={{ margin: '0 0 0 8px' }}>
+                      ✓ Không có vi phạm nội quy trong tuần.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '4px' }}>
+                      {detailClass.violationDetails.map((v, idx) => (
+                        <div key={v.id || idx} style={{
+                          fontSize: '0.8rem',
+                          padding: '5px 8px',
+                          background: 'var(--card-bg, #fff)',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)'
+                        }}>
+                          <span style={{ fontWeight: 700, color: '#dc2626' }}>-{v.penalty}đ</span>
+                          {' '}• <strong>{v.hoten}</strong> ({v.mahs || 'HS'}):
+                          {' '}<span style={{ color: '#b91c1c' }}>{v.loaivipham}</span>
+                          {v.noidung && <span className="text-muted"> ({v.noidung})</span>}
+                          {v.ngayvipham && (
+                            <span className="text-muted" style={{ marginLeft: '4px', fontSize: '0.75rem' }}>
+                              [{format(parseISO(v.ngayvipham), 'dd/MM')}]
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2.2 Chuyên cần vắng */}
+                <div style={{ marginBottom: '8px' }}>
+                  <div className="text-xs font-semibold" style={{ color: '#b91c1c', marginBottom: '4px' }}>
+                    • Chuyên cần tuần ({detailClass.attendanceDetails.length} lượt vắng - trừ {detailClass.totalAttendanceDeduction}đ):
+                  </div>
+                  {detailClass.attendanceDetails.length === 0 ? (
+                    <p className="text-xs text-success font-semibold" style={{ margin: '0 0 0 8px' }}>
+                      ✓ Lớp đạt chuyên cần 100%, không có học sinh vắng trong tuần.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '4px' }}>
+                      {detailClass.attendanceDetails.map((a, idx) => (
+                        <div key={a.id || idx} style={{
+                          fontSize: '0.8rem',
+                          padding: '5px 8px',
+                          background: 'var(--card-bg, #fff)',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)'
+                        }}>
+                          <span style={{ fontWeight: 700, color: a.penalty > 0 ? '#dc2626' : '#10b981' }}>
+                            {a.penalty > 0 ? `-${a.penalty}đ` : '0đ'}
+                          </span>
+                          {' '}• <strong>{a.hoten}</strong> ({a.mahs || 'HS'}):
+                          {' '}<span style={{ color: a.status === 'absent_kp' ? '#dc2626' : '#2563eb', fontWeight: 600 }}>
+                            {a.statusLabel}
+                          </span>
+                          {a.date && (
+                            <span className="text-muted" style={{ marginLeft: '4px', fontSize: '0.75rem' }}>
+                              [{format(parseISO(a.date), 'dd/MM')} - {a.session}]
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tổng kết kỷ luật */}
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '6px', fontSize: '0.82rem', fontWeight: 700 }}>
+                  ➔ Điểm kỷ luật còn lại: 50 - {detailClass.totalViolationDeduction} (vi phạm) - {detailClass.totalAttendanceDeduction} (chuyên cần) = {detailClass.kyLuatScore.toFixed(2)} điểm
+                </div>
               </div>
 
               {/* 3. Chi tiết vệ sinh */}
