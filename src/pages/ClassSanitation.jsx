@@ -238,17 +238,6 @@ export function ClassSanitation() {
     });
   };
 
-  // Change draft note for a class
-  const handleNoteChange = (className, note) => {
-    setDraftForms(prev => ({
-      ...prev,
-      [className]: {
-        ...(prev[className] || { selectedViolations: [] }),
-        note
-      }
-    }));
-  };
-
   // Change custom violation text and penalty
   const handleCustomViolationChange = (className, field, value) => {
     setDraftForms(prev => ({
@@ -282,7 +271,7 @@ export function ClassSanitation() {
 
   // Save deduction for a single class
   const handleSaveClass = async (className) => {
-    const draft = draftForms[className] || { selectedViolations: [], otherViolation: '', otherPenalty: '', note: '' };
+    const draft = draftForms[className] || { selectedViolations: [], otherViolation: '', otherPenalty: '' };
     const selectedViolations = [...(draft.selectedViolations || [])];
 
     const standardPenalty = selectedViolations.reduce((sum, vLabel) => {
@@ -317,7 +306,7 @@ export function ClassSanitation() {
         className: className,
         pointsDeducted: totalPointsToDeduct,
         violations: selectedViolations,
-        note: draft.note || '',
+        note: '',
         gradedBy: user?.fullName || user?.username || 'Giám thị',
         gradedById: user?.id || null,
         date: format(new Date(), 'yyyy-MM-dd')
@@ -336,7 +325,7 @@ export function ClassSanitation() {
         // Reset draft for this class
         setDraftForms(prev => ({
           ...prev,
-          [className]: { selectedViolations: [], otherViolation: '', otherPenalty: '', note: '' }
+          [className]: { selectedViolations: [], otherViolation: '', otherPenalty: '' }
         }));
 
         showToast(`Đã lưu trừ ${totalPointsToDeduct} điểm cho lớp ${className}!`);
@@ -619,7 +608,7 @@ export function ClassSanitation() {
           <div className="sanitation-list">
             {filteredClasses.map(c => {
               const { score, totalDeducted, list } = getClassScoreInfo(c.tenlop);
-              const draft = draftForms[c.tenlop] || { selectedViolations: [], otherViolation: '', otherPenalty: '', note: '' };
+              const draft = draftForms[c.tenlop] || { selectedViolations: [], otherViolation: '', otherPenalty: '' };
               const selectedViolations = draft.selectedViolations || [];
 
               const standardPenalty = selectedViolations.reduce((sum, vLabel) => {
@@ -765,17 +754,6 @@ export function ClassSanitation() {
                           <span className="text-xs font-semibold text-muted">điểm</span>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Note input */}
-                    <div>
-                      <input 
-                        type="text"
-                        className="sanitation-note-input"
-                        placeholder="Ghi chú cụ thể (vd: học sinh vi phạm, vị trí rác, bàn ghế chưa ngay ngắn...)"
-                        value={draft.note || ''}
-                        onChange={e => handleNoteChange(c.tenlop, e.target.value)}
-                      />
                     </div>
 
                     {/* Per-class Action Area & Save Button */}
